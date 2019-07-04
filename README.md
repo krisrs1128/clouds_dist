@@ -1,6 +1,6 @@
 # clouds_dist
 
-To run the training script, should be able do to somethign like
+To run the training script, should be able do to something like
 
 ```
 module load singularity
