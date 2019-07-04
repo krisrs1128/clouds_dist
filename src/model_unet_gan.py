@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -38,17 +39,14 @@ class unet_block(nn.Module):
         self.output = nn.Sequential(*model)
 
     def forward(self, x):
-
-            x1  = self.input(x)
-            x2  = self.down(x1)
-            x3  = self.sub(x2)
-            x4  = self.up(x3)
-            x5  = torch.cat([x1,x4],dim=1)
-            x6  = self.output(x5)
-            return x6
+        x1  = self.input(x)
+        x2  = self.down(x1)
+        x3  = self.sub(x2)
+        x4  = self.up(x3)
+        x5  = torch.cat([x1,x4],dim=1)
+        return self.output(x5)
 
 class unet(nn.Module):
-
     def __init__(self, Cin, Cout, nc, nblocks, K, dropout):
         super(unet, self).__init__()
 
@@ -56,7 +54,6 @@ class unet(nn.Module):
         self.input = nn.Sequential(inconv)
 
         submodule = None
-
         for i in range(nblocks-1):
             submodule =  unet_block(nc, nc, K, dropout, submodule=submodule, outermost=False )
         self.ublock = unet_block(nc, nc, K, dropout, submodule=submodule, outermost=True )
@@ -65,16 +62,13 @@ class unet(nn.Module):
         self.output = nn.Sequential(outconv)
 
     def forward(self,x):
-
         x = self.input(x)
         x = self.ublock(x)
         x = self.output(x)
-        x = F.sigmoid(x)
-        return x
+        return F.sigmoid(x)
 
 
 class encoder(nn.Module):
-
     def __init__(self, Cin, nc=16, nlevels=4):
         super(encoder, self).__init__()
 
@@ -93,15 +87,12 @@ class encoder(nn.Module):
         model += [nn.Conv2d(cin, 1, kernel_size=1, stride=1, padding=0)]
         self.model = nn.Sequential(*model)
 
-    def forward(self,x):
-
+    def forward(self, x):
         x = self.model(x)
-        x = F.sigmoid(x)
+        return F.sigmoid(x)
 
-        return x
 
 class GAN(nn.Module):
-
     def __init__(self, cin, cout, nc, nblocks, K, dropout):
         super(GAN, self).__init__()
 
@@ -118,5 +109,4 @@ class GAN(nn.Module):
 
     def forward(self,x):
         x = self.g(x)
-        x = self.d(x)
-        return x
+        return self.d(x)
