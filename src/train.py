@@ -68,7 +68,6 @@ class gan_trainer:
         self.writer = SummaryWriter(self.logdir)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(self.device)
-
         trainset.Cin = self.cin
 
         self.trainloader= torch.utils.data.DataLoader(trainset, batch_size=self.batchsize, shuffle=True,  num_workers=8)
@@ -79,10 +78,7 @@ class gan_trainer:
         self.d       = self.gan.d
 
         # load previous stored weights
-        #self.gan.load_state_dict(torch.load(self.pt_file))
-
         # train using "regress then GAN" approach
-
         val_loss = self.train(nepoch_regress, lr_d, lr_g1, lambda_gan=0, lambda_L1=1)
         val_loss = self.train(nepoch_gan,     lr_d, lr_g2, lambda_gan_1, lambda_L1_1)
         val_loss = self.train(nepoch_gan,     lr_d, lr_g2, lambda_gan_2, lambda_L1_2)
@@ -162,59 +158,6 @@ class gan_trainer:
 
             print()
 
-            # apply gan to validation data
-            '''
-            torch.cuda.empty_cache()
-            self.gan.eval()
-            val_loss     = 0
-            L1_loss_test = 0
-            nval         = 0
-            num_batches  = len(self.testloader)
-            net_wdist = 0
-
-            for i, (A_imgs, B_real) in enumerate(self.testloader):
-                nval+=1
-
-                s = A_imgs.shape
-                A = torch.FloatTensor(s[0], self.csum, s[2], s[3]).uniform_(-1,1)
-                A[:,:self.cin, :,:] = A_imgs
-                A = A.to(device)
-
-                B_real = B_real.to(device)
-                B_fake = self.g(A)
-
-                wdist = self.get_wdist(B_real,B_fake)
-                net_wdist += wdist
-
-                C_real = self.d(B_real)
-                C_fake = self.d(B_fake)
-
-                L_real = torch.ones (C_real.shape).to(device)
-                L_fake = torch.zeros(C_real.shape).to(device)
-
-                #d_loss_test = 0.5*(MSE(C_fake, L_fake) + MSE(C_real, L_real))
-                L1_loss  = L1 (B_fake, B_real)
-                gan_loss = MSE(C_fake, L_real)
-                g_loss   = lambda_gan * gan_loss + lambda_L1 * L1_loss
-
-                val_loss = val_loss + g_loss.item()
-                L1_loss_test += L1_loss.item()
-
-                print('trail:{} epoch:{}/{} test iteration {}/{} test/wdist:{:0.04f} test/L1_loss:{:0.4f} test/g_loss:{:0.4f}'.
-                      format(self.trial_number,epoch+1,nepochs, i+1, num_batches, wdist, L1_loss.item(), g_loss.item()), end="\r")
-            print()
-
-            val_loss/=nval
-            L1_loss_test/=nval
-            wdist = net_wdist/nval
-
-            self.writer.add_scalar('test/g_loss',val_loss, self.epoch)
-            self.writer.add_scalar('test/L1_loss',L1_loss, self.epoch)
-            self.writer.add_scalar('test/wdist',wdist, self.epoch)
-            '''
-            #print('epoch:{} train/g_loss:{:0.4f} test/g_loss:{:0.4f}'.
-            #      format(self.epoch, epoch_loss, val_loss))
-
             # output sample images
             s = A_imgs.shape
             A = torch.FloatTensor(s[0], self.csum, s[2], s[3]).uniform_(-1,1)
@@ -236,39 +179,30 @@ class gan_trainer:
                 plt.imsave(self.imgdir+'/imgs%d_%d'%(i,self.epoch), imgs_cpu, cmap='gray', vmin=0, vmax=1)
 
         torch.save(self.gan.state_dict(), self.trialdir + '/gan.pt')
-
-        #self.results.append((val_loss, self.trial_number, nparams, params))
-        #self.results.sort()
-
-        #print("trial={}: loss={}".format(self.trial_number, val_loss))
-        #nresults = len(self.results)
-        #if(nresults>20): nresults=20
-        #for i in range(nresults): print(self.results[i])
         return 0
 
+if __name__ == '__main__':
+    datapath= '/data/'
+    trainset = Dataset(datapath, 'metos','imgs')
+    trainer = gan_trainer()
 
+    params1   = {
+        'nepoch_regress': 100,
+        'nepoch_gan'    : 250,
+        'optimizer'     : 'adam',
+        'lr_g1'         : 5e-4,
+        'lr_d'          : 1e-4,
+        'lr_g2'         : 1e-4,
+        'lambda_gan_1'  : 1e-2,
+        'lambda_gan_2'  : 3e-2,
+        'lambda_L1_1'   : 1,
+        'lambda_L1_2'   : 1,
+        'batch_size'    : 32,
+        'nblocks'       : 5,
+        'nchannels'     : 16,
+        'kernel_size'   : 3,
+        'dropout'       : 0.75,
+        'cin'           : 41
+    }
 
-datapath= '/data/'
-trainset = Dataset(datapath, 'metos','imgs')
-trainer = gan_trainer()
-
-params1   = {
-    'nepoch_regress': 100,
-    'nepoch_gan'    : 250,
-    'optimizer'     : 'adam',
-    'lr_g1'         : 5e-4,
-    'lr_d'          : 1e-4,
-    'lr_g2'         : 1e-4,
-    'lambda_gan_1'  : 1e-2,
-    'lambda_gan_2'  : 3e-2,
-    'lambda_L1_1'   : 1,
-    'lambda_L1_2'   : 1,
-    'batch_size'    : 32,
-    'nblocks'       : 5,
-    'nchannels'     : 16,
-    'kernel_size'   : 3,
-    'dropout'       : 0.75,
-    'cin'           : 41
-}
-
-result = trainer.run_trail(params1)
+    result = trainer.run_trail(params1)
