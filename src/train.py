@@ -16,20 +16,17 @@ class gan_trainer:
     def __init__(self, nepochs=50):
 
         self.trial_number = 0
-        self.nepochs      = nepochs
-        self.start_time   = datetime.now()
-        self.timestamp    = self.start_time.strftime("%Y_%m_%d_%H_%M_%S")
-        self.runname      = "unet_gan_10level"
-        self.runpath      = 'output/'+self.runname+'/output_'+self.timestamp
-        self.results      = []
-        #self.pt_file      = pt_file
-        print(self.runpath)
+        self.nepochs = nepochs
+        self.start_time = datetime.now()
+        self.timestamp = self.start_time.strftime("%Y_%m_%d_%H_%M_%S")
+        self.runname = "unet_gan_10level"
+        self.runpath = os.path.join("output/", self.runname, "output_{}".format(timestamp))
+        self.results = []
 
     def make_directories(self):
         self.trialdir  = "{}/trial_{}".format(self.runpath, self.trial_number)
         self.logdir    = "{}/log".format(self.trialdir)
         self.imgdir    = "{}/images".format(self.trialdir)
-        print("output path:", self.trialdir)
         os.makedirs(self.trialdir, exist_ok=True)
         os.makedirs(self.logdir  , exist_ok=True)
         os.makedirs(self.imgdir  , exist_ok=True)
@@ -59,12 +56,10 @@ class gan_trainer:
         self.epoch     = 0
         self.iteration = 0
 
-        print()
         print("trial# {}: params={}".format(self.trial_number,params))
 
-        self.make_directories()
-
         # initialize objects
+        self.make_directories()
         self.writer = SummaryWriter(self.logdir)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(self.device)
@@ -80,13 +75,9 @@ class gan_trainer:
         # load previous stored weights
         # train using "regress then GAN" approach
         val_loss = self.train(nepoch_regress, lr_d, lr_g1, lambda_gan=0, lambda_L1=1)
-        val_loss = self.train(nepoch_gan,     lr_d, lr_g2, lambda_gan_1, lambda_L1_1)
-        val_loss = self.train(nepoch_gan,     lr_d, lr_g2, lambda_gan_2, lambda_L1_2)
-
         return {'loss':val_loss, 'params':params, 'status':STATUS_OK}
 
     def get_wdist(self,B_real,B_fake):
-
         Bf = B_fake.cpu().detach().numpy()
         Br = B_real.cpu().detach().numpy()
 
@@ -103,16 +94,13 @@ class gan_trainer:
         return wass_dist
 
     def train(self, nepochs, lr_d=1e-2, lr_g=1e-2, lambda_gan=0.01, lambda_L1=1):
-
         # initialize trial
-
         d_optimizer  = optim.Adam(self.d.parameters(),lr=lr_d)
         g_optimizer  = optim.Adam(self.g.parameters(),lr=lr_g)
 
         L1  = nn.L1Loss()
         MSE = nn.MSELoss()
         device = self.device
-
 
         for epoch in range(nepochs):
             self.epoch+=1
@@ -156,8 +144,6 @@ class gan_trainer:
                 print('trail:{} epoch:{}/{} iteration {}/{} train/d_loss:{:0.4f} train/L1_loss:{:0.4f} train/g_loss:{:0.4f}'
                   .format(self.trial_number,epoch+1,nepochs, i+1, num_batches, d_loss.item(), L1_loss.item(), g_loss.item()), end="\r")
 
-            print()
-
             # output sample images
             s = A_imgs.shape
             A = torch.FloatTensor(s[0], self.csum, s[2], s[3]).uniform_(-1,1)
@@ -169,7 +155,6 @@ class gan_trainer:
             if epoch == 0:
                 self.writer.add_graph(GAN(self.csum, 3, params1['nchannels'], params1['nblocks'], int(params1['kernel_size']), params1['dropout']).to(self.device),(A,), True)
             imgs = torch.cat( (A[0,22:25], B_fake[0,0:3], B_real[0,0:3]), 1)
-            print (imgs.shape)
             self.writer.add_image('imgs',imgs,self.epoch, dataformats = 'CHW')
 
             for i in range(1):
