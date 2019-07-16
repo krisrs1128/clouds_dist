@@ -1,74 +1,69 @@
 #!/usr/bin/env python
 from glob import glob
-from model_unet_gan import *
-from torch.utils import data
-import datetime
-import matplotlib.pyplot as plt
+from torch.utils.data import Dataset
 import numpy as np
-import os
+import os.path
+import re
 import torch
 
-r_chan = "Reflectance_680"
-g_chan = "Reflectance_551"
-b_chan = "Reflectance_443"
 
-# read out meto data given an npz file
-def readin_epic_meto(fname):
-    fh = np.load(fname)
-    t = fh['T'][:]
-    r_hum = fh['RH'][:]
-    u_wnd = fh['U'][:]
-    v_wnd = fh['V'][:]
-    s_temp = np.expand_dims(fh['TS'][:],axis =0)
-    fh.close()
-    output = np.concatenate((t,r_hum,u_wnd,v_wnd,s_temp), axis = 0)
-    output[np.where(np.isnan(output))] = 0
-    return output
+class EarthData(Dataset):
+    """
+    Earth Clouds / Metereology Data
 
-def readin_epic_img(fname):
-    fh = np.load(fname)
-    r = np.expand_dims(fh[r_chan][:],axis =0)
-    g = np.expand_dims(fh[g_chan][:],axis =0)
-    b = np.expand_dims(fh[b_chan][:],axis =0)
-    output = np.concatenate((r,g,b), axis = 0)
-    output[np.where(np.isnan(output))] = 0
-    return output
+    Each index corresponds to one timepoint in the clouds and meteorology
+    simulation. The returned tuple is (coords, imgs, metos).
 
+    :param data_dir: The path containing the imgs/ and metos/ subdirectories.
+    :n_in_mem: The number of samples to load (into CPU memory) at a time.
 
-class Dataset(data.Dataset):
-    def __init__(self, root, x_field, y_field, start=0,stop=-1, Cout = 3, Cin=41, H=256, W=256):
+    Example
+    -------
+    >>> data = EarthData("/data/")
+    >>> x, y = data[0]
+    """
+    def __init__(self, data_dir, n_in_mem=300):
+        super(EarthData).__init__()
+        self.n_in_mem = n_in_mem
+        self.cur_ix = []
+        self.subsample = {}
 
-        self.Cin     = Cin
-        self.Cout    = Cout
-        self.x_files = []
-        self.y_files = []
-        prefix       = 'epic_1b_'
+        self.paths = {
+            "imgs": glob(os.path.join(data_dir, "imgs", "*.npz")),
+            "metos":glob(os.path.join(data_dir, "metos", "*.npz"))
+        }
 
-        x_path = "{}/{}".format(root,x_field)
-        y_path = "{}/{}".format(root,y_field)
-
-        files = sorted(glob(x_path+"/**.npz"))
-        files = files[start:stop]
-        self.x_files += files
-
-        # get matching y's
-        for i,file in enumerate(files):
-            path,b    = os.path.split(file) # split off basename
-            timestamp = b[b.find(prefix) : b.find("_Collocated_MERRA2.npz")]
-            y_file = "{}/{}.npz".format(y_path,timestamp)
-            self.y_files.append(y_file)
-
-        self.N = len(self.x_files)
-        self.x = torch.zeros([self.N,self.Cin,H,W],dtype=torch.float)
-        self.y = torch.zeros([self.N,self.Cout,H,W],dtype=torch.float)
+        self.ids = [re.search("[0-9]+", s).group() for s in self.paths["imgs"]]
 
     def __len__(self):
-        return self.N
+        return len(self.ids)
 
-    def __getitem__(self,index):
-        im_x = readin_epic_meto(self.x_files[index])
-        im_y = readin_epic_img(self.y_files[index])
+    def __getitem__(self, ix):
+        # updated loaded dictionary of data
+        if ix not in self.cur_ix:
+            start = ix - ix % self.n_in_mem
+            self.cur_ix = range(start, start + self.n_in_mem)
 
-        x = torch.from_numpy(im_x).float()
-        y = torch.from_numpy(im_y).float()
-        return x, y
+            # load imgs / metos one by one
+            self.subsample = {}
+            for i in self.cur_ix:
+                data = {}
+                for key in ["imgs", "metos"]:
+                    path = [s for s in self.paths[key] if self.ids[i] in s][0]
+                    data[key] = dict(np.load(path).items())
+
+                # rearrange into numpy arrays
+                coords = np.stack([data["imgs"]["Lat"], data["imgs"]["Lon"]])
+                imgs = np.stack([v for k, v in data["imgs"].items() if "Reflect" in k])
+                metos = np.concatenate([
+                    data["metos"]["U"],
+                    data["metos"]["T"],
+                    data["metos"]["V"],
+                    data["metos"]["RH"],
+                    data["metos"]["Scattering_angle"].reshape(1, 256, 256),
+                    data["metos"]["TS"].reshape(1, 256, 256)
+                ])
+
+                self.subsample[i] = (coords, torch.Tensor(imgs), torch.Tensor(metos))
+
+        return self.subsample[ix]
