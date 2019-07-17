@@ -60,6 +60,5 @@ class BaseOptions:
         )
 
     def parse(self):
-        if not 
         self.opt = self.parser.parse_args()
         return self.opt
