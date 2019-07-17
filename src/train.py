@@ -10,6 +10,7 @@ import os
 import random
 import scipy.spatial.distance as distance
 from scipy import stats
+from data import EarthData
 
 
 class gan_trainer:
@@ -201,7 +202,7 @@ class gan_trainer:
 
 if __name__ == "__main__":
     datapath = "/data/"
-    trainset = Dataset(datapath, "metos", "imgs")
+    trainset = EarthData(datapath)
     trainer = gan_trainer()
 
     params1 = {
