@@ -83,8 +83,8 @@ class gan_trainer:
             self.trainset,
             batch_size=self.batchsize,
             shuffle=True,
-            num_workers=0  # errors with > 0 see
-            # https://github.com/pytorch/pytorch/issues/5301
+            # num_workers=0  # errors with > 0 see
+            # # https://github.com/pytorch/pytorch/issues/5301
         )
         #        self.testloader = torch.utils.data.DataLoader(testset,  batch_size=128, shuffle=False, num_workers=8)
 
