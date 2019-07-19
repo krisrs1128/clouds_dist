@@ -38,10 +38,11 @@ class EarthData(Dataset):
 
     def __getitem__(self, ix):
         # updated loaded dictionary of data
+        print("getting item", ix)
         if ix not in self.cur_ix:
             start = ix - ix % self.n_in_mem
             self.cur_ix = range(start, start + self.n_in_mem)
-
+            print(self.cur_ix)
             # load imgs / metos one by one
             self.subsample = {}
             for i in self.cur_ix:
@@ -63,6 +64,7 @@ class EarthData(Dataset):
                         data["metos"]["TS"].reshape(1, 256, 256),
                     ]
                 )
+                print("loaded", metos.shape, imgs.shape)
 
                 self.subsample[i] = (coords, torch.Tensor(imgs), torch.Tensor(metos))
 
