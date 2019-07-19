@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 
 from src.cloud_unet import Discriminator, unet
 from src.unets import UNet
@@ -15,9 +16,9 @@ class GAN(nn.Module):
         self.d.apply(self.init_weights)
 
     def init_weights(self, m):
-        if type(m) == torch.nn.Linear:
-            torch.nn.init.xavier_uniform_(m.weight)
-            torch.nn.init.uniform_(m.bias, -0.1, 0.1)
+        if type(m) == nn.Linear:
+            nn.init.xavier_uniform_(m.weight)
+            nn.init.uniform_(m.bias, -0.1, 0.1)
 
     def forward(self, x):
         x = self.g(x)
