@@ -14,8 +14,9 @@ from scipy import stats
 from torch import optim
 from torch.utils import data
 
-from data import EarthData
-from .model_unet_gan import GAN
+from src.data import EarthData
+from src.gan import GAN
+
 from tensorboardX import SummaryWriter
 
 
