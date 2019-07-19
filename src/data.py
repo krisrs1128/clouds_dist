@@ -42,6 +42,7 @@ class EarthData(Dataset):
 
     def __getitem__(self, ix):
         # updated loaded dictionary of data
+        print("gettin", ix)
         if ix not in self.cur_ix:
             start = ix - ix % self.n_in_mem
             self.cur_ix = range(start, start + self.n_in_mem)
@@ -53,6 +54,7 @@ class EarthData(Dataset):
                 for key in ["imgs", "metos"]:
                     path = [s for s in self.paths[key] if self.ids[i] in s][0]
                     data[key] = dict(np.load(path).items())
+                print("loading", i, end="\r")
 
                 # rearrange into numpy arrays
                 coords = np.stack([data["imgs"]["Lat"], data["imgs"]["Lon"]])
@@ -69,5 +71,5 @@ class EarthData(Dataset):
                 )
 
                 self.subsample[i] = (coords, torch.Tensor(imgs), torch.Tensor(metos))
-
+            print("\ndone")
         return self.subsample[ix]
