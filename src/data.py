@@ -1,10 +1,11 @@
 #!/usr/bin/env python
-from glob import glob
-from torch.utils.data import Dataset
-import numpy as np
 import os.path
 import re
+from glob import glob
+
+import numpy as np
 import torch
+from torch.utils.data import Dataset
 
 
 class EarthData(Dataset):
@@ -22,6 +23,7 @@ class EarthData(Dataset):
     >>> data = EarthData("/data/")
     >>> x, y = data[0]
     """
+
     def __init__(self, data_dir, n_in_mem=300):
         super(EarthData).__init__()
         self.n_in_mem = n_in_mem
@@ -30,7 +32,7 @@ class EarthData(Dataset):
 
         self.paths = {
             "imgs": glob(os.path.join(data_dir, "imgs", "*.npz")),
-            "metos":glob(os.path.join(data_dir, "metos", "*.npz"))
+            "metos": glob(os.path.join(data_dir, "metos", "*.npz")),
         }
 
         self.ids = [re.search("[0-9]+", s).group() for s in self.paths["imgs"]]
@@ -55,14 +57,16 @@ class EarthData(Dataset):
                 # rearrange into numpy arrays
                 coords = np.stack([data["imgs"]["Lat"], data["imgs"]["Lon"]])
                 imgs = np.stack([v for k, v in data["imgs"].items() if "Reflect" in k])
-                metos = np.concatenate([
-                    data["metos"]["U"],
-                    data["metos"]["T"],
-                    data["metos"]["V"],
-                    data["metos"]["RH"],
-                    data["metos"]["Scattering_angle"].reshape(1, 256, 256),
-                    data["metos"]["TS"].reshape(1, 256, 256)
-                ])
+                metos = np.concatenate(
+                    [
+                        data["metos"]["U"],
+                        data["metos"]["T"],
+                        data["metos"]["V"],
+                        data["metos"]["RH"],
+                        data["metos"]["Scattering_angle"].reshape(1, 256, 256),
+                        data["metos"]["TS"].reshape(1, 256, 256),
+                    ]
+                )
 
                 self.subsample[i] = (coords, torch.Tensor(imgs), torch.Tensor(metos))
 
