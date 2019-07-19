@@ -102,8 +102,8 @@ class gan_trainer:
         d_optimizer = optim.Adam(self.d.parameters(), lr=lr_d)
         g_optimizer = optim.Adam(self.g.parameters(), lr=lr_g)
 
-        L1 = nn.L1Loss()
-        MSE = nn.MSELoss()
+        L1 = torch.nn.L1Loss()
+        MSE = torch.nn.MSELoss()
         device = self.device
 
         for epoch in range(nepochs):
@@ -219,7 +219,7 @@ class gan_trainer:
 
 
 if __name__ == "__main__":
-    datapath = "/data/"
+    datapath = "/home/vsch/scratch/"
     trainset = EarthData(datapath)
     trainer = gan_trainer()
 
