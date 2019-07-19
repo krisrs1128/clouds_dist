@@ -26,7 +26,10 @@ class gan_trainer:
         self.trial_number = 0
         self.nepochs = nepochs
         self.start_time = datetime.now()
-        self.timestamp = self.start_time.strftime("%Y_%m_%d_%H_%M_%S")
+
+        timestamp = self.start_time.strftime("%Y_%m_%d_%H_%M_%S")
+        self.timestamp = timestamp
+
         self.runname = "unet_gan_10level"
         self.runpath = Path("output") / self.runname / "output_{}".format(timestamp)
         self.results = []
