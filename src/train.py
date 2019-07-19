@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.spatial.distance as distance
 import torch
+import torch.nn as nn
 from hyperopt import STATUS_FAIL, STATUS_OK
 from scipy import stats
 from torch import optim
@@ -16,7 +17,6 @@ from torch.utils import data
 
 from src.data import EarthData
 from src.gan import GAN
-
 from tensorboardX import SummaryWriter
 
 
@@ -102,8 +102,8 @@ class gan_trainer:
         d_optimizer = optim.Adam(self.d.parameters(), lr=lr_d)
         g_optimizer = optim.Adam(self.g.parameters(), lr=lr_g)
 
-        L1 = torch.nn.L1Loss()
-        MSE = torch.nn.MSELoss()
+        L1 = nn.L1Loss()
+        MSE = nn.MSELoss()
         device = self.device
 
         for epoch in range(nepochs):
