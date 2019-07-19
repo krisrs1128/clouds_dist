@@ -21,7 +21,7 @@ from tensorboardX import SummaryWriter
 
 
 class gan_trainer:
-    def __init__(self, nepochs=50):
+    def __init__(self, trainset, nepochs=50):
 
         self.trial_number = 0
         self.nepochs = nepochs
@@ -33,6 +33,7 @@ class gan_trainer:
         self.runname = "unet_gan_10level"
         self.runpath = Path("output") / self.runname / "output_{}".format(timestamp)
         self.results = []
+        self.trainset = trainset
 
     def make_directories(self):
         self.trialdir = self.runpath / "trial_{}".format(self.trial_number)
@@ -76,10 +77,10 @@ class gan_trainer:
         self.writer = SummaryWriter(self.logdir)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(self.device)
-        trainset.Cin = self.Cin
+        self.trainset.Cin = self.Cin
 
         self.trainloader = torch.utils.data.DataLoader(
-            trainset, batch_size=self.batchsize, shuffle=True, num_workers=8
+            self.trainset, batch_size=self.batchsize, shuffle=True, num_workers=8
         )
         #        self.testloader = torch.utils.data.DataLoader(testset,  batch_size=128, shuffle=False, num_workers=8)
 
@@ -224,7 +225,7 @@ class gan_trainer:
 if __name__ == "__main__":
     datapath = "/home/vsch/scratch/"
     trainset = EarthData(datapath)
-    trainer = gan_trainer()
+    trainer = gan_trainer(trainset)
 
     params1 = {
         "nepoch_regress": 100,
