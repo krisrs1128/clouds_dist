@@ -1,16 +1,22 @@
 #!/usr/bin/env python
-from hyperopt import STATUS_OK, STATUS_FAIL
-from tensorboardX import SummaryWriter
-from datetime import datetime
-from torch import optim
-import torch
-from torch.utils import data
-import time
 import os
 import random
+import time
+from datetime import datetime
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
 import scipy.spatial.distance as distance
+import torch
+from hyperopt import STATUS_FAIL, STATUS_OK
 from scipy import stats
+from torch import optim
+from torch.utils import data
+
 from data import EarthData
+from .model_unet_gan import GAN
+from tensorboardX import SummaryWriter
 
 
 class gan_trainer:
@@ -21,18 +27,18 @@ class gan_trainer:
         self.start_time = datetime.now()
         self.timestamp = self.start_time.strftime("%Y_%m_%d_%H_%M_%S")
         self.runname = "unet_gan_10level"
-        self.runpath = os.path.join(
-            "output/", self.runname, "output_{}".format(timestamp)
-        )
+        self.runpath = Path("output") / self.runname / "output_{}".format(timestamp)
         self.results = []
 
     def make_directories(self):
-        self.trialdir = "{}/trial_{}".format(self.runpath, self.trial_number)
-        self.logdir = "{}/log".format(self.trialdir)
-        self.imgdir = "{}/images".format(self.trialdir)
-        os.makedirs(self.trialdir, exist_ok=True)
-        os.makedirs(self.logdir, exist_ok=True)
-        os.makedirs(self.imgdir, exist_ok=True)
+        self.trialdir = self.runpath / "trial_{}".format(self.trial_number)
+        self.logdir = self.trialdir / "log"
+        self.imgdir = self.trialdir / "images"
+
+        self.runpath.mkdir(parents=True, exist_ok=True)
+        self.trialdir.mkdir(exist_ok=True)
+        self.logdir.mkdir(exist_ok=True)
+        self.imgdir.mkdir(exist_ok=True)
 
     def run_trail(self, params):
         trial_start_time = time.time()
@@ -49,13 +55,13 @@ class gan_trainer:
         nepoch_gan = int(params["nepoch_gan"])
         nblocks = int(params["nblocks"])
         nc = int(params["nchannels"])
-        K = int(params["kernel_size"])
+        kernel_size = int(params["kernel_size"])
         dropout = params["dropout"]
-        cin = int(params["cin"])
-        cout = 3
-        cnoise = 3
-        self.csum = cin + cnoise
-        self.cin = cin
+        Cin = int(params["Cin"])
+        Cout = 3
+        Cnoise = 3
+        self.Ctot = Cin + Cnoise
+        self.Cin = Cin
         self.epoch = 0
         self.iteration = 0
 
@@ -66,14 +72,16 @@ class gan_trainer:
         self.writer = SummaryWriter(self.logdir)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(self.device)
-        trainset.Cin = self.cin
+        trainset.Cin = self.Cin
 
         self.trainloader = torch.utils.data.DataLoader(
             trainset, batch_size=self.batchsize, shuffle=True, num_workers=8
         )
         #        self.testloader = torch.utils.data.DataLoader(testset,  batch_size=128, shuffle=False, num_workers=8)
 
-        self.gan = GAN(self.csum, cout, nc, nblocks, K, dropout).to(self.device)
+        self.gan = GAN(self.Ctot, Cout, nc, nblocks, kernel_size, dropout).to(
+            self.device
+        )
         self.g = self.gan.g
         self.d = self.gan.d
 
@@ -82,21 +90,11 @@ class gan_trainer:
         val_loss = self.train(nepoch_regress, lr_d, lr_g1, lambda_gan=0, lambda_L1=1)
         return {"loss": val_loss, "params": params, "status": STATUS_OK}
 
-    def get_wdist(self, B_real, B_fake):
-        Bf = B_fake.cpu().detach().numpy()
-        Br = B_real.cpu().detach().numpy()
-
-        s = Br.shape
-        npixels = s[1] * s[2] * s[3]
-
-        B1 = Br.reshape((s[0], npixels))
-        B2 = Bf.reshape((s[0], npixels))
-
-        pdist1 = distance.pdist(B1, metric="cityblock") / npixels
-        pdist2 = distance.pdist(B2, metric="cityblock") / npixels
-        wass_dist = stats.wasserstein_distance(pdist1, pdist2)
-
-        return wass_dist
+    def get_noise_tensor(self, shape):
+        b, h, w = shape[0], shape[2], shape[3]
+        input_tensor = torch.FloatTensor(b, self.Ctot, h, w)
+        input_tensor.uniform_(-1, 1)
+        return input_tensor
 
     def train(self, nepochs, lr_d=1e-2, lr_g=1e-2, lambda_gan=0.01, lambda_L1=1):
         # initialize trial
@@ -111,35 +109,38 @@ class gan_trainer:
             self.epoch += 1
 
             torch.cuda.empty_cache()
-            self.gan.train()
+            self.gan.train()  # train mode
             num_batches = len(self.trainloader)
 
-            for i, (A_imgs, B_real) in enumerate(self.trainloader):
+            for i, (metos_data, real_img) in enumerate(self.trainloader):
                 self.iteration += 1
 
-                s = A_imgs.shape
-                A = torch.FloatTensor(s[0], self.csum, s[2], s[3]).uniform_(-1, 1)
-                A[:, : self.cin, :, :] = A_imgs
-                A = A.to(device)
+                shape = metos_data.shape
 
-                B_real = B_real.to(device)
-                B_fake = self.g(A)
+                input_tensor = self.get_noise_tensor(shape)
+                input_tensor[:, : self.Cin, :, :] = metos_data
+                input_tensor = input_tensor.to(device)
 
-                C_real = self.d(B_real)
-                C_fake = self.d(B_fake)
+                real_img = real_img.to(device)
+                generated_img = self.g(input_tensor)
 
-                L_real = torch.ones(C_real.shape, device=device)
-                L_fake = torch.zeros(C_fake.shape, device=device)
+                real_prob = self.d(real_img)
+                fake_prob = self.d(generated_img)
+
+                real_target = torch.ones(real_prob.shape, device=device)
+                fake_target = torch.zeros(fake_prob.shape, device=device)
 
                 d_optimizer.zero_grad()
-                d_loss = 0.5 * (MSE(C_fake, L_fake) + MSE(C_real, L_real))
+                d_loss = 0.5 * (
+                    MSE(fake_prob, fake_target) + MSE(real_prob, real_target)
+                )
                 d_loss.backward(retain_graph=True)
                 d_optimizer.step()
                 self.writer.add_scalar("train/d_loss", d_loss.item(), self.iteration)
 
                 g_optimizer.zero_grad()
-                L1_loss = L1(B_fake, B_real)
-                gan_loss = MSE(C_fake, L_real)
+                L1_loss = L1(generated_img, real_img)
+                gan_loss = MSE(fake_prob, real_target)
 
                 g_loss = lambda_gan * gan_loss + lambda_L1 * L1_loss
                 g_loss.backward()
@@ -160,32 +161,48 @@ class gan_trainer:
                     end="\r",
                 )
 
-            # output sample images
-            s = A_imgs.shape
-            A = torch.FloatTensor(s[0], self.csum, s[2], s[3]).uniform_(-1, 1)
-            A[:, : self.cin, :, :] = A_imgs
-            A = A.to(device)
+            # ------------
+            # END OF EPOCH
+            # ------------
 
-            B_fake = self.g(A)
+            # output sample images
+            input_tensor = self.get_noise_tensor(shape)
+            input_tensor[:, : self.Cin, :, :] = metos_data
+            input_tensor = input_tensor.to(device)
+
+            generated_img = self.g(input_tensor)
+
             # write out the model architechture
             if epoch == 0:
-                self.writer.add_graph(
-                    GAN(
-                        self.csum,
-                        3,
-                        params1["nchannels"],
-                        params1["nblocks"],
-                        int(params1["kernel_size"]),
-                        params1["dropout"],
-                    ).to(self.device),
-                    (A,),
-                    True,
-                )
-            imgs = torch.cat((A[0, 22:25], B_fake[0, 0:3], B_real[0, 0:3]), 1)
+                # self.writer.add_graph(
+                #     GAN(
+                #         self.Ctot,
+                #         3,
+                #         params1["nchannels"],
+                #         params1["nblocks"],
+                #         int(params1["kernel_size"]),
+                #         params1["dropout"],
+                #     ).to(self.device),
+                #     (input_tensor,),
+                #     True,
+                # )
+                self.writer.add_graph(self.gan)
+            imgs = torch.cat(
+                (input_tensor[0, 22:25], generated_img[0, 0:3], real_img[0, 0:3]), 1
+            )  # concatenate verticaly 3 metos, generated clouds, ground truth clouds
             self.writer.add_image("imgs", imgs, self.epoch, dataformats="CHW")
+            # CHW = channel, height, width
 
-            for i in range(1):
-                imgs = torch.cat((A[i, 22:25], B_fake[i, 0:3], B_real[i, 0:3]), 1)
+            for i in range(input_tensor.shape[0]):
+                if i > 0:
+                    imgs = torch.cat(
+                        (
+                            input_tensor[i, 22:25],
+                            generated_img[i, 0:3],
+                            real_img[i, 0:3],
+                        ),
+                        1,
+                    )
                 imgs_cpu = imgs.cpu().detach().numpy()
                 imgs_cpu = np.swapaxes(imgs_cpu, 0, 2)
                 plt.imsave(
@@ -221,7 +238,20 @@ if __name__ == "__main__":
         "nchannels": 16,
         "kernel_size": 3,
         "dropout": 0.75,
-        "cin": 41,
+        "Cin": 41,
     }
 
     result = trainer.run_trail(params1)
+
+# * use pathlib
+# * Cin, Cnoise, Cnoise etc <- Cin, Cnoise, Ctot etc to better read
+#   + coherence accross files
+# * K <- kernel_size
+# * use black formatter everywhere
+# * sort imports
+# * remove get_wdist as it is not used
+# * add get_noise_tensor function
+# * rename variables to
+#   fake_target, real_target, real_prob, fake_prob, generated_img, real_img
+# * not sure: change add_graph to self.writer.add_graph(self.gan) -> current graph
+#   instead of self.writer.add_graph(GAN(...)) -> new graph
