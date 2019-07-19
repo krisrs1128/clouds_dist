@@ -122,6 +122,9 @@ class gan_trainer:
             num_batches = len(self.trainloader)
 
             for i, (metos_data, real_img) in enumerate(self.trainloader):
+                if epoch + i == 0:
+                    print("Loaded!")
+                    print(metos_data.shape, real_img.shape)
                 self.iteration += 1
 
                 shape = metos_data.shape
