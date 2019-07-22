@@ -250,7 +250,7 @@ if __name__ == "__main__":
         "nchannels": 16,
         "kernel_size": 3,
         "dropout": 0.75,
-        "Cin": 41,
+        "Cin": 42,
     }
 
     result = trainer.run_trail(params1)
