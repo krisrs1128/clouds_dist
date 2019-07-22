@@ -250,7 +250,7 @@ if __name__ == "__main__":
         "nchannels": 16,
         "kernel_size": 3,
         "dropout": 0.75,
-        "Cin": 41,
+        "Cin": 42,
     }
 
     result = trainer.run_trail(params1)
@@ -266,4 +266,6 @@ if __name__ == "__main__":
 # * rename variables to
 #   fake_target, real_target, real_prob, fake_prob, generated_img, real_img
 # * not sure: change add_graph to self.writer.add_graph(self.gan) -> current graph
-#   instead of self.writer.add_graph(GAN(...)) -> new graph
+#   instead of self.writer.add_graph(GAN(...)) -> new graph /!\/!\
+# * data is loaded on the fly /!\/!\
+# * inf and nan data values are set to 0. /!\/!\

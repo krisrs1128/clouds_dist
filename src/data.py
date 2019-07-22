@@ -51,6 +51,8 @@ class EarthData(Dataset):
         # rearrange into numpy arrays
         coords = np.stack([data["imgs"]["Lat"], data["imgs"]["Lon"]])
         imgs = np.stack([v for k, v in data["imgs"].items() if "Reflect" in k])
+        imgs[np.isnan(imgs)] = 0.
+        imgs[np.isinf(imgs)] = 0.
         metos = np.concatenate(
             [
                 data["metos"]["U"],
@@ -61,4 +63,6 @@ class EarthData(Dataset):
                 data["metos"]["TS"].reshape(1, 256, 256),
             ]
         )
+        metos[np.isnan(metos)] = 0.
+        metos[np.isinf(metos)] = 0.
         return (coords, torch.Tensor(imgs), torch.Tensor(metos))
