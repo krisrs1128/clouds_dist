@@ -46,7 +46,7 @@ class EarthData(Dataset):
         for key in ["imgs", "metos"]:
             path = [s for s in self.paths[key] if self.ids[i] in s][0]
             data[key] = dict(np.load(path).items())
-        print("loading", i, end="\r")
+        # print("loading", i, end="\r")
 
         # rearrange into numpy arrays
         coords = np.stack([data["imgs"]["Lat"], data["imgs"]["Lon"]])
