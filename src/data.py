@@ -40,36 +40,25 @@ class EarthData(Dataset):
     def __len__(self):
         return len(self.ids)
 
-    def __getitem__(self, ix):
+    def __getitem__(self, i):
         # updated loaded dictionary of data
-        print("gettin", ix)
-        if ix not in self.cur_ix:
-            start = ix - ix % self.n_in_mem
-            self.cur_ix = range(start, start + self.n_in_mem)
+        data = {}
+        for key in ["imgs", "metos"]:
+            path = [s for s in self.paths[key] if self.ids[i] in s][0]
+            data[key] = dict(np.load(path).items())
+        print("loading", i, end="\r")
 
-            # load imgs / metos one by one
-            self.subsample = {}
-            for i in self.cur_ix:
-                data = {}
-                for key in ["imgs", "metos"]:
-                    path = [s for s in self.paths[key] if self.ids[i] in s][0]
-                    data[key] = dict(np.load(path).items())
-                print("loading", i, end="\r")
-
-                # rearrange into numpy arrays
-                coords = np.stack([data["imgs"]["Lat"], data["imgs"]["Lon"]])
-                imgs = np.stack([v for k, v in data["imgs"].items() if "Reflect" in k])
-                metos = np.concatenate(
-                    [
-                        data["metos"]["U"],
-                        data["metos"]["T"],
-                        data["metos"]["V"],
-                        data["metos"]["RH"],
-                        data["metos"]["Scattering_angle"].reshape(1, 256, 256),
-                        data["metos"]["TS"].reshape(1, 256, 256),
-                    ]
-                )
-
-                self.subsample[i] = (coords, torch.Tensor(imgs), torch.Tensor(metos))
-            print("\ndone")
-        return self.subsample[ix]
+        # rearrange into numpy arrays
+        coords = np.stack([data["imgs"]["Lat"], data["imgs"]["Lon"]])
+        imgs = np.stack([v for k, v in data["imgs"].items() if "Reflect" in k])
+        metos = np.concatenate(
+            [
+                data["metos"]["U"],
+                data["metos"]["T"],
+                data["metos"]["V"],
+                data["metos"]["RH"],
+                data["metos"]["Scattering_angle"].reshape(1, 256, 256),
+                data["metos"]["TS"].reshape(1, 256, 256),
+            ]
+        )
+        return (coords, torch.Tensor(imgs), torch.Tensor(metos))
