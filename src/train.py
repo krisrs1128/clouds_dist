@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+from comet_ml import OfflineExperiment
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.spatial.distance as distance
@@ -18,10 +19,11 @@ from torch.utils import data
 from src.data import EarthData
 from src.gan import GAN
 from tensorboardX import SummaryWriter
+import multiprocessing
 
 
 class gan_trainer:
-    def __init__(self, trainset, nepochs=50):
+    def __init__(self, trainset, comet_exp=None, nepochs=50):
 
         self.trial_number = 0
         self.nepochs = nepochs
@@ -34,6 +36,8 @@ class gan_trainer:
         self.runpath = Path("output") / self.runname / "output_{}".format(timestamp)
         self.results = []
         self.trainset = trainset
+
+        self.exp = comet_exp
 
     def make_directories(self):
         self.trialdir = self.runpath / "trial_{}".format(self.trial_number)
@@ -71,6 +75,8 @@ class gan_trainer:
         self.iteration = 0
 
         print("trial# {}: params={}".format(self.trial_number, params))
+        if self.exp:
+            self.exp.log_parameters(params)
 
         # initialize objects
         self.make_directories()
@@ -83,8 +89,7 @@ class gan_trainer:
             self.trainset,
             batch_size=self.batchsize,
             shuffle=True,
-            num_workers=0  # errors with > 0 see
-            # # https://github.com/pytorch/pytorch/issues/5301
+            num_workers=min((multiprocessing.cpu_count() // 2, 10)),
         )
         #        self.testloader = torch.utils.data.DataLoader(testset,  batch_size=128, shuffle=False, num_workers=8)
 
@@ -158,6 +163,14 @@ class gan_trainer:
                 g_loss.backward()
                 g_optimizer.step()
                 self.writer.add_scalar("train/g_loss", g_loss.item(), self.iteration)
+                if self.exp:
+                    self.exp.log_metrics(
+                        {
+                            "train/g_loss": g_loss.item(),
+                            "train/d_loss": d_loss.item(),
+                            "train/L1_loss": L1_loss.item(),
+                        }
+                    )
 
                 print(
                     "trail:{} epoch:{}/{} iteration {}/{} train/d_loss:{:0.4f} train/L1_loss:{:0.4f} train/g_loss:{:0.4f}".format(
@@ -224,15 +237,24 @@ class gan_trainer:
                     vmin=0,
                     vmax=1,
                 )
+                if self.exp:
+                    self.exp.log_image(self.imgdir + "/imgs%d_%d" % (i, self.epoch))
 
         torch.save(self.gan.state_dict(), self.trialdir + "/gan.pt")
         return 0
 
 
 if __name__ == "__main__":
-    datapath = "/home/vsch/scratch/"
+    scratch = os.environ.get("SCRATCH") or "~/scratch/comets"
+    scratch = str(Path(scratch) / "comets")
+    exp = OfflineExperiment(
+        project="clouds", workspace="vict0rsch", offline_directory="/"
+    )
+
+    datapath = "/home/vsch/scratch/clouds"
     trainset = EarthData(datapath, n_in_mem=50)
-    trainer = gan_trainer(trainset)
+
+    trainer = gan_trainer(trainset, exp)
 
     params1 = {
         "nepoch_regress": 100,
