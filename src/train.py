@@ -248,7 +248,7 @@ if __name__ == "__main__":
     scratch = os.environ.get("SCRATCH") or "~/scratch/comets"
     scratch = str(Path(scratch) / "comets")
     exp = OfflineExperiment(
-        project="clouds", workspace="vict0rsch", offline_directory="/"
+        project_name="clouds", workspace_name="vict0rsch", offline_directory=scratch
     )
 
     datapath = "/home/vsch/scratch/clouds"
@@ -275,7 +275,7 @@ if __name__ == "__main__":
         "Cin": 42,
     }
 
-    result = trainer.run_trail(params1)
+    #result = trainer.run_trail(params1)
 
 # * use pathlib
 # * Cin, Cnoise, Cnoise etc <- Cin, Cnoise, Ctot etc to better read
