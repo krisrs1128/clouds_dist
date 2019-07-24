@@ -33,14 +33,14 @@ class gan_trainer:
         self.timestamp = timestamp
 
         self.runname = "unet_gan_10level"
-        self.runpath = Path("output") / self.runname / "output_{}".format(timestamp)
+        self.runpath = Path("output") / self.runname / f"output_{timestamp}"
         self.results = []
         self.trainset = trainset
 
         self.exp = comet_exp
 
     def make_directories(self):
-        self.trialdir = self.runpath / "trial_{}".format(self.trial_number)
+        self.trialdir = self.runpath / f"trial_{self.trial_number}"
         self.logdir = self.trialdir / "log"
         self.imgdir = self.trialdir / "images"
 
@@ -74,7 +74,7 @@ class gan_trainer:
         self.epoch = 0
         self.iteration = 0
 
-        print("trial# {}: params={}".format(self.trial_number, params))
+        print(f"trial# {self.trial_number}: params={params}")
         if self.exp:
             self.exp.log_parameters(params)
 
@@ -231,16 +231,16 @@ class gan_trainer:
                 imgs_cpu = imgs.cpu().detach().numpy()
                 imgs_cpu = np.swapaxes(imgs_cpu, 0, 2)
                 plt.imsave(
-                    str(self.imgdir / "imgs%d_%d" % (i, self.epoch)),
+                    str(self.imgdir / f"imgs{i}_{self.epoch}"),
                     imgs_cpu,
                     cmap="gray",
                     vmin=0,
                     vmax=1,
                 )
                 if self.exp:
-                    self.exp.log_image(str(self.imgdir / "imgs%d_%d" % (i, self.epoch)))
+                    self.exp.log_image(str(self.imgdir / f"imgs{i}_{self.epoch}"))
 
-        torch.save(self.gan.state_dict(), self.trialdir + "/gan.pt")
+        torch.save(self.gan.state_dict(), str(self.trialdir / "gan.pt"))
         return 0
 
 
