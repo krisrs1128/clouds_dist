@@ -211,7 +211,7 @@ class gan_trainer:
                 #     (input_tensor,),
                 #     True,
                 # )
-                self.writer.add_graph(self.gan)
+                self.writer.add_graph(self.gan, (input_tensor,), True)
             imgs = torch.cat(
                 (input_tensor[0, 22:25], generated_img[0, 0:3], real_img[0, 0:3]), 1
             )  # concatenate verticaly 3 metos, generated clouds, ground truth clouds
@@ -231,14 +231,14 @@ class gan_trainer:
                 imgs_cpu = imgs.cpu().detach().numpy()
                 imgs_cpu = np.swapaxes(imgs_cpu, 0, 2)
                 plt.imsave(
-                    self.imgdir + "/imgs%d_%d" % (i, self.epoch),
+                    str(self.imgdir / "imgs%d_%d" % (i, self.epoch)),
                     imgs_cpu,
                     cmap="gray",
                     vmin=0,
                     vmax=1,
                 )
                 if self.exp:
-                    self.exp.log_image(self.imgdir + "/imgs%d_%d" % (i, self.epoch))
+                    self.exp.log_image(str(self.imgdir / "imgs%d_%d" % (i, self.epoch)))
 
         torch.save(self.gan.state_dict(), self.trialdir + "/gan.pt")
         return 0
@@ -248,7 +248,7 @@ if __name__ == "__main__":
     scratch = os.environ.get("SCRATCH") or "~/scratch/comets"
     scratch = str(Path(scratch) / "comets")
     exp = OfflineExperiment(
-        project_name="clouds", workspace_name="vict0rsch", offline_directory=scratch
+        project_name="clouds", workspace="vict0rsch", offline_directory=scratch
     )
 
     datapath = "/home/vsch/scratch/clouds"
@@ -275,7 +275,15 @@ if __name__ == "__main__":
         "Cin": 42,
     }
 
-    #result = trainer.run_trail(params1)
+    result = trainer.run_trail(params1)
+    trainer.exp.end()
+    multiprocessing.check_output([
+        "bash",
+        "-c", 
+        "python -m comet_ml.scripts.upload {}".format(
+            str(Path(scratch).resolve() / (trainer.exp.id + ".zip"))
+        )
+    ])
 
 # * use pathlib
 # * Cin, Cnoise, Cnoise etc <- Cin, Cnoise, Ctot etc to better read
