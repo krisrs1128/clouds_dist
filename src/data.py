@@ -20,11 +20,14 @@ class EarthData(Dataset):
 
     Example
     -------
-    >>> data = EarthData("/data/")
-    >>> x, y = data[0]
+    >>> from torch.utils.data import DataLoader
+    >>> earth = EarthData("/data/")
+    >>> loader = DataLoader(earth)
+    >>> for i, elem in enumerate(loader):
+    >>>    coords, x, y = elem
+    >>>    print(x.shape)
     """
-
-    def __init__(self, data_dir, n_in_mem=50):
+    def __init__(self, data_dir, n_in_mem=500):
         super(EarthData).__init__()
         self.n_in_mem = n_in_mem
         self.cur_ix = []
@@ -46,7 +49,7 @@ class EarthData(Dataset):
             return self.subsample[i]
 
         # otherwise load next n_in_mem images
-        subsample = {}
+        self.subsample = {}
         for j in range(i, i + self.n_in_mem):
             data = {}
             for key in ["imgs", "metos"]:
@@ -54,9 +57,8 @@ class EarthData(Dataset):
                 data[key] = dict(np.load(path).items())
                 print("loading {} {}".format(j, key))
 
-            subsample[j] = process_sample(data)
+            self.subsample[j] = process_sample(data)
 
-        self.subsample = subsample
         print(len(self.subsample))
         return self.subsample[j]
 
