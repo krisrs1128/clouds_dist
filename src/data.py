@@ -2,6 +2,7 @@
 import os.path
 import re
 from glob import glob
+import gc
 
 import numpy as np
 import torch
@@ -50,6 +51,7 @@ class EarthData(Dataset):
 
         # otherwise load next n_in_mem images
         self.subsample = {}
+        gc.collect()
         for j in range(i, i + self.n_in_mem):
             data = {}
             for key in ["imgs", "metos"]:
