@@ -57,11 +57,10 @@ class EarthData(Dataset):
             for key in ["imgs", "metos"]:
                 path = [s for s in self.paths[key] if self.ids[j] in s][0]
                 data[key] = dict(np.load(path).items())
-                print("loading {} {}".format(j, key))
+                #print("loading {} {}".format(j, key))
 
             self.subsample[j] = process_sample(data)
 
-        print(len(self.subsample))
         return self.subsample[j]
 
 
