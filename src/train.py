@@ -81,7 +81,7 @@ class gan_trainer:
 
     def get_noise_tensor(self, shape):
         b, h, w = shape[0], shape[2], shape[3]
-        input_tensor = torch.FloatTensor(b, self.Ctot, h, w)
+        input_tensor = torch.FloatTensor(b, self.opts["model"]["Ctot"], h, w)
         input_tensor.uniform_(-1, 1)
         return input_tensor
 
