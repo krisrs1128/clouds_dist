@@ -1,17 +1,18 @@
 #!/usr/bin/env python
-import os
-import time
+from comet_ml import OfflineExperiment
 from datetime import datetime
 from pathlib import Path
-from comet_ml import OfflineExperiment
-import numpy as np
-import torch
-import torch.nn as nn
-from torch import optim
-from torch.utils import data
 from src.data import EarthData
 from src.gan import GAN
+from torch import optim
+from torch.utils import data
+import json
 import multiprocessing
+import numpy as np
+import os
+import time
+import torch
+import torch.nn as nn
 
 def merge_defaults(opts, defaults_path):
     result = json.load(open(defaults_path, "r"))
@@ -61,18 +62,19 @@ class gan_trainer:
 
         self.trainloader = torch.utils.data.DataLoader(
             self.trainset,
-            batch_size=self.batch_size,
+            batch_size=opts["train"]["batch_size"],
             shuffle=True,
             num_workers=min((multiprocessing.cpu_count() // 2, 10)),
         )
 
-        self.gan = GAN(**opts["model"]).to(self.device)j
+        self.gan = GAN(**opts["model"]).to(self.device)
         self.g = self.gan.g
         self.d = self.gan.d
 
         # train using "regress then GAN" approach
         val_loss = self.train(
             opts["train"]["nepoch_regress"],
+            opts["train"]["lr_d"],
             opts["train"]["lr_g1"],
             lambda_gan=0,
             lambda_L1=1
@@ -187,7 +189,7 @@ class gan_trainer:
 
 
 if __name__ == "__main__":
-    scratch = os.environ.get("SCRATCH") or "~/scratch/comets"
+    scratch = os.environ.get("SCRATCH") or "~/scratch/"
     scratch = str(Path(scratch) / "comets")
     exp = OfflineExperiment(
         project_name="clouds", workspace="vict0rsch", offline_directory=scratch
