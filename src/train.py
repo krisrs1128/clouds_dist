@@ -51,7 +51,6 @@ class gan_trainer:
         self.imgdir.mkdir(exist_ok=True)
 
     def run_trail(self, opts):
-        opts["model"]["Ctot"] = opts["model"]["Cin"] + opts["model"]["Cnoise"]
         self.opts = opts
         if self.exp:
             self.exp.log_parameters(opts)
@@ -73,7 +72,7 @@ class gan_trainer:
 
         # train using "regress then GAN" approach
         val_loss = self.train(
-            opts["train"]["nepoch_regress"],
+            opts["train"]["n_epoch_regress"],
             opts["train"]["lr_d"],
             opts["train"]["lr_g1"],
             lambda_gan=0,
@@ -83,7 +82,8 @@ class gan_trainer:
 
     def get_noise_tensor(self, shape):
         b, h, w = shape[0], shape[2], shape[3]
-        input_tensor = torch.FloatTensor(b, self.opts["model"]["Ctot"], h, w)
+        Ctot = self.opts["model"]["Cin"] + self.opts["model"]["Cout"]
+        input_tensor = torch.FloatTensor(b, Ctot, h, w)
         input_tensor.uniform_(-1, 1)
         return input_tensor
 

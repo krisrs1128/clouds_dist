@@ -5,8 +5,7 @@
         "kernel_size": 3,
         "dropout": 0.75,
         "Cin": 42,
-        "Cout": 3,
-        "Cnoise": 3
+        "Cout": 3
     },
     "train": {
         "n_epochs": 50,
