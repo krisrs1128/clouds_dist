@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 import os
-import random
 import time
 from datetime import datetime
 from pathlib import Path
-
 from comet_ml import OfflineExperiment
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,10 +13,8 @@ from hyperopt import STATUS_FAIL, STATUS_OK
 from scipy import stats
 from torch import optim
 from torch.utils import data
-
 from src.data import EarthData
 from src.gan import GAN
-from tensorboardX import SummaryWriter
 import multiprocessing
 
 
@@ -80,9 +76,7 @@ class gan_trainer:
 
         # initialize objects
         self.make_directories()
-        self.writer = SummaryWriter(self.logdir)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        print(self.device)
         self.trainset.Cin = self.Cin
 
         self.trainloader = torch.utils.data.DataLoader(
@@ -153,7 +147,6 @@ class gan_trainer:
                 )
                 d_loss.backward(retain_graph=True)
                 d_optimizer.step()
-                self.writer.add_scalar("train/d_loss", d_loss.item(), self.iteration)
 
                 g_optimizer.zero_grad()
                 L1_loss = L1(generated_img, real_img)
@@ -162,7 +155,6 @@ class gan_trainer:
                 g_loss = lambda_gan * gan_loss + lambda_L1 * L1_loss
                 g_loss.backward()
                 g_optimizer.step()
-                self.writer.add_scalar("train/g_loss", g_loss.item(), self.iteration)
                 if self.exp:
                     self.exp.log_metrics(
                         {
@@ -198,25 +190,9 @@ class gan_trainer:
             generated_img = self.g(input_tensor)
 
             # write out the model architechture
-            if epoch == 0:
-                # self.writer.add_graph(
-                #     GAN(
-                #         self.Ctot,
-                #         3,
-                #         params1["nchannels"],
-                #         params1["nblocks"],
-                #         int(params1["kernel_size"]),
-                #         params1["dropout"],
-                #     ).to(self.device),
-                #     (input_tensor,),
-                #     True,
-                # )
-                self.writer.add_graph(self.gan, (input_tensor,), True)
             imgs = torch.cat(
                 (input_tensor[0, 22:25], generated_img[0, 0:3], real_img[0, 0:3]), 1
             )  # concatenate verticaly 3 metos, generated clouds, ground truth clouds
-            self.writer.add_image("imgs", imgs, self.epoch, dataformats="CHW")
-            # CHW = channel, height, width
 
             for i in range(input_tensor.shape[0]):
                 if i > 0:
@@ -230,18 +206,10 @@ class gan_trainer:
                     )
                 imgs_cpu = imgs.cpu().detach().numpy()
                 imgs_cpu = np.swapaxes(imgs_cpu, 0, 2)
-                plt.imsave(
-                    str(self.imgdir / f"imgs{i}_{self.epoch}"),
-                    imgs_cpu,
-                    cmap="gray",
-                    vmin=0,
-                    vmax=1,
-                )
                 if self.exp:
-                    self.exp.log_image(str(self.imgdir / f"imgs{i}_{self.epoch}"))
+                    self.exp.log_image(imgs_cpu, str(self.imgdir / f"imgs{i}_{self.epoch}"))
 
         torch.save(self.gan.state_dict(), str(self.trialdir / "gan.pt"))
-        return 0
 
 
 if __name__ == "__main__":
