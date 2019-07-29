@@ -13,12 +13,20 @@ from src.data import EarthData
 from src.gan import GAN
 import multiprocessing
 
+def merge_defaults(opts, defaults_path):
+    result = json.load(open(defaults_path, "r"))
+    for group in ["model", "train"]:
+        for k, v in opts[group].items():
+            result[group][k] = v
+
+    return result
+
 
 class gan_trainer:
-    def __init__(self, trainset, comet_exp=None, nepochs=50):
+    def __init__(self, trainset, comet_exp=None, n_epochs=50):
 
         self.trial_number = 0
-        self.nepochs = nepochs
+        self.n_epochs = n_epochs
         self.start_time = datetime.now()
 
         timestamp = self.start_time.strftime("%Y_%m_%d_%H_%M_%S")
@@ -51,7 +59,7 @@ class gan_trainer:
         lambda_L1_1 = params["lambda_L1_1"]
         lambda_gan_2 = params["lambda_gan_2"]
         lambda_L1_2 = params["lambda_L1_2"]
-        self.batchsize = int(params["batch_size"])
+        self.batch_size = int(params["batch_size"])
         nepoch_regress = int(params["nepoch_regress"])
         nepoch_gan = int(params["nepoch_gan"])
         nblocks = int(params["nblocks"])
@@ -77,7 +85,7 @@ class gan_trainer:
 
         self.trainloader = torch.utils.data.DataLoader(
             self.trainset,
-            batch_size=self.batchsize,
+            batch_size=self.batch_size,
             shuffle=True,
             num_workers=min((multiprocessing.cpu_count() // 2, 10)),
         )
@@ -100,7 +108,7 @@ class gan_trainer:
         input_tensor.uniform_(-1, 1)
         return input_tensor
 
-    def train(self, nepochs, lr_d=1e-2, lr_g=1e-2, lambda_gan=0.01, lambda_L1=1):
+    def train(self, n_epochs, lr_d=1e-2, lr_g=1e-2, lambda_gan=0.01, lambda_L1=1):
         # initialize trial
         d_optimizer = optim.Adam(self.d.parameters(), lr=lr_d)
         g_optimizer = optim.Adam(self.g.parameters(), lr=lr_g)
@@ -109,7 +117,7 @@ class gan_trainer:
         MSE = nn.MSELoss()
         device = self.device
 
-        for epoch in range(nepochs):
+        for epoch in range(n_epochs):
             self.epoch += 1
 
             torch.cuda.empty_cache()
@@ -164,7 +172,7 @@ class gan_trainer:
                     "trail:{} epoch:{}/{} iteration {}/{} train/d_loss:{:0.4f} train/L1_loss:{:0.4f} train/g_loss:{:0.4f}".format(
                         self.trial_number,
                         epoch + 1,
-                        nepochs,
+                        n_epochs,
                         i + 1,
                         num_batches,
                         d_loss.item(),
@@ -217,29 +225,10 @@ if __name__ == "__main__":
 
     datapath = "/home/vsch/scratch/clouds"
     trainset = EarthData(datapath, n_in_mem=50)
-
     trainer = gan_trainer(trainset, exp)
 
-    params1 = {
-        "nepoch_regress": 100,
-        "nepoch_gan": 250,
-        "optimizer": "adam",
-        "lr_g1": 5e-4,
-        "lr_d": 1e-4,
-        "lr_g2": 1e-4,
-        "lambda_gan_1": 1e-2,
-        "lambda_gan_2": 3e-2,
-        "lambda_L1_1": 1,
-        "lambda_L1_2": 1,
-        "batch_size": 32,
-        "nblocks": 5,
-        "nchannels": 16,
-        "kernel_size": 3,
-        "dropout": 0.75,
-        "Cin": 42,
-    }
-
-    result = trainer.run_trail(params1)
+    params = merge_defaults({"model": {}, "train": {}}, "config/defaults.json")
+    result = trainer.run_trail(params)
     trainer.exp.end()
     multiprocessing.check_output([
         "bash",
