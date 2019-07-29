@@ -73,7 +73,7 @@ class unet(nn.Module):
     def __init__(self, Cin, Cout, n_channels, nblocks, kernel_size, dropout):
         super(unet, self).__init__()
 
-        inconv = nn.Conv2d(Cin, n_chnanels, kernel_size=1, stride=1, padding=0)
+        inconv = nn.Conv2d(Cin, n_channels, kernel_size=1, stride=1, padding=0)
         self.input = nn.Sequential(inconv)
 
         submodule = None
