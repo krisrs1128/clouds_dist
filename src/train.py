@@ -1,17 +1,17 @@
 #!/usr/bin/env python
-import os
-import time
+from comet_ml import OfflineExperiment
 from datetime import datetime
 from pathlib import Path
-from comet_ml import OfflineExperiment
-import numpy as np
-import torch
-import torch.nn as nn
-from torch import optim
-from torch.utils import data
 from src.data import EarthData
 from src.gan import GAN
+from torch import optim
+from torch.utils import data
 import multiprocessing
+import numpy as np
+import os
+import time
+import torch
+import torch.nn as nn
 
 
 class gan_trainer:
