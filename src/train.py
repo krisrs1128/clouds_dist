@@ -146,7 +146,7 @@ class gan_trainer:
                         epoch + 1,
                         n_epochs,
                         i + 1,
-                        len(self.train_loader),
+                        len(self.trainloader),
                         d_loss.item(),
                         L1_loss.item(),
                         g_loss.item(),
@@ -195,8 +195,7 @@ if __name__ == "__main__":
         project_name="clouds", workspace="vict0rsch", offline_directory=scratch
     )
 
-    # datapath = "/home/vsch/scratch/clouds"
-    datapath = "/data/"
+    datapath = "/home/vsch/scratch/clouds"
     trainset = EarthData(datapath, n_in_mem=50)
     trainer = gan_trainer(trainset, exp)
 
