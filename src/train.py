@@ -195,7 +195,8 @@ if __name__ == "__main__":
         project_name="clouds", workspace="vict0rsch", offline_directory=scratch
     )
 
-    datapath = "/home/vsch/scratch/clouds"
+    # datapath = "/home/vsch/scratch/clouds"
+    datapath = "/data/"
     trainset = EarthData(datapath, n_in_mem=50)
     trainer = gan_trainer(trainset, exp)
 
