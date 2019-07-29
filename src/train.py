@@ -49,32 +49,12 @@ class gan_trainer:
         self.logdir.mkdir(exist_ok=True)
         self.imgdir.mkdir(exist_ok=True)
 
-    def run_trail(self, params):
-        trial_start_time = time.time()
-        self.trial_number += 1
-        lr_d = params["lr_d"]
-        lr_g1 = params["lr_g1"]
-        lr_g2 = params["lr_g2"]
-        lambda_gan_1 = params["lambda_gan_1"]
-        lambda_L1_1 = params["lambda_L1_1"]
-        lambda_gan_2 = params["lambda_gan_2"]
-        lambda_L1_2 = params["lambda_L1_2"]
-        self.batch_size = int(params["batch_size"])
-        nepoch_regress = int(params["nepoch_regress"])
-        nepoch_gan = int(params["nepoch_gan"])
-        nblocks = int(params["nblocks"])
-        nc = int(params["nchannels"])
-        kernel_size = int(params["kernel_size"])
-        dropout = params["dropout"]
-        Cin = int(params["Cin"])
-        Cout = 3
-        Cnoise = 3
-        self.Ctot = Cin + Cnoise
-        self.Cin = Cin
+    def run_trail(self, opts):
+        opts["model"]["Ctot"] = opts["model"]["Cin"] + opts["model"]["Cnoise"]
+        self.Cin = opts["model"]["Cin"]
         self.epoch = 0
         self.iteration = 0
 
-        print(f"trial# {self.trial_number}: params={params}")
         if self.exp:
             self.exp.log_parameters(params)
 
@@ -91,16 +71,18 @@ class gan_trainer:
         )
         #        self.testloader = torch.utils.data.DataLoader(testset,  batch_size=128, shuffle=False, num_workers=8)
 
-        self.gan = GAN(self.Ctot, Cout, nc, nblocks, kernel_size, dropout).to(
-            self.device
-        )
+        self.gan = GAN(**opts["model"]).to(self.device)j
         self.g = self.gan.g
         self.d = self.gan.d
 
-        # load previous stored weights
         # train using "regress then GAN" approach
-        val_loss = self.train(nepoch_regress, lr_d, lr_g1, lambda_gan=0, lambda_L1=1)
-        return {"loss": val_loss, "params": params}
+        val_loss = self.train(
+            opts["train"]["nepoch_regress"],
+            opts["train"]["lr_g1"],
+            lambda_gan=0,
+            lambda_L1=1
+        )
+        return {"loss": val_loss, "params": opts}
 
     def get_noise_tensor(self, shape):
         b, h, w = shape[0], shape[2], shape[3]
