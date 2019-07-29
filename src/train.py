@@ -51,17 +51,13 @@ class gan_trainer:
 
     def run_trail(self, opts):
         opts["model"]["Ctot"] = opts["model"]["Cin"] + opts["model"]["Cnoise"]
-        self.Cin = opts["model"]["Cin"]
-        self.epoch = 0
-        self.iteration = 0
-
+        self.opts = opts
         if self.exp:
-            self.exp.log_parameters(params)
+            self.exp.log_parameters(opts)
 
         # initialize objects
         self.make_directories()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.trainset.Cin = self.Cin
 
         self.trainloader = torch.utils.data.DataLoader(
             self.trainset,
@@ -69,7 +65,6 @@ class gan_trainer:
             shuffle=True,
             num_workers=min((multiprocessing.cpu_count() // 2, 10)),
         )
-        #        self.testloader = torch.utils.data.DataLoader(testset,  batch_size=128, shuffle=False, num_workers=8)
 
         self.gan = GAN(**opts["model"]).to(self.device)j
         self.g = self.gan.g
@@ -82,7 +77,7 @@ class gan_trainer:
             lambda_gan=0,
             lambda_L1=1
         )
-        return {"loss": val_loss, "params": opts}
+        return {"loss": val_loss, "opts": opts}
 
     def get_noise_tensor(self, shape):
         b, h, w = shape[0], shape[2], shape[3]
@@ -100,22 +95,15 @@ class gan_trainer:
         device = self.device
 
         for epoch in range(n_epochs):
-            self.epoch += 1
-
             torch.cuda.empty_cache()
             self.gan.train()  # train mode
-            num_batches = len(self.trainloader)
 
             for i, (coords, real_img, metos_data) in enumerate(self.trainloader):
-                if epoch + i == 0:
-                    print("Loaded!")
-                    print(metos_data.shape, real_img.shape)
-                self.iteration += 1
 
                 shape = metos_data.shape
 
                 input_tensor = self.get_noise_tensor(shape)
-                input_tensor[:, : self.Cin, :, :] = metos_data
+                input_tensor[:, : self.opts["model"]["Cin"], :, :] = metos_data
                 input_tensor = input_tensor.to(device)
 
                 real_img = real_img.to(device)
@@ -156,7 +144,7 @@ class gan_trainer:
                         epoch + 1,
                         n_epochs,
                         i + 1,
-                        num_batches,
+                        len(self.train_loader),
                         d_loss.item(),
                         L1_loss.item(),
                         g_loss.item(),
@@ -170,7 +158,7 @@ class gan_trainer:
 
             # output sample images
             input_tensor = self.get_noise_tensor(shape)
-            input_tensor[:, : self.Cin, :, :] = metos_data
+            input_tensor[:, : self.opts["model"]["Cin"], :, :] = metos_data
             input_tensor = input_tensor.to(device)
 
             generated_img = self.g(input_tensor)
@@ -193,7 +181,7 @@ class gan_trainer:
                 imgs_cpu = imgs.cpu().detach().numpy()
                 imgs_cpu = np.swapaxes(imgs_cpu, 0, 2)
                 if self.exp:
-                    self.exp.log_image(imgs_cpu, str(self.imgdir / f"imgs{i}_{self.epoch}"))
+                    self.exp.log_image(imgs_cpu, str(self.imgdir / f"imgs{i}_{epoch}"))
 
         torch.save(self.gan.state_dict(), str(self.trialdir / "gan.pt"))
 
