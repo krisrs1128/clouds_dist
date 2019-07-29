@@ -4,13 +4,9 @@ import time
 from datetime import datetime
 from pathlib import Path
 from comet_ml import OfflineExperiment
-import matplotlib.pyplot as plt
 import numpy as np
-import scipy.spatial.distance as distance
 import torch
 import torch.nn as nn
-from hyperopt import STATUS_FAIL, STATUS_OK
-from scipy import stats
 from torch import optim
 from torch.utils import data
 from src.data import EarthData
@@ -96,7 +92,7 @@ class gan_trainer:
         # load previous stored weights
         # train using "regress then GAN" approach
         val_loss = self.train(nepoch_regress, lr_d, lr_g1, lambda_gan=0, lambda_L1=1)
-        return {"loss": val_loss, "params": params, "status": STATUS_OK}
+        return {"loss": val_loss, "params": params}
 
     def get_noise_tensor(self, shape):
         b, h, w = shape[0], shape[2], shape[3]
@@ -247,7 +243,7 @@ if __name__ == "__main__":
     trainer.exp.end()
     multiprocessing.check_output([
         "bash",
-        "-c", 
+        "-c",
         "python -m comet_ml.scripts.upload {}".format(
             str(Path(scratch).resolve() / (trainer.exp.id + ".zip"))
         )
