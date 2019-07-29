@@ -11,10 +11,8 @@ From: ubuntu:18.04
     apt -y update
     apt -y upgrade
     apt -y install software-properties-common
-    add-apt-repository ppa:ubuntugis/ubuntugis-unstable
-    apt -y update
     apt -y install python3-pip
     apt -y install build-essential libssl-dev libffi-dev python3-dev
 
-    pip3 install numpy opencv-python
-    pip3 install --no-cache-dir torch torchvision matplotlib ipython scipy hyperopt tensorboardX
+    pip3 install numpy pandas comet_ml
+    pip3 install --no-cache-dir torch torchvision matplotlib ipython
