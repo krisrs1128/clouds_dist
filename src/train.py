@@ -16,8 +16,8 @@ from scipy import stats
 from torch import optim
 from torch.utils import data
 
-from src.data import EarthData
-from src.gan import GAN
+from data import EarthData
+from gan import GAN
 from tensorboardX import SummaryWriter
 import multiprocessing
 
