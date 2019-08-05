@@ -4,10 +4,11 @@
 #SBATCH --gres=gpu:1
 #SBATCH --account=def-bengioy
 #SBATCH --mem=16G
-#SBATCH --time=1:30:00
+#SBATCH --time=3:30:00
 #SBATCH --output /home/sankarak/logs/slurm-%j.out
+#SBATCH --error /home/sankarak/logs/slurm-%j.err
 
 rsync -avz $SCRATCH/data/clouds/imgs/ $SLURM_TMPDIR/imgs/
 rsync -avz $SCRATCH/data/clouds/metos/ $SLURM_TMPDIR/metos/
 module load singularity
-singularity shell --nv --bind $SLURM_TMPDIR:/data/,$HOME/clouds_dist:/home/clouds/ $SCRATCH/images/clouds.img /home/clouds/cluster/clouds.sh
+singularity shell --nv --bind $SLURM_TMPDIR:/data/,$HOME/clouds_dist:/home/clouds/,$SCRATCH/:$SCRATCH/ $SCRATCH/images/clouds.img /home/clouds/cluster/clouds.sh
