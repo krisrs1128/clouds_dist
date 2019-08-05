@@ -5,8 +5,8 @@
 #SBATCH --account=def-bengioy
 #SBATCH --mem=16G
 #SBATCH --time=3:30:00
-#SBATCH --output /home/sankarak/logs/slurm-%j.out
-#SBATCH --error /home/sankarak/logs/slurm-%j.err
+#SBATCH --output /home/sankarak/logs/clouds-%j.out
+#SBATCH --error /home/sankarak/logs/clouds-%j.err
 
 rsync -avz $SCRATCH/data/clouds/imgs/ $SLURM_TMPDIR/imgs/
 rsync -avz $SCRATCH/data/clouds/metos/ $SLURM_TMPDIR/metos/
