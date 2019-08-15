@@ -17,6 +17,12 @@ import torch
 import torch.nn as nn
 
 
+from data import EarthData
+from gan import GAN
+from tensorboardX import SummaryWriter
+import multiprocessing
+
+
 def merge_defaults(opts, defaults_path):
     result = json.load(open(defaults_path, "r"))
     for group in ["model", "train"]:
@@ -24,6 +30,7 @@ def merge_defaults(opts, defaults_path):
             result[group][k] = v
 
     return result
+
 
 
 class gan_trainer:

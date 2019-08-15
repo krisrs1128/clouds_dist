@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 
-from src.cloud_unet import Discriminator, unet
-from src.unets import UNet
+from cloud_unet import Discriminator, unet
+from unets import UNet
 
 
 class GAN(nn.Module):
