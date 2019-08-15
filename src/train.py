@@ -6,13 +6,16 @@ from src.data import EarthData
 from src.gan import GAN
 from torch import optim
 from torch.utils import data
+
 import json
+
 import multiprocessing
 import numpy as np
 import os
 import time
 import torch
 import torch.nn as nn
+
 
 def merge_defaults(opts, defaults_path):
     result = json.load(open(defaults_path, "r"))
