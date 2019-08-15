@@ -2,6 +2,7 @@
 import os.path
 import re
 from glob import glob
+import gc
 
 import numpy as np
 import torch
@@ -20,11 +21,14 @@ class EarthData(Dataset):
 
     Example
     -------
-    >>> data = EarthData("/data/")
-    >>> x, y = data[0]
+    >>> from torch.utils.data import DataLoader
+    >>> earth = EarthData("/data/")
+    >>> loader = DataLoader(earth)
+    >>> for i, elem in enumerate(loader):
+    >>>    coords, x, y = elem
+    >>>    print(x.shape)
     """
-
-    def __init__(self, data_dir, n_in_mem=300):
+    def __init__(self, data_dir, n_in_mem=500):
         super(EarthData).__init__()
         self.n_in_mem = n_in_mem
         self.cur_ix = []
@@ -41,28 +45,41 @@ class EarthData(Dataset):
         return len(self.ids)
 
     def __getitem__(self, i):
-        # updated loaded dictionary of data
-        data = {}
-        for key in ["imgs", "metos"]:
-            path = [s for s in self.paths[key] if self.ids[i] in s][0]
-            data[key] = dict(np.load(path).items())
-        # print("loading", i, end="\r")
+        # if already available, return
+        if i in self.subsample.keys():
+            return self.subsample[i]
 
-        # rearrange into numpy arrays
-        coords = np.stack([data["imgs"]["Lat"], data["imgs"]["Lon"]])
-        imgs = np.stack([v for k, v in data["imgs"].items() if "Reflect" in k])
-        imgs[np.isnan(imgs)] = 0.
-        imgs[np.isinf(imgs)] = 0.
-        metos = np.concatenate(
-            [
-                data["metos"]["U"],
-                data["metos"]["T"],
-                data["metos"]["V"],
-                data["metos"]["RH"],
-                data["metos"]["Scattering_angle"].reshape(1, 256, 256),
-                data["metos"]["TS"].reshape(1, 256, 256),
-            ]
-        )
-        metos[np.isnan(metos)] = 0.
-        metos[np.isinf(metos)] = 0.
-        return (coords, torch.Tensor(imgs), torch.Tensor(metos))
+        # otherwise load next n_in_mem images
+        self.subsample = {}
+        gc.collect()
+        for j in range(i, i + self.n_in_mem):
+            data = {}
+            for key in ["imgs", "metos"]:
+                path = [s for s in self.paths[key] if self.ids[j] in s][0]
+                data[key] = dict(np.load(path).items())
+                #print("loading {} {}".format(j, key))
+
+            self.subsample[j] = process_sample(data)
+
+        return self.subsample[j]
+
+
+def process_sample(data):
+    # rearrange into numpy arrays
+    coords = np.stack([data["imgs"]["Lat"], data["imgs"]["Lon"]])
+    imgs = np.stack([v for k, v in data["imgs"].items() if "Reflect" in k])
+    imgs[np.isnan(imgs)] = 0.
+    imgs[np.isinf(imgs)] = 0.
+    metos = np.concatenate(
+        [
+            data["metos"]["U"],
+            data["metos"]["T"],
+            data["metos"]["V"],
+            data["metos"]["RH"],
+            data["metos"]["Scattering_angle"].reshape(1, 256, 256),
+            data["metos"]["TS"].reshape(1, 256, 256),
+        ]
+    )
+    metos[np.isnan(metos)] = 0.
+    metos[np.isinf(metos)] = 0.
+    return (coords, torch.Tensor(imgs), torch.Tensor(metos))
