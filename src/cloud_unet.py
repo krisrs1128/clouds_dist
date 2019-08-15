@@ -70,22 +70,22 @@ class unet_block(nn.Module):
 
 
 class unet(nn.Module):
-    def __init__(self, Cin, Cout, nc, nblocks, kernel_size, dropout):
+    def __init__(self, Cin, Cout, n_channels, nblocks, kernel_size, dropout):
         super(unet, self).__init__()
 
-        inconv = nn.Conv2d(Cin, nc, kernel_size=1, stride=1, padding=0)
+        inconv = nn.Conv2d(Cin, n_channels, kernel_size=1, stride=1, padding=0)
         self.input = nn.Sequential(inconv)
 
         submodule = None
         for i in range(nblocks - 1):
             submodule = unet_block(
-                nc, nc, kernel_size, dropout, submodule=submodule, outermost=False
+                n_channels, n_channels, kernel_size, dropout, submodule=submodule, outermost=False
             )
         self.ublock = unet_block(
-            nc, nc, kernel_size, dropout, submodule=submodule, outermost=True
+            n_channels, n_channels, kernel_size, dropout, submodule=submodule, outermost=True
         )
 
-        outconv = nn.Conv2d(nc, Cout, kernel_size=1, stride=1, padding=0)
+        outconv = nn.Conv2d(n_channels, Cout, kernel_size=1, stride=1, padding=0)
         self.output = nn.Sequential(outconv)
 
     def forward(self, x):
@@ -96,13 +96,13 @@ class unet(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, Cin, nc=16, nlevels=4):
+    def __init__(self, Cin, n_channels=16, nlevels=4):
         super(Discriminator, self).__init__()
 
         kernel_size = 4
         P = int((kernel_size - 2) / 2)
         Cin = Cin
-        Cout = nc
+        Cout = n_channels
 
         model = []
         for i in range(nlevels):
