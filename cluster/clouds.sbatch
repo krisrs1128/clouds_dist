@@ -11,4 +11,4 @@
 rsync -avz $SCRATCH/data/clouds/imgs/ $SLURM_TMPDIR/imgs/
 rsync -avz $SCRATCH/data/clouds/metos/ $SLURM_TMPDIR/metos/
 module load singularity
-singularity shell --nv --bind $SLURM_TMPDIR:/data/,$HOME/clouds_dist:/home/clouds/,$SCRATCH/:$SCRATCH/ $SCRATCH/images/clouds.img /home/clouds/cluster/clouds.sh
+singularity shell --nv --bind $SLURM_TMPDIR:/data/,$HOME/clouds_dist:/home/clouds/,$SCRATCH/:$SCRATCH/ /scratch/sankarak/images/clouds.img /home/clouds/cluster/clouds.sh
