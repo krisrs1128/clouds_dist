@@ -32,7 +32,6 @@ def merge_defaults(opts, defaults_path):
     return result
 
 
-
 class gan_trainer:
     def __init__(self, trainset, comet_exp=None, n_epochs=50):
 
@@ -86,7 +85,7 @@ class gan_trainer:
             opts["train"]["lr_d"],
             opts["train"]["lr_g1"],
             lambda_gan=0,
-            lambda_L1=1
+            lambda_L1=1,
         )
         return {"loss": val_loss, "opts": opts}
 
@@ -212,25 +211,12 @@ if __name__ == "__main__":
     params = merge_defaults({"model": {}, "train": {}}, "config/defaults.json")
     result = trainer.run_trail(params)
     trainer.exp.end()
-    multiprocessing.check_output([
-        "bash",
-        "-c",
-        "python -m comet_ml.scripts.upload {}".format(
-            str(Path(scratch).resolve() / (trainer.exp.id + ".zip"))
-        )
-    ])
-
-# * use pathlib
-# * Cin, Cnoise, Cnoise etc <- Cin, Cnoise, Ctot etc to better read
-#   + coherence accross files
-# * K <- kernel_size
-# * use black formatter everywhere
-# * sort imports
-# * remove get_wdist as it is not used
-# * add get_noise_tensor function
-# * rename variables to
-#   fake_target, real_target, real_prob, fake_prob, generated_img, real_img
-# * not sure: change add_graph to self.writer.add_graph(self.gan) -> current graph
-#   instead of self.writer.add_graph(GAN(...)) -> new graph /!\/!\
-# * data is loaded on the fly /!\/!\
-# * inf and nan data values are set to 0. /!\/!\
+    multiprocessing.check_output(
+        [
+            "bash",
+            "-c",
+            "python -m comet_ml.scripts.upload {}".format(
+                str(Path(scratch).resolve() / (trainer.exp.id + ".zip"))
+            ),
+        ]
+    )
