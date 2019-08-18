@@ -8,7 +8,7 @@
         "Cout": 3
     },
     "train": {
-        "n_epochs": 50,
+        "n_epochs": 100,
         "lr_d": 0.01,
         "lr_g1": 0.0005,
         "lr_g2": 0.0001,
