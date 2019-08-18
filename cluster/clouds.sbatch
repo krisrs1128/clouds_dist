@@ -8,7 +8,7 @@
 #SBATCH --output /home/sankarak/logs/clouds-%j.out
 #SBATCH --error /home/sankarak/logs/clouds-%j.err
 
-rsync -avz $SCRATCH/data/clouds/imgs/ $SLURM_TMPDIR/imgs/
-rsync -avz $SCRATCH/data/clouds/metos/ $SLURM_TMPDIR/metos/
+rsync -avz /scratch/sankarak/data/clouds/imgs/ $SLURM_TMPDIR/imgs/
+rsync -avz /scratch/sankarak/data/clouds/metos/ $SLURM_TMPDIR/metos/
 module load singularity
 singularity shell --nv --bind $SLURM_TMPDIR:/data/,$HOME/clouds_dist:/home/clouds/,$SCRATCH/:$SCRATCH/ /scratch/sankarak/images/clouds.img /home/clouds/cluster/clouds.sh
