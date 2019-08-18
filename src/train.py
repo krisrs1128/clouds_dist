@@ -16,9 +16,6 @@ import time
 import torch
 import torch.nn as nn
 
-
-from data import EarthData
-from gan import GAN
 from tensorboardX import SummaryWriter
 import multiprocessing
 
