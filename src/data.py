@@ -52,7 +52,9 @@ class EarthData(Dataset):
         # otherwise load next n_in_mem images
         self.subsample = {}
         gc.collect()
-        for j in range(i, i + self.n_in_mem):
+
+        subsample_end = min(i + self.n_in_mem, self.__len__())
+        for j in range(i, subsample_end):
             data = {}
             for key in ["imgs", "metos"]:
                 path = [s for s in self.paths[key] if self.ids[j] in s][0]
@@ -61,7 +63,7 @@ class EarthData(Dataset):
 
             self.subsample[j] = process_sample(data)
 
-        return self.subsample[j]
+        return self.subsample[i]
 
 
 def process_sample(data):
