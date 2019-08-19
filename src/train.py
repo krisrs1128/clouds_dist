@@ -33,11 +33,8 @@ def merge_defaults(opts, defaults_path):
 
 class gan_trainer:
     def __init__(self, opts, comet_exp=None, n_epochs=50):
-
         self.opts = opts
-
-        self.trainset = EarthData(self.opts.datapath, n_in_mem=50)
-
+        self.trainset = EarthData(self.opts["train"]["datapath"], n_in_mem=50)
         self.trial_number = 0
         self.n_epochs = n_epochs
         self.start_time = datetime.now()
@@ -63,7 +60,7 @@ class gan_trainer:
 
     def run_trail(self):
         if self.exp:
-            self.exp.log_parameters(opts)
+            self.exp.log_parameters(self.opts)
 
         # initialize objects
         self.make_directories()
@@ -76,19 +73,19 @@ class gan_trainer:
             num_workers=min((multiprocessing.cpu_count() // 2, 10)),
         )
 
-        self.gan = GAN(**opts.model).to(self.device)
+        self.gan = GAN(**self.opts.model).to(self.device)
         self.g = self.gan.g
         self.d = self.gan.d
 
         # train using "regress then GAN" approach
         val_loss = self.train(
-            opts.train.n_epoch_regress,
-            opts.train.lr_d,
-            opts.train.lr_g1,
+            self.opts.train.n_epoch_regress,
+            self.opts.train.lr_d,
+            self.opts.train.lr_g1,
             lambda_gan=0,
             lambda_L1=1,
         )
-        return {"loss": val_loss, "opts": opts}
+        return {"loss": val_loss, "opts": self.opts}
 
     def get_noise_tensor(self, shape):
         b, h, w = shape[0], shape[2], shape[3]
@@ -105,6 +102,10 @@ class gan_trainer:
         L1 = nn.L1Loss()
         MSE = nn.MSELoss()
         device = self.device
+
+        print("-------------------------")
+        print("--  Starting training  --")
+        print("-------------------------")
 
         for epoch in range(n_epochs):
             torch.cuda.empty_cache()
