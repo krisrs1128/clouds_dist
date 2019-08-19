@@ -34,7 +34,7 @@ class gan_trainer:
 
         self.opts = opts
 
-        self.trainset = EarthData(self.opts["datapath"], n_in_mem=50)
+        self.trainset = EarthData(self.opts["train"]["datapath"], n_in_mem=50)
 
         self.trial_number = 0
         self.n_epochs = n_epochs
