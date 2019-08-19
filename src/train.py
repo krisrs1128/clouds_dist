@@ -61,7 +61,7 @@ class gan_trainer:
 
     def run_trail(self):
         if self.exp:
-            self.exp.log_parameters(opts)
+            self.exp.log_parameters(self.opts)
 
         # initialize objects
         self.make_directories()
@@ -69,24 +69,24 @@ class gan_trainer:
 
         self.trainloader = torch.utils.data.DataLoader(
             self.trainset,
-            batch_size=opts["train"]["batch_size"],
+            batch_size=self.opts["train"]["batch_size"],
             shuffle=True,
             num_workers=min((multiprocessing.cpu_count() // 2, 10)),
         )
 
-        self.gan = GAN(**opts["model"]).to(self.device)
+        self.gan = GAN(**self.opts["model"]).to(self.device)
         self.g = self.gan.g
         self.d = self.gan.d
 
         # train using "regress then GAN" approach
         val_loss = self.train(
-            opts["train"]["n_epoch_regress"],
-            opts["train"]["lr_d"],
-            opts["train"]["lr_g1"],
+            self.opts["train"]["n_epoch_regress"],
+            self.opts["train"]["lr_d"],
+            self.opts["train"]["lr_g1"],
             lambda_gan=0,
             lambda_L1=1,
         )
-        return {"loss": val_loss, "opts": opts}
+        return {"loss": val_loss, "opts": self.opts}
 
     def get_noise_tensor(self, shape):
         b, h, w = shape[0], shape[2], shape[3]
