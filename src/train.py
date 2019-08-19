@@ -31,7 +31,7 @@ def merge_defaults(opts, defaults_path):
 
 class gan_trainer:
     def __init__(self, trainset, comet_exp=None, n_epochs=50):
-
+    
         self.trial_number = 0
         self.n_epochs = n_epochs
         self.start_time = datetime.now()
@@ -101,6 +101,10 @@ class gan_trainer:
         L1 = nn.L1Loss()
         MSE = nn.MSELoss()
         device = self.device
+
+        print("-------------------------")
+        print("--  Starting training  --")
+        print("-------------------------")
 
         for epoch in range(n_epochs):
             torch.cuda.empty_cache()
