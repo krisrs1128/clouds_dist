@@ -18,6 +18,7 @@
         "lamdba_L1_2": 1,
         "batch_size": 32,
         "n_epoch_regress": 100,
-        "n_epoch_gan": 250
+        "n_epoch_gan": 250,
+        "datapath": "/home/vsch/scratch/clouds"
     }
 }

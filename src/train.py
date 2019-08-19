@@ -30,7 +30,11 @@ def merge_defaults(opts, defaults_path):
 
 
 class gan_trainer:
-    def __init__(self, trainset, comet_exp=None, n_epochs=50):
+    def __init__(self, opts, comet_exp=None, n_epochs=50):
+
+        self.opts = opts
+
+        self.trainset = EarthData(self.opts.datapath, n_in_mem=50)
 
         self.trial_number = 0
         self.n_epochs = n_epochs
@@ -42,7 +46,6 @@ class gan_trainer:
         self.runname = "unet_gan_10level"
         self.runpath = Path("output") / self.runname / f"output_{timestamp}"
         self.results = []
-        self.trainset = trainset
 
         self.exp = comet_exp
 
@@ -56,8 +59,7 @@ class gan_trainer:
         self.logdir.mkdir(exist_ok=True)
         self.imgdir.mkdir(exist_ok=True)
 
-    def run_trail(self, opts):
-        self.opts = opts
+    def run_trail(self):
         if self.exp:
             self.exp.log_parameters(opts)
 
@@ -201,12 +203,12 @@ if __name__ == "__main__":
         project_name="clouds", workspace="vict0rsch", offline_directory=scratch
     )
 
-    datapath = "/home/vsch/scratch/clouds"
-    trainset = EarthData(datapath, n_in_mem=50)
-    trainer = gan_trainer(trainset, exp)
-
     params = merge_defaults({"model": {}, "train": {}}, "config/defaults.json")
-    result = trainer.run_trail(params)
+
+    trainer = gan_trainer(params, exp)
+
+    result = trainer.run_trail()
+
     trainer.exp.end()
     multiprocessing.check_output(
         [
