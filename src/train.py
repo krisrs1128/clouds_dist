@@ -68,7 +68,7 @@ class gan_trainer:
 
         self.trainloader = torch.utils.data.DataLoader(
             self.trainset,
-            batch_size=opts.train.batch_size,
+            batch_size=self.opts.train.batch_size,
             shuffle=True,
             num_workers=min((multiprocessing.cpu_count() // 2, 10)),
         )
