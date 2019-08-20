@@ -3,7 +3,7 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:1
 #SBATCH --account=def-bengioy
-#SBATCH --mem=16G
+#SBATCH --mem=32G
 #SBATCH --time=3:30:00
 #SBATCH --output /home/sankarak/logs/clouds-%j.out
 #SBATCH --error /home/sankarak/logs/clouds-%j.err
