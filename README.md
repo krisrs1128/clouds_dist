@@ -47,7 +47,8 @@ config/defaults.json:
         "datapath": "/home/vsch/scratch/data/clouds",
         "n_in_mem": 1,
         "early_break_epoch": 0,
-        "load_limit": -1
+        "load_limit": -1,
+        "num_workers": 3
     }
 }
 ```
