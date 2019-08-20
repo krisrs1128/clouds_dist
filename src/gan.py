@@ -6,7 +6,9 @@ from src.cloud_unet import Discriminator
 
 
 class GAN(nn.Module):
-    def __init__(self, Cin, Cout, n_blocks=5, filter_factors=None, kernel_size=3, dropout=0.5):
+    def __init__(
+        self, Cin, Cout, n_blocks=5, filter_factors=None, kernel_size=3, dropout=0.5
+    ):
         super(GAN, self).__init__()
 
         self.g = UNet(Cin + Cout, Cout, n_blocks, filter_factors, kernel_size, dropout)
