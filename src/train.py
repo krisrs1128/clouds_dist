@@ -157,7 +157,7 @@ class gan_trainer:
                 times.append(t - stime)
                 times = times[-100:]
                 print(
-                    "epoch:{}/{} step {}/{} d_loss:{:0.4f} l1:{:0.4f} g_loss:{:0.4f} | t/step {:.2f} | {} | {}".format(
+                    "epoch:{}/{} step {}/{} d_loss:{:0.4f} l1:{:0.4f} g_loss:{:0.4f} | t/step {:.1f} | t/ep {:.1f} | t {:.1f}".format(
                         epoch + 1,
                         n_epochs,
                         i + 1,
