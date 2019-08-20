@@ -185,10 +185,10 @@ class gan_trainer:
 
             for i in range(input_tensor.shape[0]):
                 # concatenate verticaly 3 metos, generated clouds, ground truth clouds
-
-                imgs = torch.cat(
-                    (input_tensor[i, 22:25], generated_img[i], real_img[i]), 1
-                )
+                tmp_tensor = input_tensor[i, 22:25].clone().detach()
+                tmp_tensor += tmp_tensor.min()
+                tmp_tensor /= tmp_tensor.max()
+                imgs = torch.cat((tmp_tensor, generated_img[i], real_img[i]), 1)
                 imgs_cpu = imgs.cpu().detach().numpy()
                 imgs_cpu = np.swapaxes(imgs_cpu, 0, 2)
                 np.save(f"/home/vsch/image_{i}.npy", imgs_cpu)
