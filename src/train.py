@@ -34,7 +34,7 @@ class gan_trainer:
     def __init__(self, opts, comet_exp=None, n_epochs=50):
         self.opts = opts
         self.trainset = EarthData(
-            self.opts.train.datapath, n_in_mem=opts.train.n_in_mem or 50
+            self.opts.train.datapath, n_in_mem=self.opts.train.n_in_mem or 50
         )
         self.trial_number = 0
         self.n_epochs = n_epochs
