@@ -10,11 +10,10 @@ from torch.utils import data
 from addict import Dict
 
 import json
-
+import time
 import multiprocessing
 import numpy as np
 import os
-import time
 import torch
 import torch.nn as nn
 
@@ -106,12 +105,16 @@ class gan_trainer:
         print("-------------------------")
         print("--  Starting training  --")
         print("-------------------------")
-
+        times = []
+        start_time = time.time()
         for epoch in range(n_epochs):
             torch.cuda.empty_cache()
             self.gan.train()  # train mode
-
+            etime = time.time()
             for i, (coords, real_img, metos_data) in enumerate(self.trainloader):
+                if i > 10:
+                    break
+                stime = time.time()
 
                 shape = metos_data.shape
 
@@ -150,10 +153,11 @@ class gan_trainer:
                             "train/L1_loss": L1_loss.item(),
                         }
                     )
-
+                t = time.time()
+                times.append(t - stime)
+                times = times[-100:]
                 print(
-                    "trail:{} epoch:{}/{} iteration {}/{} train/d_loss:{:0.4f} train/L1_loss:{:0.4f} train/g_loss:{:0.4f}".format(
-                        self.trial_number,
+                    "epoch:{}/{} step {}/{} d_loss:{:0.4f} l1:{:0.4f} g_loss:{:0.4f} | t/step {:.1f} | t/ep {:.1f} | t {:.1f}".format(
                         epoch + 1,
                         n_epochs,
                         i + 1,
@@ -161,6 +165,9 @@ class gan_trainer:
                         d_loss.item(),
                         L1_loss.item(),
                         g_loss.item(),
+                        np.mean(times),
+                        t - etime,
+                        t - start_time,
                     ),
                     end="\r",
                 )
