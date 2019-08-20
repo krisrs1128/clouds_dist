@@ -29,7 +29,7 @@ class EarthData(Dataset):
     >>>    print(x.shape)
     """
 
-    def __init__(self, data_dir, n_in_mem=500):
+    def __init__(self, data_dir, n_in_mem=500, load_limit=-1):
         super(EarthData).__init__()
         self.n_in_mem = n_in_mem
         self.cur_ix = []
@@ -40,7 +40,9 @@ class EarthData(Dataset):
             "metos": glob(os.path.join(data_dir, "metos", "*.npz")),
         }
         print("Loading elements (n_in_mem): ", n_in_mem)
-        self.ids = [re.search("[0-9]+", s).group() for s in self.paths["imgs"]]
+        self.ids = [re.search("[0-9]+", s).group() for s in self.paths["imgs"]][
+            :load_limit
+        ]
 
     def __len__(self):
         return len(self.ids)
