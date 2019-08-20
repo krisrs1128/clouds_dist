@@ -19,6 +19,7 @@ import torch.nn as nn
 
 from tensorboardX import SummaryWriter
 import multiprocessing
+import argparse
 
 
 def merge_defaults(opts, defaults_path):
@@ -72,7 +73,8 @@ class gan_trainer:
 
     def run_trail(self):
         if self.exp:
-            self.exp.log_parameters(self.opts)
+            self.exp.log_parameters(self.opts.train)
+            self.exp.log_parameters(self.opts.model)
 
         # initialize objects
         self.make_directories()
@@ -217,13 +219,35 @@ class gan_trainer:
 
 
 if __name__ == "__main__":
-    scratch = os.environ.get("SCRATCH") or "~/scratch/"
-    scratch = str(Path(scratch) / "comets")
-    exp = OfflineExperiment(
-        project_name="clouds", workspace="vict0rsch", offline_directory=scratch
+
+    scratch = os.environ.get("SCRATCH") or os.path.join(
+        os.environ.get("HOME"), "scratch"
     )
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-m",
+        "--message",
+        type=str,
+        default="",
+        help="Add a message to the commet experiment",
+    )
+    parser.add_argument(
+        "-o",
+        "--comet_offline_dir",
+        type=str,
+        default=scratch,
+        help="where to store the OfflineExperiment",
+    )
+    opts = parser.parse_args()
+
     params = merge_defaults({"model": {}, "train": {}}, "config/defaults.json")
+
+    scratch = str(Path(scratch) / "comets")
+    exp = OfflineExperiment(
+        offline_directory=params.train.comet_offline_dir or opts.comet_offline_dir
+    )
+    exp.log_parameter("message")
 
     trainer = gan_trainer(params, exp)
 
