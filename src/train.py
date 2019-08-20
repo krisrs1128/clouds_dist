@@ -128,6 +128,8 @@ class gan_trainer:
                 if i > self.opts.train.get("early_break_epoch", 1e9):
                     break
                 stime = time.time()
+                if i == 0 and self.verbose > 0:
+                    print("\nLoading time: {:.3f}\n".format(stime - etime))
 
                 shape = metos_data.shape
 
