@@ -92,7 +92,7 @@ class unet(nn.Module):
         x = self.input(x)
         x = self.ublock(x)
         x = self.output(x)
-        return F.sigmoid(x)
+        return torch.sigmoid(x)
 
 
 class Discriminator(nn.Module):
