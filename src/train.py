@@ -112,7 +112,7 @@ class gan_trainer:
             self.gan.train()  # train mode
             etime = time.time()
             for i, (coords, real_img, metos_data) in enumerate(self.trainloader):
-                if i > 10:
+                if i > 1:
                     break
                 stime = time.time()
 
@@ -183,25 +183,17 @@ class gan_trainer:
 
             generated_img = self.g(input_tensor)
 
-            # write out the model architechture
-            imgs = torch.cat(
-                (input_tensor[0, 22:25], generated_img[0, 0:3], real_img[0, 0:3]), 1
-            )  # concatenate verticaly 3 metos, generated clouds, ground truth clouds
-
             for i in range(input_tensor.shape[0]):
-                if i > 0:
-                    imgs = torch.cat(
-                        (
-                            input_tensor[i, 22:25],
-                            generated_img[i, 0:3],
-                            real_img[i, 0:3],
-                        ),
-                        1,
-                    )
+                # concatenate verticaly 3 metos, generated clouds, ground truth clouds
+
+                imgs = torch.cat(
+                    (input_tensor[i, 22:25], generated_img[i], real_img[i]), 1
+                )
                 imgs_cpu = imgs.cpu().detach().numpy()
                 imgs_cpu = np.swapaxes(imgs_cpu, 0, 2)
+                np.save(f"/home/vsch/image_{i}.npy", imgs_cpu)
                 if self.exp:
-                    self.exp.log_image(imgs_cpu, str(self.imgdir / f"imgs{i}_{epoch}"))
+                    self.exp.log_image(imgs_cpu, name=f"imgs{i}")
 
         torch.save(self.gan.state_dict(), str(self.trialdir / "gan.pt"))
 
