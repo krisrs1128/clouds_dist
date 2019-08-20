@@ -2,23 +2,25 @@
 import torch
 from pathlib import Path
 import torch.nn as nn
+import numpy as np
 
 
 class UNetModule(nn.Module):
     """
     One of the "triple layer" blocks in https://arxiv.org/pdf/1505.04597.pdf
     """
-    def __init__(self, n_in, n_out):
+    def __init__(self, n_in, n_out, kernel_size=3, dropout=0.5):
         super().__init__()
-        self.conv1 = nn.Conv2d(n_in, n_out, 3, padding=1)
-        self.conv2 = nn.Conv2d(n_out, n_out, 3, padding=1)
+        self.conv1 = nn.Conv2d(n_in, n_out, kernel_size, padding=1)
+        self.conv2 = nn.Conv2d(n_out, n_out, kernel_size, padding=1)
         self.activation = nn.ReLU()
         self.bn = nn.BatchNorm2d(n_out)
+        self.drop = nn.Dropout(dropout)
 
     def forward(self, x):
         layers = nn.Sequential(
-            self.conv1, self.bn, self.activation,
-            self.conv2, self.bn, self.activation
+            self.conv1, self.bn, self.activation, self.drop,
+            self.conv2, self.bn, self.activation, self.drop
         )
         return layers(x)
 
@@ -32,28 +34,30 @@ class UNet(nn.Module):
 
     Example
     -------
-    >>> model = UNet()
-    >>> x = torch.randn(1, 3, 512, 512)
+    >>> model = UNet(42, 3)
+    >>> x = torch.randn(1, 42, 512, 512)
     >>> y = model(x)
     """
-
-    def __init__(self):
+    def __init__(self, Cin, Cout, n_blocks=5, filter_factors=None, kernel_size=3, dropout=0.5):
         super().__init__()
-        self.filter_factors = [1, 2, 4, 8, 16]
-        self.n_channels = 3
+        if not filter_factors:
+            self.filter_factors = list(2 ** np.arange(n_blocks))
+        else:
+            self.filter_factors = filter_factors
+
         self.pool = nn.MaxPool2d(2, 2)
         self.upsample = nn.UpsamplingNearest2d(scale_factor=2)
 
         input_sizes = [32 * s for s in self.filter_factors]
 
         # link up all the encoder and decoder components
-        self.down = [UNetModule(self.n_channels, input_sizes[0])]
+        self.down = [UNetModule(Cin, input_sizes[0], kernel_size, dropout)]
         self.up = []
         for i in range(len(input_sizes) - 1):
-            self.down.append(UNetModule(input_sizes[i], input_sizes[i + 1]))
-            self.up.append(UNetModule(input_sizes[i] + input_sizes[i + 1], input_sizes[i]))
+            self.down.append(UNetModule(input_sizes[i], input_sizes[i + 1], kernel_size, dropout))
+            self.up.append(UNetModule(input_sizes[i] + input_sizes[i + 1], input_sizes[i], kernel_size, dropout))
 
-        self.conv_final = nn.Conv2d(input_sizes[0], self.n_channels, 1)
+        self.conv_final = nn.Conv2d(input_sizes[0], Cout, 1)
 
     def forward(self, x):
         # encoder pass

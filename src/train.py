@@ -7,6 +7,8 @@ from src.gan import GAN
 from torch import optim
 from torch.utils import data
 
+from addict import Dict
+
 import json
 
 import multiprocessing
@@ -26,12 +28,13 @@ def merge_defaults(opts, defaults_path):
         for k, v in opts[group].items():
             result[group][k] = v
 
-    return result
+    return Dict(result)
 
 
 class gan_trainer:
-    def __init__(self, trainset, comet_exp=None, n_epochs=50):
-
+    def __init__(self, opts, comet_exp=None, n_epochs=50):
+        self.opts = opts
+        self.trainset = EarthData(self.opts["train"]["datapath"], n_in_mem=50)
         self.trial_number = 0
         self.n_epochs = n_epochs
         self.start_time = datetime.now()
@@ -42,7 +45,6 @@ class gan_trainer:
         self.runname = "unet_gan_10level"
         self.runpath = Path("output") / self.runname / f"output_{timestamp}"
         self.results = []
-        self.trainset = trainset
 
         self.exp = comet_exp
 
@@ -56,10 +58,9 @@ class gan_trainer:
         self.logdir.mkdir(exist_ok=True)
         self.imgdir.mkdir(exist_ok=True)
 
-    def run_trail(self, opts):
-        self.opts = opts
+    def run_trail(self):
         if self.exp:
-            self.exp.log_parameters(opts)
+            self.exp.log_parameters(self.opts)
 
         # initialize objects
         self.make_directories()
@@ -67,28 +68,28 @@ class gan_trainer:
 
         self.trainloader = torch.utils.data.DataLoader(
             self.trainset,
-            batch_size=opts["train"]["batch_size"],
+            batch_size=self.opts.train.batch_size,
             shuffle=True,
             num_workers=min((multiprocessing.cpu_count() // 2, 10)),
         )
 
-        self.gan = GAN(**opts["model"]).to(self.device)
+        self.gan = GAN(**self.opts.model).to(self.device)
         self.g = self.gan.g
         self.d = self.gan.d
 
         # train using "regress then GAN" approach
         val_loss = self.train(
-            opts["train"]["n_epoch_regress"],
-            opts["train"]["lr_d"],
-            opts["train"]["lr_g1"],
+            self.opts.train.n_epoch_regress,
+            self.opts.train.lr_d,
+            self.opts.train.lr_g1,
             lambda_gan=0,
             lambda_L1=1,
         )
-        return {"loss": val_loss, "opts": opts}
+        return {"loss": val_loss, "opts": self.opts}
 
     def get_noise_tensor(self, shape):
         b, h, w = shape[0], shape[2], shape[3]
-        Ctot = self.opts["model"]["Cin"] + self.opts["model"]["Cout"]
+        Ctot = self.opts.model.Cin + self.opts.model.Cout
         input_tensor = torch.FloatTensor(b, Ctot, h, w)
         input_tensor.uniform_(-1, 1)
         return input_tensor
@@ -102,6 +103,10 @@ class gan_trainer:
         MSE = nn.MSELoss()
         device = self.device
 
+        print("-------------------------")
+        print("--  Starting training  --")
+        print("-------------------------")
+
         for epoch in range(n_epochs):
             torch.cuda.empty_cache()
             self.gan.train()  # train mode
@@ -111,7 +116,7 @@ class gan_trainer:
                 shape = metos_data.shape
 
                 input_tensor = self.get_noise_tensor(shape)
-                input_tensor[:, : self.opts["model"]["Cin"], :, :] = metos_data
+                input_tensor[:, : self.opts.model.Cin, :, :] = metos_data
                 input_tensor = input_tensor.to(device)
 
                 real_img = real_img.to(device)
@@ -166,7 +171,7 @@ class gan_trainer:
 
             # output sample images
             input_tensor = self.get_noise_tensor(shape)
-            input_tensor[:, : self.opts["model"]["Cin"], :, :] = metos_data
+            input_tensor[:, : self.opts.model.Cin, :, :] = metos_data
             input_tensor = input_tensor.to(device)
 
             generated_img = self.g(input_tensor)
@@ -201,12 +206,12 @@ if __name__ == "__main__":
         project_name="clouds", workspace="vict0rsch", offline_directory=scratch
     )
 
-    datapath = "/home/vsch/scratch/clouds"
-    trainset = EarthData(datapath, n_in_mem=50)
-    trainer = gan_trainer(trainset, exp)
-
     params = merge_defaults({"model": {}, "train": {}}, "config/defaults.json")
-    result = trainer.run_trail(params)
+
+    trainer = gan_trainer(params, exp)
+
+    result = trainer.run_trail()
+
     trainer.exp.end()
     multiprocessing.check_output(
         [
