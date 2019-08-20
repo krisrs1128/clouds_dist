@@ -82,7 +82,7 @@ class gan_trainer:
             self.trainset,
             batch_size=self.opts.train.batch_size,
             shuffle=False,
-            num_workers=min((multiprocessing.cpu_count() // 2, 10)),
+            num_workers=3,
         )
 
         self.gan = GAN(**self.opts.model).to(self.device)
