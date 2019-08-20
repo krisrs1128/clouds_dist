@@ -19,6 +19,7 @@ import torch.nn as nn
 
 from tensorboardX import SummaryWriter
 import multiprocessing
+import argparse
 
 
 def merge_defaults(opts, defaults_path):
@@ -33,7 +34,11 @@ def merge_defaults(opts, defaults_path):
 class gan_trainer:
     def __init__(self, opts, comet_exp=None, n_epochs=50, verbose=1):
         self.opts = opts
-        self.trainset = EarthData(self.opts["train"]["datapath"], n_in_mem=50)
+        self.trainset = EarthData(
+            self.opts.train.datapath,
+            n_in_mem=self.opts.train.n_in_mem or 50,
+            load_limit=self.opts.train.load_limit or -1,
+        )
         self.trial_number = 0
         self.n_epochs = n_epochs
         self.start_time = datetime.now()
@@ -52,8 +57,10 @@ class gan_trainer:
             print("-------------------------")
             print("--       Params        --")
             print("-------------------------")
-            for k, v in opts.items():
-                print("{:30}: {:30}".format(k, v))
+            for o, d in opts.items():
+                print(o)
+                for k, v in d.items():
+                    print("{:<30}: {:<30}".format(str(k), str(v)))
             print()
 
     def make_directories(self):
@@ -68,7 +75,8 @@ class gan_trainer:
 
     def run_trail(self):
         if self.exp:
-            self.exp.log_parameters(self.opts)
+            self.exp.log_parameters(self.opts.train)
+            self.exp.log_parameters(self.opts.model)
 
         # initialize objects
         self.make_directories()
@@ -78,7 +86,7 @@ class gan_trainer:
             self.trainset,
             batch_size=self.opts.train.batch_size,
             shuffle=False,
-            num_workers=min((multiprocessing.cpu_count() // 2, 10)),
+            num_workers=self.opts.train.get("num_workers", 3),
         )
 
         self.gan = GAN(**self.opts.model).to(self.device)
@@ -121,9 +129,11 @@ class gan_trainer:
             self.gan.train()  # train mode
             etime = time.time()
             for i, (coords, real_img, metos_data) in enumerate(self.trainloader):
-                if i > 10:
+                if i > self.opts.train.get("early_break_epoch", 1e9):
                     break
                 stime = time.time()
+                if i == 0 and self.verbose > 0:
+                    print("\nLoading time: {:.3f}\n".format(stime - etime))
 
                 shape = metos_data.shape
 
@@ -195,37 +205,51 @@ class gan_trainer:
 
             generated_img = self.g(input_tensor)
 
-            # write out the model architechture
-            imgs = torch.cat(
-                (input_tensor[0, 22:25], generated_img[0, 0:3], real_img[0, 0:3]), 1
-            )  # concatenate verticaly 3 metos, generated clouds, ground truth clouds
-
             for i in range(input_tensor.shape[0]):
-                if i > 0:
-                    imgs = torch.cat(
-                        (
-                            input_tensor[i, 22:25],
-                            generated_img[i, 0:3],
-                            real_img[i, 0:3],
-                        ),
-                        1,
-                    )
+                # concatenate verticaly 3 metos, generated clouds, ground truth clouds
+                tmp_tensor = input_tensor[i, 22:25].clone().detach()
+                tmp_tensor -= tmp_tensor.min()
+                tmp_tensor /= tmp_tensor.max()
+                imgs = torch.cat((tmp_tensor, generated_img[i], real_img[i]), 1)
                 imgs_cpu = imgs.cpu().detach().numpy()
                 imgs_cpu = np.swapaxes(imgs_cpu, 0, 2)
+                np.save(f"/home/vsch/image_{i}.npy", imgs_cpu)
                 if self.exp:
-                    self.exp.log_image(imgs_cpu, str(self.imgdir / f"imgs{i}_{epoch}"))
+                    self.exp.log_image(imgs_cpu, name=f"imgs{i}")
 
         torch.save(self.gan.state_dict(), str(self.trialdir / "gan.pt"))
 
 
 if __name__ == "__main__":
-    scratch = os.environ.get("SCRATCH") or "~/scratch/"
-    scratch = str(Path(scratch) / "comets")
-    exp = OfflineExperiment(
-        project_name="clouds", workspace="vict0rsch", offline_directory=scratch
+
+    scratch = os.environ.get("SCRATCH") or os.path.join(
+        os.environ.get("HOME"), "scratch"
     )
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-m",
+        "--message",
+        type=str,
+        default="",
+        help="Add a message to the commet experiment",
+    )
+    parser.add_argument(
+        "-o",
+        "--comet_offline_dir",
+        type=str,
+        default=scratch,
+        help="where to store the OfflineExperiment",
+    )
+    opts = parser.parse_args()
+
     params = merge_defaults({"model": {}, "train": {}}, "config/defaults.json")
+
+    scratch = str(Path(scratch) / "comets")
+    exp = OfflineExperiment(
+        offline_directory=params.train.comet_offline_dir or opts.comet_offline_dir
+    )
+    exp.log_parameter("message", opts.message)
 
     trainer = gan_trainer(params, exp)
 
