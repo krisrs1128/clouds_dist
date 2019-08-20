@@ -204,7 +204,7 @@ class gan_trainer:
             for i in range(input_tensor.shape[0]):
                 # concatenate verticaly 3 metos, generated clouds, ground truth clouds
                 tmp_tensor = input_tensor[i, 22:25].clone().detach()
-                tmp_tensor += tmp_tensor.min()
+                tmp_tensor -= tmp_tensor.min()
                 tmp_tensor /= tmp_tensor.max()
                 imgs = torch.cat((tmp_tensor, generated_img[i], real_img[i]), 1)
                 imgs_cpu = imgs.cpu().detach().numpy()
