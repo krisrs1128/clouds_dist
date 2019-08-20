@@ -31,12 +31,13 @@ def merge_defaults(opts, defaults_path):
 
 
 class gan_trainer:
-    def __init__(self, opts, comet_exp=None, n_epochs=50):
+    def __init__(self, opts, comet_exp=None, n_epochs=50, verbose=1):
         self.opts = opts
         self.trainset = EarthData(self.opts["train"]["datapath"], n_in_mem=50)
         self.trial_number = 0
         self.n_epochs = n_epochs
         self.start_time = datetime.now()
+        self.verbose = verbose
 
         timestamp = self.start_time.strftime("%Y_%m_%d_%H_%M_%S")
         self.timestamp = timestamp
@@ -46,6 +47,14 @@ class gan_trainer:
         self.results = []
 
         self.exp = comet_exp
+
+        if self.verbose > 0:
+            print("-------------------------")
+            print("--       Params        --")
+            print("-------------------------")
+            for k, v in opts.items():
+                print("{:30}: {:30}".format(k, v))
+            print()
 
     def make_directories(self):
         self.trialdir = self.runpath / f"trial_{self.trial_number}"
@@ -101,10 +110,10 @@ class gan_trainer:
         L1 = nn.L1Loss()
         MSE = nn.MSELoss()
         device = self.device
-
-        print("-------------------------")
-        print("--  Starting training  --")
-        print("-------------------------")
+        if self.verbose > 0:
+            print("-------------------------")
+            print("--  Starting training  --")
+            print("-------------------------")
         times = []
         start_time = time.time()
         for epoch in range(n_epochs):
@@ -156,21 +165,24 @@ class gan_trainer:
                 t = time.time()
                 times.append(t - stime)
                 times = times[-100:]
-                print(
-                    "epoch:{}/{} step {}/{} d_loss:{:0.4f} l1:{:0.4f} g_loss:{:0.4f} | t/step {:.1f} | t/ep {:.1f} | t {:.1f}".format(
-                        epoch + 1,
-                        n_epochs,
-                        i + 1,
-                        len(self.trainloader),
-                        d_loss.item(),
-                        L1_loss.item(),
-                        g_loss.item(),
-                        np.mean(times),
-                        t - etime,
-                        t - start_time,
-                    ),
-                    end="\r",
-                )
+                if self.verbose > 0:
+                    ep_str = "epoch:{}/{} step {}/{} d_loss:{:0.4f} l1:{:0.4f} g_loss:{:0.4f} | "
+                    ep_str += "t/step {:.1f} | t/ep {:.1f} | t {:.1f}"
+                    print(
+                        ep_str.format(
+                            epoch + 1,
+                            n_epochs,
+                            i + 1,
+                            len(self.trainloader),
+                            d_loss.item(),
+                            L1_loss.item(),
+                            g_loss.item(),
+                            np.mean(times),
+                            t - etime,
+                            t - start_time,
+                        ),
+                        end="\r",
+                    )
 
             # ------------
             # END OF EPOCH
