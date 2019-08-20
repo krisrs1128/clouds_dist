@@ -28,6 +28,7 @@ class EarthData(Dataset):
     >>>    coords, x, y = elem
     >>>    print(x.shape)
     """
+
     def __init__(self, data_dir, n_in_mem=500):
         super(EarthData).__init__()
         self.n_in_mem = n_in_mem
@@ -38,7 +39,7 @@ class EarthData(Dataset):
             "imgs": glob(os.path.join(data_dir, "imgs", "*.npz")),
             "metos": glob(os.path.join(data_dir, "metos", "*.npz")),
         }
-
+        print("Loading elements (n_in_mem): ", n_in_mem)
         self.ids = [re.search("[0-9]+", s).group() for s in self.paths["imgs"]]
 
     def __len__(self):
@@ -59,7 +60,7 @@ class EarthData(Dataset):
             for key in ["imgs", "metos"]:
                 path = [s for s in self.paths[key] if self.ids[j] in s][0]
                 data[key] = dict(np.load(path).items())
-                #print("loading {} {}".format(j, key))
+                # print("loading {} {}".format(j, key))
 
             self.subsample[j] = process_sample(data)
 
@@ -70,8 +71,8 @@ def process_sample(data):
     # rearrange into numpy arrays
     coords = np.stack([data["imgs"]["Lat"], data["imgs"]["Lon"]])
     imgs = np.stack([v for k, v in data["imgs"].items() if "Reflect" in k])
-    imgs[np.isnan(imgs)] = 0.
-    imgs[np.isinf(imgs)] = 0.
+    imgs[np.isnan(imgs)] = 0.0
+    imgs[np.isinf(imgs)] = 0.0
     metos = np.concatenate(
         [
             data["metos"]["U"],
@@ -82,6 +83,6 @@ def process_sample(data):
             data["metos"]["TS"].reshape(1, 256, 256),
         ]
     )
-    metos[np.isnan(metos)] = 0.
-    metos[np.isinf(metos)] = 0.
+    metos[np.isnan(metos)] = 0.0
+    metos[np.isinf(metos)] = 0.0
     return (coords, torch.Tensor(imgs), torch.Tensor(metos))
