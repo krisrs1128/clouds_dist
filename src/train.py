@@ -55,7 +55,7 @@ class gan_trainer:
             print("--       Params        --")
             print("-------------------------")
             for k, v in opts.items():
-                print("{:30}: {:30}".format(k, v))
+                print("{:<30}: {:<30}".format(str(k), str(v)))
             print()
 
     def make_directories(self):
