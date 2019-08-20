@@ -166,7 +166,7 @@ class CustomUNet(nn.Module):
             x = up(x, xs[-1 * i])
 
         x = self.outc(x)
-        return F.sigmoid(x)
+        return torch.sigmoid(x)
 
 
 #
