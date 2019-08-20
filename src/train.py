@@ -113,7 +113,8 @@ class gan_trainer:
             self.gan.train()  # train mode
             etime = time()
             for i, (coords, real_img, metos_data) in enumerate(self.trainloader):
-
+                if i > 10:
+                    break
                 stime = time()
 
                 shape = metos_data.shape
