@@ -133,7 +133,7 @@ class gan_trainer:
                     break
                 stime = time.time()
                 if i == 0 and self.verbose > 0:
-                    print("\nLoading time: {:.3f}\n".format(stime - etime))
+                    print("\n\nLoading time: {:.3f}".format(stime - etime))
 
                 shape = metos_data.shape
 
