@@ -76,6 +76,12 @@ This script will execute a `sbatch` job for each element listed in explor-lr.jso
     ```
 * training params: `defaults.json` as above.
 
+The argument passed to `-e` should be in `config/` and should not include it in its name.
+
+* [x] Ok `python parallel_run.py -e explore-lr.json`
+* [x] Ok `python parallel_run.py -e explore-lr` (refers to `config/explore-lr.json` but no need to specify `.json`)
+* [ ] Not Ok `python parallel_run.py -e config/explore-lr.json`
+
 For each dictionnary listed in `explore.json` the script will override the above parameters with the ones mentionned in the file. Such a file may look like:
 
 ```
