@@ -23,7 +23,9 @@ import argparse
 
 
 def merge_defaults(opts, defaults_path):
-    result = json.load(open(defaults_path, "r"))
+    print("Loading params from", defaults_path)
+    with open(defaults_path, "r") as f:
+        result = json.load(f)
     for group in ["model", "train"]:
         for k, v in opts[group].items():
             result[group][k] = v
