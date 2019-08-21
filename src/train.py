@@ -241,9 +241,20 @@ if __name__ == "__main__":
         default=scratch,
         help="where to store the OfflineExperiment",
     )
+    parser.add_argument(
+        "-c",
+        "--conf_name",
+        type=str,
+        default="defaults",
+        help="name of conf file in config/ | may ommit the .json extension",
+    )
     opts = parser.parse_args()
 
-    params = merge_defaults({"model": {}, "train": {}}, "config/defaults.json")
+    conf_name = opts.conf_name
+    if not conf_name.endswith(".json"):
+        conf_name += ".json"
+
+    params = merge_defaults({"model": {}, "train": {}}, f"config/{conf_name}.json")
 
     scratch = str(Path(scratch) / "comets")
     exp = OfflineExperiment(
