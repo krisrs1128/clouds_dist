@@ -87,7 +87,10 @@ For each dictionnary listed in `explore.json` the script will override the above
 ```
 [
     {
-        "sbatch": {"runtime": "24:00:00"},
+        "sbatch": {
+            "runtime": "24:00:00",
+            "conf_name":"lr_d_001"
+        },
         "config": {
             "model": {},
             "train": {
@@ -96,7 +99,10 @@ For each dictionnary listed in `explore.json` the script will override the above
         }
     },
     {
-        "sbatch": {"runtime": "24:00:00"},
+        "sbatch": {
+            "runtime": "24:00:00", 
+            "conf_name": "lr_d_0001"
+        },
         "config": {
             "model": {},
             "train": {
@@ -105,7 +111,10 @@ For each dictionnary listed in `explore.json` the script will override the above
         }
     },
     {
-        "sbatch": {"runtime": "24:00:00"},
+        "sbatch": {
+            "runtime": "24:00:00",
+            "conf_name": "lr_g1_001"
+        },
         "config": {
             "model": {},
             "train": {

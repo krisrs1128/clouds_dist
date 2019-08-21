@@ -4,12 +4,49 @@ from pathlib import Path
 import subprocess
 import os
 import argparse
+import re
 
 
 def write_conf(param):
+    """Write config file from params to config/conf_name
+    If conf_name exisits, increments a counter in the name:
+    explore.json -> explore (1).json -> explore (2).json ...
+    """
     cname = param["sbatch"].get("conf_name", "overwritable_conf")
-    with open(f"config/{cname}.json", "w") as f:
+    if not cname.endswith(".json"):
+        cname += ".json"
+    if Path(f"config/{cname}").exists():
+        s = list(re.finditer("\(\d+\)", cname))
+        if s:
+            s = s[-1]
+            d = int(s.group().replace("(", "").replace(")", ""))
+            d += 1
+            i, j = s.span()
+            l = j - i - 2
+            cname = cname[: i + 1] + str(d) + cname[j - 1 :]
+        else:
+            cname = Path(f"config/{cname}").stem + " (1).json"
+
+    with open(f"config/{cname}", "w") as f:
         json.dump(param["config"], f)
+
+
+def env_to_path(path):
+    """Transorms an environment variable mention in a json
+    into its actual value. E.g. $HOME/clouds -> /home/vsch/clouds
+
+    Args:
+        path (str): path potentially containing the env variable
+
+    """
+    path_elements = path.split("/")
+    new_path = []
+    for el in path_elements:
+        if "$" in el:
+            new_path.append(os.environ[el.replace("$", "")])
+        else:
+            new_path.append(el)
+    return os.path.join(*new_path)
 
 
 """ default config as ref:
@@ -106,6 +143,7 @@ if __name__ == "__main__":
         exploration_file += ".json"
     with open(f"config/{exploration_file}", "r") as f:
         exploration_params = json.load(f)
+        assert isinstance(exploration_params, list)
 
     params = []
     for p in exploration_params:
@@ -124,12 +162,12 @@ if __name__ == "__main__":
         write_conf(param)
         template = f"""
 #!/bin/bash
-#SBATCH --account=rpp-bengioy            # Yoshua pays for your job
-#SBATCH --cpus-per-task={sbp["cpus"]}    # Ask for 6 CPUs
-#SBATCH --gres=gpu:1                     # Ask for 1 GPU
-#SBATCH --mem={sbp["mem"]}G              # Ask for 32 GB of RAM
-#SBATCH --time={sbp["runtime"]}
-#SBATCH -o {sbp["slurm_out"]}            # Write the log in $SCRATCH
+#SBATCH --account=rpp-bengioy               # Yoshua pays for your job
+#SBATCH --cpus-per-task={sbp["cpus"]}       # Ask for 6 CPUs
+#SBATCH --gres=gpu:1                        # Ask for 1 GPU
+#SBATCH --mem={sbp["mem"]}G                 # Ask for 32 GB of RAM
+#SBATCH --time={sbp["runtime"]}             # Run for 12h
+#SBATCH -o {env_to_path(sbp["slurm_out"])}  # Write the log in $SCRATCH
 
 module load python/3.6
 
