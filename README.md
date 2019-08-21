@@ -64,15 +64,15 @@ python parallel_run.py -e explore-lr.json
 This script will execute a `sbatch` job for each element listed in explor-lr.json with default arguments:
 
 * sbatch params: 
-  * ```
-{
-    "cpus": 8,
-    "mem": 32,
-    "runtime": "12:00:00",
-    "slurm_out": "/home/vsch/logs/slurm-%j.out",
-    "message": "explore exp run 12h",
-    "conf_name": "explore",
-}
+    ```
+    {
+        "cpus": 8,
+        "mem": 32,
+        "runtime": "12:00:00",
+        "slurm_out": "$HOME/logs/slurm-%j.out",
+        "message": "explore exp run 12h",
+        "conf_name": "explore",
+    }
     ```
 * training params: `defaults.json` as above.
 
