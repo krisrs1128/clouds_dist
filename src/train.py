@@ -256,7 +256,7 @@ if __name__ == "__main__":
 
     assert Path("config/" + conf_name).exists()
 
-    params = merge_defaults({"model": {}, "train": {}}, f"config/{conf_name}.json")
+    params = merge_defaults({"model": {}, "train": {}}, f"config/{conf_name}")
 
     assert Path(params.train.datapath).exists()
     assert (Path(params.train.datapath) / "imgs").exists()
