@@ -23,7 +23,9 @@ import argparse
 
 
 def merge_defaults(opts, defaults_path):
-    result = json.load(open(defaults_path, "r"))
+    print("Loading params from", defaults_path)
+    with open(defaults_path, "r") as f:
+        result = json.load(f)
     for group in ["model", "train"]:
         for k, v in opts[group].items():
             result[group][k] = v
@@ -129,7 +131,7 @@ class gan_trainer:
             self.gan.train()  # train mode
             etime = time.time()
             for i, (coords, real_img, metos_data) in enumerate(self.trainloader):
-                if i > self.opts.train.get("early_break_epoch", 1e9):
+                if i > (self.opts.train.early_break_epoch or 1e9):
                     break
                 stime = time.time()
                 if i == 0 and self.verbose > 0:
@@ -225,6 +227,9 @@ if __name__ == "__main__":
     scratch = os.environ.get("SCRATCH") or os.path.join(
         os.environ.get("HOME"), "scratch"
     )
+    comdir = os.path.join(scratch, "cloud_comets")
+    if not Path(comdir).exists():
+        Path(comdir).mkdir()
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -238,23 +243,41 @@ if __name__ == "__main__":
         "-o",
         "--comet_offline_dir",
         type=str,
-        default=scratch,
+        default=comdir,
         help="where to store the OfflineExperiment",
+    )
+    parser.add_argument(
+        "-c",
+        "--conf_name",
+        type=str,
+        default="defaults",
+        help="name of conf file in config/ | may ommit the .json extension",
     )
     opts = parser.parse_args()
 
-    params = merge_defaults({"model": {}, "train": {}}, "config/defaults.json")
-    data_path = params.train.datapath.split("/")
+    conf_name = opts.conf_name
+    if not conf_name.endswith(".json"):
+        conf_name += ".json"
+
+    assert Path("config/" + conf_name).exists()
+
+    params = merge_defaults({"model": {}, "train": {}}, f"config/{conf_name}")
+    
+    data_path = params.train.datapath.split("/")    
     for i, d in enumerate(data_path):
         if "$" in d:
             data_path[i] = os.environ.get(d.replace("$", ""))
     params.train.datapath = os.path.join(*data_path)
 
+    assert Path(params.train.datapath).exists()
+    assert (Path(params.train.datapath) / "imgs").exists()
+    assert (Path(params.train.datapath) / "metos").exists()
+
     scratch = str(Path(scratch) / "comets")
     exp = OfflineExperiment(
         offline_directory=params.train.comet_offline_dir or opts.comet_offline_dir
     )
-    exp.log_parameter("message", opts.message)
+    exp.log_parameter("__message", opts.message)
 
     trainer = gan_trainer(params, exp)
 
@@ -266,7 +289,7 @@ if __name__ == "__main__":
             "bash",
             "-c",
             "python -m comet_ml.scripts.upload {}".format(
-                str(Path(scratch).resolve() / (trainer.exp.id + ".zip"))
+                str(Path(comdir).resolve() / (trainer.exp.id + ".zip"))
             ),
         ]
     )
