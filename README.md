@@ -52,3 +52,62 @@ config/defaults.json:
     }
 }
 ```
+
+## Running several jobs
+
+Use `parallel_run.py`:
+
+```
+python parallel_run.py -e explore-lr.json
+```
+
+This script will execute a `sbatch` job for each element listed in explor-lr.json with default arguments:
+
+* sbatch params: 
+  * ```
+{
+    "cpus": 8,
+    "mem": 32,
+    "runtime": "12:00:00",
+    "slurm_out": "/home/vsch/logs/slurm-%j.out",
+    "message": "explore exp run 12h",
+    "conf_name": "explore",
+}
+    ```
+* training params: `defaults.json` as above.
+
+For each dictionnary listed in `explore.json` the script will override the above parameters with the ones mentionned in the file. Such a file may look like:
+
+```
+[
+    {
+        "sbatch": {"runtime": "24:00:00"},
+        "config": {
+            "model": {},
+            "train": {
+                "lr_d": 0.001
+            }
+        }
+    },
+    {
+        "sbatch": {"runtime": "24:00:00"},
+        "config": {
+            "model": {},
+            "train": {
+                "lr_d": 0.0001
+            }
+        }
+    },
+    {
+        "sbatch": {"runtime": "24:00:00"},
+        "config": {
+            "model": {},
+            "train": {
+                "lr_g1": 0.001
+            }
+        }
+    },
+]
+```
+
+This will run 3 sbatch jobs meaning "keep the default sbatch params, but extend runtime to 24h and vary learning rates". The `sbatch`, `config`, `model` and `train` fields are **mandatory**
