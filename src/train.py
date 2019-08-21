@@ -131,7 +131,7 @@ class gan_trainer:
             self.gan.train()  # train mode
             etime = time.time()
             for i, (coords, real_img, metos_data) in enumerate(self.trainloader):
-                if i > self.opts.train.get("early_break_epoch", 1e9):
+                if i > (self.opts.train.early_break_epoch or 1e9):
                     break
                 stime = time.time()
                 if i == 0 and self.verbose > 0:
