@@ -101,6 +101,9 @@ if __name__ == "__main__":
     with open(default_json_file, "r") as f:
         default_json = json.load(f)
 
+    exploration_file = opts.exploration_file
+    if not exploration_file.endswith(".json"):
+        exploration_file += ".json"
     with open(f"config/{exploration_file}", "r") as f:
         exploration_params = json.load(f)
 
