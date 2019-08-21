@@ -179,7 +179,7 @@ rsync -avz /scratch/sankarak/data/clouds/metos/ $SLURM_TMPDIR/metos/
 echo "Starting job"
 
 cd $HOME/clouds
-python -m src.train -m "{sbp["message"]}" -c "{sbp["conf_name"]}"
+exec python -m src.train -m "{sbp["message"]}" -c "{sbp["conf_name"]}"
 """
         dest = Path(os.environ["SCRATCH"]) / "clouds"
         dest.mkdir(exist_ok=True)

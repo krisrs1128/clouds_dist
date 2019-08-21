@@ -20,6 +20,7 @@ import torch.nn as nn
 from tensorboardX import SummaryWriter
 import multiprocessing
 import argparse
+import signal
 
 
 def merge_defaults(opts, defaults_path):
@@ -64,6 +65,13 @@ class gan_trainer:
                 for k, v in d.items():
                     print("{:<30}: {:<30}".format(str(k), str(v)))
             print()
+
+    def on_kill(self):
+        self.save()
+        self.exp.end()
+
+    def save(self):
+        torch.save(self.gan.state_dict(), str(self.trialdir / "gan.pt"))
 
     def make_directories(self):
         self.trialdir = self.runpath / f"trial_{self.trial_number}"
@@ -219,7 +227,7 @@ class gan_trainer:
                 if self.exp:
                     self.exp.log_image(imgs_cpu, name=f"imgs{i}")
 
-        torch.save(self.gan.state_dict(), str(self.trialdir / "gan.pt"))
+        self.save()
 
 
 if __name__ == "__main__":
@@ -280,6 +288,8 @@ if __name__ == "__main__":
     exp.log_parameter("__message", opts.message)
 
     trainer = gan_trainer(params, exp)
+
+    signal.signal(signal.SIGUSR1, trainer.on_kill)
 
     result = trainer.run_trail()
 
