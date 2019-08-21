@@ -95,7 +95,7 @@ class gan_trainer:
 
         # train using "regress then GAN" approach
         val_loss = self.train(
-            self.opts.train.n_epoch_regress,
+            self.opts.train.n_epochs,
             self.opts.train.lr_d,
             self.opts.train.lr_g1,
             lambda_gan=0,
