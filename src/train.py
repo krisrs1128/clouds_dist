@@ -268,6 +268,7 @@ if __name__ == "__main__":
     exp = OfflineExperiment(
         offline_directory=params.train.comet_offline_dir or opts.comet_offline_dir
     )
+    exp.log_parameter("__message", opts.message)
 
     trainer = gan_trainer(params, exp)
 
