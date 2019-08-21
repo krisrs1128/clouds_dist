@@ -289,7 +289,7 @@ if __name__ == "__main__":
 
     trainer = gan_trainer(params, exp)
 
-    signal.signal(signal.SIGUSR1, trainer.on_kill)
+    signal.signal(signal.SIGTERM, trainer.on_kill)
 
     result = trainer.run_trail()
 
