@@ -254,6 +254,11 @@ if __name__ == "__main__":
     if not conf_name.endswith(".json"):
         conf_name += ".json"
 
+    assert Path("config/" + conf_name).exists()
+    assert Path(params.train.datapath).exists()
+    assert (Path(params.train.datapath) / "imgs").exists()
+    assert (Path(params.train.datapath) / "metos").exists()
+
     params = merge_defaults({"model": {}, "train": {}}, f"config/{conf_name}.json")
 
     scratch = str(Path(scratch) / "comets")
