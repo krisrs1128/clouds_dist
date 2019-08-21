@@ -255,11 +255,12 @@ if __name__ == "__main__":
         conf_name += ".json"
 
     assert Path("config/" + conf_name).exists()
+
+    params = merge_defaults({"model": {}, "train": {}}, f"config/{conf_name}.json")
+
     assert Path(params.train.datapath).exists()
     assert (Path(params.train.datapath) / "imgs").exists()
     assert (Path(params.train.datapath) / "metos").exists()
-
-    params = merge_defaults({"model": {}, "train": {}}, f"config/{conf_name}.json")
 
     scratch = str(Path(scratch) / "comets")
     exp = OfflineExperiment(
