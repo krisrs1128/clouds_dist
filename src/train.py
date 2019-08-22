@@ -139,12 +139,12 @@ class gan_trainer:
 
                 shape = metos_data.shape
 
-                input_tensor = self.get_noise_tensor(shape)
-                input_tensor[:, : self.opts.model.Cin, :, :] = metos_data
-                input_tensor = input_tensor.to(device)
+                self.input_tensor = self.get_noise_tensor(shape)
+                self.input_tensor[:, : self.opts.model.Cin, :, :] = metos_data
+                self.input_tensor = self.input_tensor.to(device)
 
                 real_img = real_img.to(device)
-                generated_img = self.g(input_tensor)
+                generated_img = self.g(self.input_tensor)
 
                 real_prob = self.d(real_img)
                 fake_prob = self.d(generated_img)
