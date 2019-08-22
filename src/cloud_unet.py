@@ -79,10 +79,20 @@ class unet(nn.Module):
         submodule = None
         for i in range(nblocks - 1):
             submodule = unet_block(
-                n_channels, n_channels, kernel_size, dropout, submodule=submodule, outermost=False
+                n_channels,
+                n_channels,
+                kernel_size,
+                dropout,
+                submodule=submodule,
+                outermost=False,
             )
         self.ublock = unet_block(
-            n_channels, n_channels, kernel_size, dropout, submodule=submodule, outermost=True
+            n_channels,
+            n_channels,
+            kernel_size,
+            dropout,
+            submodule=submodule,
+            outermost=True,
         )
 
         outconv = nn.Conv2d(n_channels, Cout, kernel_size=1, stride=1, padding=0)
@@ -96,7 +106,7 @@ class unet(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, Cin, n_channels=16, nlevels=4):
+    def __init__(self, Cin, n_channels=16, nlevels=4, device=None):
         super(Discriminator, self).__init__()
 
         kernel_size = 4
@@ -115,6 +125,8 @@ class Discriminator(nn.Module):
 
         model += [nn.Conv2d(Cin, 1, kernel_size=1, stride=1, padding=0)]
         self.model = nn.Sequential(*model)
+        if device:
+            self.model = self.model.to(device)
 
     def forward(self, x):
         x = self.model(x)

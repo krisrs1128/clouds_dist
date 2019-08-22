@@ -46,7 +46,7 @@ def env_to_path(path):
             new_path.append(os.environ[el.replace("$", "")])
         else:
             new_path.append(el)
-    return os.path.join(*new_path)
+    return "/".join(new_path)
 
 
 """ default config as ref:
@@ -171,7 +171,7 @@ if __name__ == "__main__":
 
 module load python/3.6
 
-source /scratch/vsch/cloudenv/bin/activate
+source $HOME/cloudenv/bin/activate
 
 rsync -avz /scratch/sankarak/data/clouds/imgs/ $SLURM_TMPDIR/imgs/
 rsync -avz /scratch/sankarak/data/clouds/metos/ $SLURM_TMPDIR/metos/
@@ -179,6 +179,7 @@ rsync -avz /scratch/sankarak/data/clouds/metos/ $SLURM_TMPDIR/metos/
 echo "Starting job"
 
 cd $HOME/clouds
+
 ssh -N -D 9050 beluga1 & proxychains4 -q python -m src.train -m "{sbp["message"]}" -c "{sbp["conf_name"]}"
 """
         dest = Path(os.environ["SCRATCH"]) / "clouds"
