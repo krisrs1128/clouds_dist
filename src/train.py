@@ -160,6 +160,7 @@ class gan_trainer:
                 d_optimizer.step()
 
                 g_optimizer.zero_grad()
+                fake_prob = self.d(generated_img)
                 L1_loss = L1(generated_img, real_img)
                 gan_loss = MSE(fake_prob, real_target)
 
