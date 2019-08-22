@@ -92,8 +92,8 @@ class gan_trainer:
         )
 
         self.gan = GAN(**self.opts.model).to(self.device)
-        self.g = self.gan.g
-        self.d = self.gan.d
+        self.g = self.gan.g.to(self.device)
+        self.d = self.gan.d.to(self.device)
 
         # train using "regress then GAN" approach
         val_loss = self.train(
@@ -262,12 +262,12 @@ if __name__ == "__main__":
     assert Path("config/" + conf_name).exists()
 
     params = merge_defaults({"model": {}, "train": {}}, f"config/{conf_name}")
-    
-    data_path = params.train.datapath.split("/")    
+
+    data_path = params.train.datapath.split("/")
     for i, d in enumerate(data_path):
         if "$" in d:
             data_path[i] = os.environ.get(d.replace("$", ""))
-    params.train.datapath = os.path.join(*data_path)
+    params.train.datapath = "/".join(data_path)
 
     assert Path(params.train.datapath).exists()
     assert (Path(params.train.datapath) / "imgs").exists()
