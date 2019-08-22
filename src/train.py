@@ -147,7 +147,7 @@ class gan_trainer:
                 generated_img = self.g(self.input_tensor)
 
                 real_prob = self.d(real_img)
-                fake_prob = self.d(generated_img)
+                fake_prob = self.d(generated_img.detach())
 
                 real_target = torch.ones(real_prob.shape, device=device)
                 fake_target = torch.zeros(fake_prob.shape, device=device)
