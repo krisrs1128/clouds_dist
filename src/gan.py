@@ -7,12 +7,21 @@ from src.cloud_unet import Discriminator
 
 class GAN(nn.Module):
     def __init__(
-        self, Cin, Cout, n_blocks=5, filter_factors=None, kernel_size=3, dropout=0.5
+        self,
+        Cin,
+        Cout,
+        n_blocks=5,
+        filter_factors=None,
+        kernel_size=3,
+        dropout=0.5,
+        device=None,
     ):
         super(GAN, self).__init__()
 
-        self.g = UNet(Cin + Cout, Cout, n_blocks, filter_factors, kernel_size, dropout)
-        self.d = Discriminator(Cout, n_channels=16, nlevels=4)
+        self.g = UNet(
+            Cin + Cout, Cout, n_blocks, filter_factors, kernel_size, dropout, device
+        )
+        self.d = Discriminator(Cout, n_channels=16, nlevels=4, device=device)
 
         self.g.apply(self.init_weights)
         self.d.apply(self.init_weights)
@@ -21,6 +30,7 @@ class GAN(nn.Module):
         if type(m) == nn.Linear:
             nn.init.xavier_uniform_(m.weight)
             nn.init.uniform_(m.bias, -0.1, 0.1)
+            a = ""
 
     def forward(self, x):
         x = self.g(x)

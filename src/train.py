@@ -91,9 +91,9 @@ class gan_trainer:
             num_workers=self.opts.train.get("num_workers", 3),
         )
 
-        self.gan = GAN(**self.opts.model).to(self.device)
-        self.g = self.gan.g.to(self.device)
-        self.d = self.gan.d.to(self.device)
+        self.gan = GAN(**self.opts.model, device=device).to(self.device)
+        self.g = self.gan.g
+        self.d = self.gan.d
 
         # train using "regress then GAN" approach
         val_loss = self.train(
