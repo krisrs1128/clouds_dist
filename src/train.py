@@ -11,7 +11,7 @@ from addict import Dict
 
 import json
 import time
-import multiprocessing
+import subprocess
 import numpy as np
 import os
 import torch
@@ -284,7 +284,7 @@ if __name__ == "__main__":
     result = trainer.run_trail()
 
     trainer.exp.end()
-    multiprocessing.check_output(
+    subprocess.check_output(
         [
             "bash",
             "-c",
