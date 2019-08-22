@@ -66,10 +66,6 @@ class gan_trainer:
                     print("{:<30}: {:<30}".format(str(k), str(v)))
             print()
 
-    def on_kill(self):
-        self.save()
-        self.exp.end()
-
     def save(self):
         torch.save(self.gan.state_dict(), str(self.trialdir / "gan.pt"))
 
@@ -288,8 +284,6 @@ if __name__ == "__main__":
     exp.log_parameter("__message", opts.message)
 
     trainer = gan_trainer(params, exp)
-
-    signal.signal(signal.SIGTERM, trainer.on_kill)
 
     result = trainer.run_trail()
 
