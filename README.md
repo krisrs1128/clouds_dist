@@ -10,6 +10,7 @@ singularity shell --bind /scratch/sankarak/data/clouds/:/data,/home/sankarak/clo
 
 though right now, it seems to be hanging at some point (no errors, just don't see any messages).
 
+## Comet.ml
 
 In order to use comet.ml, do add a `.comet.config` in the root of the repo on your machine/cluster:
 
@@ -19,6 +20,29 @@ api_key=YOUR-API-KEY
 workspace=YOUR-WORKSPACE
 project_name=THE-PROJECT
 ```
+
+**Compute nodes don't have internet access!** So to bypass this, install `proxychains` (see hereafter) and then ssh to a login node and the compute node will be able to uplaod to comet! (Based on Joseph's post [Dealing with internet restricted compute nodes in a cluster](http://josephpcohen.com/w/dealing-with-internet-restricted-compute-nodes-in-a-cluster/))
+
+```
+ssh -N -D 9050 beluga1 & proxychains4 -q python train.py
+```
+
+#### How to set up proxychains
+
+```
+$ git clone git@github.com:rofl0r/proxychains-ng.git
+$ cd proxychains-ng
+$ mkdir ~/.local # don't do this if it already exists
+$ ./configure --prefix=$HOME/.local
+$ make & make install
+$ make install-config
+$ export PROXYCHAINS_CONF_FILE=$HOME/.local/etc/proxychains.conf # add this to your ~/.bash_profile
+$ proxychains4 ping google.com # should work now
+```
+
+## Default conf file
+
+**Remember:** update this section when new arguments are added to the possible configrations
 
 config/defaults.json:
 

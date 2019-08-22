@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from comet_ml import OfflineExperiment
+from comet_ml import Experiment
 from datetime import datetime
 from pathlib import Path
 from src.data import EarthData
@@ -275,9 +275,10 @@ if __name__ == "__main__":
     assert Path(params.train.datapath).exists()
     assert (Path(params.train.datapath) / "imgs").exists()
     assert (Path(params.train.datapath) / "metos").exists()
+    print("Make sure you are using proxychains so that comet has internet access")
 
     scratch = str(Path(scratch) / "comets")
-    exp = OfflineExperiment(
+    exp = Experiment(
         offline_directory=params.train.comet_offline_dir or opts.comet_offline_dir
     )
     exp.log_parameter("__message", opts.message)
