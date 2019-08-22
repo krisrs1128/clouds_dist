@@ -171,7 +171,7 @@ if __name__ == "__main__":
 
 module load python/3.6
 
-source /home/vsch/cloudenv/bin/activate
+source /scratch/vsch/cloudenv/bin/activate
 
 rsync -avz /scratch/sankarak/data/clouds/imgs/ $SLURM_TMPDIR/imgs/
 rsync -avz /scratch/sankarak/data/clouds/metos/ $SLURM_TMPDIR/metos/
