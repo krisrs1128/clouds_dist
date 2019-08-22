@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from comet_ml import OfflineExperiment
+from comet_ml import Experiment
 from datetime import datetime
 from pathlib import Path
 from src.data import EarthData
@@ -11,7 +11,7 @@ from addict import Dict
 
 import json
 import time
-import multiprocessing
+import subprocess
 import numpy as np
 import os
 import torch
@@ -65,6 +65,9 @@ class gan_trainer:
                     print("{:<30}: {:<30}".format(str(k), str(v)))
             print()
 
+    def save(self):
+        torch.save(self.gan.state_dict(), str(self.trialdir / "gan.pt"))
+
     def make_directories(self):
         self.trialdir = self.runpath / f"trial_{self.trial_number}"
         self.logdir = self.trialdir / "log"
@@ -91,7 +94,7 @@ class gan_trainer:
             num_workers=self.opts.train.get("num_workers", 3),
         )
 
-        self.gan = GAN(**self.opts.model).to(self.device)
+        self.gan = GAN(**self.opts.model, device=self.device).to(self.device)
         self.g = self.gan.g
         self.d = self.gan.d
 
@@ -139,15 +142,15 @@ class gan_trainer:
 
                 shape = metos_data.shape
 
-                input_tensor = self.get_noise_tensor(shape)
-                input_tensor[:, : self.opts.model.Cin, :, :] = metos_data
-                input_tensor = input_tensor.to(device)
+                self.input_tensor = self.get_noise_tensor(shape)
+                self.input_tensor[:, : self.opts.model.Cin, :, :] = metos_data
+                self.input_tensor = self.input_tensor.to(device)
 
                 real_img = real_img.to(device)
-                generated_img = self.g(input_tensor)
+                generated_img = self.g(self.input_tensor)
 
                 real_prob = self.d(real_img)
-                fake_prob = self.d(generated_img)
+                fake_prob = self.d(generated_img.detach())
 
                 real_target = torch.ones(real_prob.shape, device=device)
                 fake_target = torch.zeros(fake_prob.shape, device=device)
@@ -160,6 +163,7 @@ class gan_trainer:
                 d_optimizer.step()
 
                 g_optimizer.zero_grad()
+                fake_prob = self.d(generated_img)
                 L1_loss = L1(generated_img, real_img)
                 gan_loss = MSE(fake_prob, real_target)
 
@@ -219,7 +223,7 @@ class gan_trainer:
                 if self.exp:
                     self.exp.log_image(imgs_cpu, name=f"imgs{i}")
 
-        torch.save(self.gan.state_dict(), str(self.trialdir / "gan.pt"))
+        self.save()
 
 
 if __name__ == "__main__":
@@ -262,19 +266,20 @@ if __name__ == "__main__":
     assert Path("config/" + conf_name).exists()
 
     params = merge_defaults({"model": {}, "train": {}}, f"config/{conf_name}")
-    
-    data_path = params.train.datapath.split("/")    
+
+    data_path = params.train.datapath.split("/")
     for i, d in enumerate(data_path):
         if "$" in d:
             data_path[i] = os.environ.get(d.replace("$", ""))
-    params.train.datapath = os.path.join(*data_path)
+    params.train.datapath = "/".join(data_path)
 
     assert Path(params.train.datapath).exists()
     assert (Path(params.train.datapath) / "imgs").exists()
     assert (Path(params.train.datapath) / "metos").exists()
+    print("Make sure you are using proxychains so that comet has internet access")
 
     scratch = str(Path(scratch) / "comets")
-    exp = OfflineExperiment()
+    exp = Experiment()
     exp.log_parameter("__message", opts.message)
 
     trainer = gan_trainer(params, exp)
@@ -282,7 +287,7 @@ if __name__ == "__main__":
     result = trainer.run_trail()
 
     trainer.exp.end()
-    multiprocessing.check_output(
+    subprocess.check_output(
         [
             "bash",
             "-c",
