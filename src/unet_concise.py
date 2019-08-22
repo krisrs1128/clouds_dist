@@ -9,6 +9,7 @@ class UNetModule(nn.Module):
     """
     One of the "triple layer" blocks in https://arxiv.org/pdf/1505.04597.pdf
     """
+
     def __init__(self, n_in, n_out, kernel_size=3, dropout=0.5):
         super().__init__()
         self.conv1 = nn.Conv2d(n_in, n_out, kernel_size, padding=1)
@@ -19,8 +20,14 @@ class UNetModule(nn.Module):
 
     def forward(self, x):
         layers = nn.Sequential(
-            self.conv1, self.bn, self.activation, self.drop,
-            self.conv2, self.bn, self.activation, self.drop
+            self.conv1,
+            self.bn,
+            self.activation,
+            self.drop,
+            self.conv2,
+            self.bn,
+            self.activation,
+            self.drop,
         )
         return layers(x)
 
@@ -38,7 +45,17 @@ class UNet(nn.Module):
     >>> x = torch.randn(1, 42, 512, 512)
     >>> y = model(x)
     """
-    def __init__(self, Cin, Cout, n_blocks=5, filter_factors=None, kernel_size=3, dropout=0.5):
+
+    def __init__(
+        self,
+        Cin,
+        Cout,
+        n_blocks=5,
+        filter_factors=None,
+        kernel_size=3,
+        dropout=0.5,
+        device=None,
+    ):
         super().__init__()
         if not filter_factors:
             self.filter_factors = list(2 ** np.arange(n_blocks))
@@ -54,10 +71,24 @@ class UNet(nn.Module):
         self.down = [UNetModule(Cin, input_sizes[0], kernel_size, dropout)]
         self.up = []
         for i in range(len(input_sizes) - 1):
-            self.down.append(UNetModule(input_sizes[i], input_sizes[i + 1], kernel_size, dropout))
-            self.up.append(UNetModule(input_sizes[i] + input_sizes[i + 1], input_sizes[i], kernel_size, dropout))
+            self.down.append(
+                UNetModule(input_sizes[i], input_sizes[i + 1], kernel_size, dropout)
+            )
+            self.up.append(
+                UNetModule(
+                    input_sizes[i] + input_sizes[i + 1],
+                    input_sizes[i],
+                    kernel_size,
+                    dropout,
+                )
+            )
 
         self.conv_final = nn.Conv2d(input_sizes[0], Cout, 1)
+        if device:
+            self.pool = self.pool.to(device)
+            self.upsample = self.upsample.to(device)
+            self.down = [d.to(device) for d in self.down]
+            self.up = [u.to(device) for u in self.up]
 
     def forward(self, x):
         # encoder pass
