@@ -20,7 +20,6 @@ import torch.nn as nn
 from tensorboardX import SummaryWriter
 import multiprocessing
 import argparse
-import signal
 
 
 def merge_defaults(opts, defaults_path):
