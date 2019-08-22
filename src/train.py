@@ -278,9 +278,7 @@ if __name__ == "__main__":
     print("Make sure you are using proxychains so that comet has internet access")
 
     scratch = str(Path(scratch) / "comets")
-    exp = Experiment(
-        offline_directory=params.train.comet_offline_dir or opts.comet_offline_dir
-    )
+    exp = Experiment()
     exp.log_parameter("__message", opts.message)
 
     trainer = gan_trainer(params, exp)
