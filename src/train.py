@@ -91,7 +91,7 @@ class gan_trainer:
             num_workers=self.opts.train.get("num_workers", 3),
         )
 
-        self.gan = GAN(**self.opts.model, device=device).to(self.device)
+        self.gan = GAN(**self.opts.model, device=self.device).to(self.device)
         self.g = self.gan.g
         self.d = self.gan.d
 
