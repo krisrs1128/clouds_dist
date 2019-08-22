@@ -274,9 +274,7 @@ if __name__ == "__main__":
     assert (Path(params.train.datapath) / "metos").exists()
 
     scratch = str(Path(scratch) / "comets")
-    exp = OfflineExperiment(
-        offline_directory=params.train.comet_offline_dir or opts.comet_offline_dir
-    )
+    exp = OfflineExperiment()
     exp.log_parameter("__message", opts.message)
 
     trainer = gan_trainer(params, exp)
