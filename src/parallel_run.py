@@ -171,7 +171,7 @@ if __name__ == "__main__":
 
 module load python/3.6
 
-source /home/vsch/cloudenv/bin/activate
+source $HOME/cloudenv/bin/activate
 
 rsync -avz /scratch/sankarak/data/clouds/imgs/ $SLURM_TMPDIR/imgs/
 rsync -avz /scratch/sankarak/data/clouds/metos/ $SLURM_TMPDIR/metos/
@@ -179,7 +179,8 @@ rsync -avz /scratch/sankarak/data/clouds/metos/ $SLURM_TMPDIR/metos/
 echo "Starting job"
 
 cd $HOME/clouds
-exec python -m src.train -m "{sbp["message"]}" -c "{sbp["conf_name"]}"
+
+ssh -N -D 9050 beluga1 & proxychains4 -q python -m src.train -m "{sbp["message"]}" -c "{sbp["conf_name"]}"
 """
         dest = Path(os.environ["SCRATCH"]) / "clouds"
         dest.mkdir(exist_ok=True)

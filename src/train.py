@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from comet_ml import OfflineExperiment
+from comet_ml import Experiment
 from datetime import datetime
 from pathlib import Path
 from src.data import EarthData
@@ -64,6 +64,9 @@ class gan_trainer:
                 for k, v in d.items():
                     print("{:<30}: {:<30}".format(str(k), str(v)))
             print()
+
+    def save(self):
+        torch.save(self.gan.state_dict(), str(self.trialdir / "gan.pt"))
 
     def make_directories(self):
         self.trialdir = self.runpath / f"trial_{self.trial_number}"
@@ -220,7 +223,7 @@ class gan_trainer:
                 if self.exp:
                     self.exp.log_image(imgs_cpu, name=f"imgs{i}")
 
-        torch.save(self.gan.state_dict(), str(self.trialdir / "gan.pt"))
+        self.save()
 
 
 if __name__ == "__main__":
@@ -273,9 +276,10 @@ if __name__ == "__main__":
     assert Path(params.train.datapath).exists()
     assert (Path(params.train.datapath) / "imgs").exists()
     assert (Path(params.train.datapath) / "metos").exists()
+    print("Make sure you are using proxychains so that comet has internet access")
 
     scratch = str(Path(scratch) / "comets")
-    exp = OfflineExperiment(
+    exp = Experiment(
         offline_directory=params.train.comet_offline_dir or opts.comet_offline_dir
     )
     exp.log_parameter("__message", opts.message)
