@@ -152,7 +152,7 @@ if __name__ == "__main__":
                 "sbatch": {**default_sbatch, **p["sbatch"]},
                 "config": {
                     "model": {**default_json["model"], **p["config"]["model"]},
-                    "train": {**default_json["train"], **p["config"]["trao,"]},
+                    "train": {**default_json["train"], **p["config"]["train"]},
                 },
             }
         )
