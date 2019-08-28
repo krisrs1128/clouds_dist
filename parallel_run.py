@@ -16,16 +16,15 @@ def write_conf(param):
     if not cname.endswith(".json"):
         cname += ".json"
     if Path(f"config/{cname}").exists():
-        s = list(re.finditer("\(\d+\)", cname))
+        s = list(re.finditer("--\d+\.", cname))
         if s:
             s = s[-1]
-            d = int(s.group().replace("(", "").replace(")", ""))
+            d = int(s.group().replace("--", "").replace(".", ""))
             d += 1
             i, j = s.span()
-            l = j - i - 2
-            cname = cname[: i + 1] + str(d) + cname[j - 1 :]
+            cname = cname[: i] + f"--{d}" + cname[j - 1 :]
         else:
-            cname = Path(f"config/{cname}").stem + "-(1).json"
+            cname = Path(f"config/{cname}").stem + "--1.json"
 
     with open(f"config/{cname}", "w") as f:
         json.dump(param["config"], f)
@@ -80,7 +79,11 @@ def env_to_path(path):
 }"""
 
 """Possible explore-lr.json
-[
+{
+    "experiment":{
+        "name": " explore-lr"
+    },
+    runs: [
     {
         "sbatch": {
             "runtime": "24:00:00",
@@ -121,6 +124,7 @@ def env_to_path(path):
         }
     }
 ]
+}
 
 """
 
