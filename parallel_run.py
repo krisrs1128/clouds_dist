@@ -25,7 +25,7 @@ def write_conf(param):
             l = j - i - 2
             cname = cname[: i + 1] + str(d) + cname[j - 1 :]
         else:
-            cname = Path(f"config/{cname}").stem + " (1).json"
+            cname = Path(f"config/{cname}").stem + "-(1).json"
 
     with open(f"config/{cname}", "w") as f:
         json.dump(param["config"], f)
@@ -82,7 +82,11 @@ def env_to_path(path):
 """Possible explore-lr.json
 [
     {
-        "sbatch": {"runtime": "24:00:00", "message": "learning rate exploration"},
+        "sbatch": {
+            "runtime": "24:00:00",
+            "message": "learning rate exploration",
+            "conf_name": "explore-lr"
+        },
         "config": {
             "model": {},
             "train": {
@@ -91,7 +95,11 @@ def env_to_path(path):
         }
     },
     {
-        "sbatch": {"runtime": "24:00:00", "message": "learning rate exploration"},
+        "sbatch": {
+            "runtime": "24:00:00",
+            "message": "learning rate exploration",
+            "conf_name": "explore-lr"
+        },
         "config": {
             "model": {},
             "train": {
@@ -100,14 +108,18 @@ def env_to_path(path):
         }
     },
     {
-        "sbatch": {"runtime": "24:00:00", "message": "learning rate exploration"},
+        "sbatch": {
+            "runtime": "24:00:00",
+            "message": "learning rate exploration",
+            "conf_name": "explore-lr"
+        },
         "config": {
             "model": {},
             "train": {
                 "lr_g1": 0.001
             }
         }
-    },
+    }
 ]
 
 """
