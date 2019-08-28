@@ -71,7 +71,7 @@ def env_to_path(path):
         "batch_size": 32,
         "n_epoch_regress": 100,
         "n_epoch_gan": 250,
-        "datapath": "/home/vsch/scratch/data/clouds",
+        "datapath": "/home/sankarak/scratch/data/clouds",
         "n_in_mem": 1,
         "early_break_epoch": 0,
         "load_limit": -1,
@@ -82,7 +82,7 @@ def env_to_path(path):
 """Possible explore-lr.json
 [
     {
-        "sbatch": {"runtime": "24:00:00"},
+        "sbatch": {"runtime": "24:00:00", "message": "learning rate exploration"},
         "config": {
             "model": {},
             "train": {
@@ -91,7 +91,7 @@ def env_to_path(path):
         }
     },
     {
-        "sbatch": {"runtime": "24:00:00"},
+        "sbatch": {"runtime": "24:00:00", "message": "learning rate exploration"},
         "config": {
             "model": {},
             "train": {
@@ -100,7 +100,7 @@ def env_to_path(path):
         }
     },
     {
-        "sbatch": {"runtime": "24:00:00"},
+        "sbatch": {"runtime": "24:00:00", "message": "learning rate exploration"},
         "config": {
             "model": {},
             "train": {
@@ -169,22 +169,22 @@ if __name__ == "__main__":
 #SBATCH --time={sbp["runtime"]}             # Run for 12h
 #SBATCH -o {env_to_path(sbp["slurm_out"])}  # Write the log in $SCRATCH
 
-module load python/3.6
-
-source $HOME/cloudenv/bin/activate
-
-rsync -avz /scratch/sankarak/data/clouds/imgs/ $SLURM_TMPDIR/imgs/
-rsync -avz /scratch/sankarak/data/clouds/metos/ $SLURM_TMPDIR/metos/
+module load singularity
 
 echo "Starting job"
 
-cd $HOME/clouds
+$DATADIR=/scratch/sankarak/data/clouds/
 
-ssh -N -D 9050 beluga1 & proxychains4 -q python -m src.train -m "{sbp["message"]}" -c "{sbp["conf_name"]}"
+singularity shell --nv --bind $HOME/clouds_dist:/home/clouds/,$DATADIR /scratch/sankarak/images/clouds.img \\
+    cd /home/clouds/ && python3 src/train.py -m "{sbp["message"]}" -c "{sbp["conf_name"]}
+
+
+#ssh -N -D 9050 beluga1 & proxychains4 -q python -m src.train -m "{sbp["message"]}" -c "{sbp["conf_name"]}"
+#python -m src.train -m "{sbp["message"]}" -c "{sbp["conf_name"]}"
 """
         dest = Path(os.environ["SCRATCH"]) / "clouds"
         dest.mkdir(exist_ok=True)
         file = dest / f"run-{sbp['conf_name']}.sh"
         with file.open("w") as f:
             f.write(template)
-        print(subprocess.check_output(f"sbatch {str(file)}", shell=True))
+        # print(subprocess.check_output(f"sbatch {str(file)}", shell=True))
