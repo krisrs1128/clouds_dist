@@ -143,6 +143,7 @@ default_sbatch = {
     "message": "explore exp run 12h",
     "conf_name": "explore",
     "singularity_path": "/scratch/sankarak/images/clouds.img",
+    "offline": True
 }
 
 
@@ -212,7 +213,11 @@ echo "Starting job"
 $DATADIR=/scratch/sankarak/data/clouds/
 
 singularity shell --nv --bind $HOME/clouds_dist:/home/clouds/,$DATADIR {sbp["singularity_path"]} \\
-    cd /home/clouds/ && python3 src/train.py -m "{sbp["message"]}" -c "{str(conf_path)} -o {str(run_dir)}
+    cd /home/clouds/ && python3 src/train.py \\
+        -m "{sbp["message"]}" \\
+        -c "{str(conf_path)} \\
+        -o {str(run_dir)} \\
+        {"-f" if sbp["offline"] else ""}
 
 """
 

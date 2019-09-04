@@ -245,11 +245,11 @@ if __name__ == "__main__":
         help="Add a message to the commet experiment",
     )
     parser.add_argument(
-        "-o",
-        "--comet_offline_dir",
-        type=str,
-        default=comdir,
-        help="where to store the OfflineExperiment",
+        "-f",
+        "--offline",
+        default=False,
+        action="store_true",
+        help="use an offline or standard experiment",
     )
     parser.add_argument(
         "-c",
@@ -293,8 +293,11 @@ if __name__ == "__main__":
     # print("Make sure you are using proxychains so that comet has internet access")
 
     scratch = str(Path(scratch) / "comets")
-    
-    exp = OfflineExperiment(offline_directory=str(output_path))
+
+    if opts.offline:
+        exp = OfflineExperiment(offline_directory=str(output_path))
+    else:
+        exp = Experiment()
     exp.log_parameter("__message", opts.message)
 
     trainer = gan_trainer(params, exp, output_dir)
