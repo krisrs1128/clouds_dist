@@ -232,9 +232,6 @@ if __name__ == "__main__":
     scratch = os.environ.get("SCRATCH") or os.path.join(
         os.environ.get("HOME"), "scratch"
     )
-    comdir = os.path.join(scratch, "cloud_comets")
-    if not Path(comdir).exists():
-        Path(comdir).mkdir()
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -310,7 +307,7 @@ if __name__ == "__main__":
             "bash",
             "-c",
             "python -m comet_ml.scripts.upload {}".format(
-                str(Path(comdir).resolve() / (trainer.exp.id + ".zip"))
+                str(Path(output_dir).resolve() / (trainer.exp.id + ".zip"))
             ),
         ]
     )
