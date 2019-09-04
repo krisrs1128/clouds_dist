@@ -297,7 +297,7 @@ if __name__ == "__main__":
         exp = Experiment()
     exp.log_parameter("__message", opts.message)
 
-    trainer = gan_trainer(params, exp, output_dir)
+    trainer = gan_trainer(params, exp, output_path)
 
     result = trainer.run_trail()
 
@@ -307,7 +307,7 @@ if __name__ == "__main__":
             "bash",
             "-c",
             "python -m comet_ml.scripts.upload {}".format(
-                str(Path(output_dir).resolve() / (trainer.exp.id + ".zip"))
+                str(Path(output_path).resolve() / (trainer.exp.id + ".zip"))
             ),
         ]
     )
