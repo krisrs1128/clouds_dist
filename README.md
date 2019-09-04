@@ -13,7 +13,7 @@
 * The histogram of some of the meteorological vars is shown in figure 1
 shows differences in scale  
 
-![alt text](https://github.com/krisrs1128/clouds_dist/raw/master/output/histogram.png  "histogram of 5 meteorological vars ")
+![alt text](https://github.com/krisrs1128/clouds_dist/raw/master/output/histogram.png width="450" height="300"  "histogram of 5 meteorological vars ")
     
 
 ## Training script 
