@@ -112,6 +112,7 @@ This script will execute a `sbatch` job for each element listed in explor-lr.jso
         "slurm_out": "$HOME/logs/slurm-%j.out",
         "message": "explore exp run 12h",
         "conf_name": "explore",
+        "singularity_path": "/scratch/sankarak/images/clouds.img"
     }
     ```
 * training params: `defaults.json` as above.
