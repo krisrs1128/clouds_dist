@@ -7,7 +7,7 @@
     * img (reflectance image): (3, 256, 256) 2d with 3 channels represent the reflectance ranges 0-1
     * Lat, Long: 2d tensors (256, 256) each, zipped with the reflectance images tensor.
     * U, V : 3d tensors (10, 256, 256) represent wind component for 10 different levels.
-    * RH: 3d tensor (10, 256, 256) represents relative-humidity for 10 different levels.
+    * RH: 3d tensor (10, 256, 256) represents relative-humidity for 10 different levels ranges 0-1.
     * Scattering_angle: 2d tensor (256, 256).
     * TS: 2d tensor (256, 256) represents surface temperature.
 * The histogram of some of the meteorological vars is shown in figure 1
