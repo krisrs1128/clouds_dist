@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from comet_ml import Experiment
+from comet_ml import Experiment, OfflineExperiment
 from datetime import datetime
 from pathlib import Path
 from src.data import EarthData
@@ -22,9 +22,9 @@ import multiprocessing
 import argparse
 
 
-def merge_defaults(opts, defaults_path):
-    print("Loading params from", defaults_path)
-    with open(defaults_path, "r") as f:
+def merge_defaults(opts, conf_path):
+    print("Loading params from", conf_path)
+    with open(conf_path, "r") as f:
         result = json.load(f)
     for group in ["model", "train"]:
         for k, v in opts[group].items():
@@ -34,7 +34,7 @@ def merge_defaults(opts, defaults_path):
 
 
 class gan_trainer:
-    def __init__(self, opts, comet_exp=None, n_epochs=50, verbose=1):
+    def __init__(self, opts, comet_exp=None, output_dir=".", n_epochs=50, verbose=1):
         self.opts = opts
         self.trainset = EarthData(
             self.opts.train.datapath,
@@ -49,11 +49,10 @@ class gan_trainer:
         timestamp = self.start_time.strftime("%Y_%m_%d_%H_%M_%S")
         self.timestamp = timestamp
 
-        self.runname = "unet_gan_10level"
-        self.runpath = Path("output") / self.runname / f"output_{timestamp}"
         self.results = []
 
         self.exp = comet_exp
+        self.output_dir = Path(output_dir)
 
         if self.verbose > 0:
             print("-------------------------")
@@ -64,18 +63,17 @@ class gan_trainer:
                 for k, v in d.items():
                     print("{:<30}: {:<30}".format(str(k), str(v)))
             print()
+        self.make_directories()
 
-    def save(self):
-        torch.save(self.gan.state_dict(), str(self.trialdir / "gan.pt"))
+    def save(self, epoch=0):
+        torch.save(self.gan.state_dict(), str(self.ckptdir / f"gan_{epoch}.pt"))
+        torch.save(self.gan.state_dict(), str(self.ckptdir / f"gan_latest.pt"))
 
     def make_directories(self):
-        self.trialdir = self.runpath / f"trial_{self.trial_number}"
-        self.logdir = self.trialdir / "log"
-        self.imgdir = self.trialdir / "images"
+        self.ckptdir = self.output_dir / "checkpoints"
+        self.imgdir = self.output_dir / "images"
 
-        self.runpath.mkdir(parents=True, exist_ok=True)
-        self.trialdir.mkdir(exist_ok=True)
-        self.logdir.mkdir(exist_ok=True)
+        self.ckptdir.mkdir(parents=True, exist_ok=True)
         self.imgdir.mkdir(exist_ok=True)
 
     def run_trail(self):
@@ -219,11 +217,14 @@ class gan_trainer:
                 imgs = torch.cat((tmp_tensor, generated_img[i], real_img[i]), 1)
                 imgs_cpu = imgs.cpu().detach().numpy()
                 imgs_cpu = np.swapaxes(imgs_cpu, 0, 2)
-                np.save(f"/home/vsch/image_{i}.npy", imgs_cpu)
+                np.save(str(self.imgdir / f"imgs_{epoch}_{i}.npy"), imgs_cpu)
                 if self.exp:
-                    self.exp.log_image(imgs_cpu, name=f"imgs{i}")
+                    try:
+                        self.exp.log_image(imgs_cpu, name=f"imgs_{epoch}_{i}")
+                    except Exception as e:
+                        print(f"\n{e}\n")
 
-        self.save()
+            self.save(epoch)
 
 
 if __name__ == "__main__":
@@ -257,15 +258,28 @@ if __name__ == "__main__":
         default="defaults",
         help="name of conf file in config/ | may ommit the .json extension",
     )
+    parser.add_argument(
+        "-o",
+        "--output_dir",
+        type=str,
+        help="where the run's data should be stored ; used to resume",
+    )
     opts = parser.parse_args()
 
-    conf_name = opts.conf_name
-    if not conf_name.endswith(".json"):
-        conf_name += ".json"
+    conf_path = opts.conf_name
+    output_path = Path(opts.output_dir)
 
-    assert Path("config/" + conf_name).exists()
+    if not output_path.exists():
+        output_path.mkdir()
 
-    params = merge_defaults({"model": {}, "train": {}}, f"config/{conf_name}")
+    if not Path(conf_path).exists():
+        conf_name = conf_path
+        if not conf_name.endswith(".json"):
+            conf_name += ".json"
+        conf_path = Path("config") / conf_name
+        assert conf_path.exists()
+
+    params = merge_defaults({"model": {}, "train": {}}, conf_path)
 
     data_path = params.train.datapath.split("/")
     for i, d in enumerate(data_path):
@@ -276,13 +290,14 @@ if __name__ == "__main__":
     assert Path(params.train.datapath).exists()
     assert (Path(params.train.datapath) / "imgs").exists()
     assert (Path(params.train.datapath) / "metos").exists()
-    print("Make sure you are using proxychains so that comet has internet access")
+    # print("Make sure you are using proxychains so that comet has internet access")
 
     scratch = str(Path(scratch) / "comets")
-    exp = Experiment()
+    
+    exp = OfflineExperiment(offline_directory=str(output_path))
     exp.log_parameter("__message", opts.message)
 
-    trainer = gan_trainer(params, exp)
+    trainer = gan_trainer(params, exp, output_dir)
 
     result = trainer.run_trail()
 

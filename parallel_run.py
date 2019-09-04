@@ -7,7 +7,23 @@ import argparse
 import re
 
 
-def write_conf(param):
+def get_increasable_name(file_path):
+    f = Path(file_path)
+    if f.exists():
+        name = f.name
+        s = list(re.finditer("--\d+\.", name))
+        if s:
+            s = s[-1]
+            d = int(s.group().replace("--", "").replace(".", ""))
+            d += 1
+            i, j = s.span()
+            name = name[:i] + f"--{d}" + name[j - 1 :]
+        else:
+            name = f.stem + "--1.json"
+    return f.parent() / name
+
+
+def write_conf(run_dir, param):
     """Write config file from params to config/conf_name
     If conf_name exisits, increments a counter in the name:
     explore.json -> explore (1).json -> explore (2).json ...
@@ -15,20 +31,10 @@ def write_conf(param):
     cname = param["sbatch"].get("conf_name", "overwritable_conf")
     if not cname.endswith(".json"):
         cname += ".json"
-    if Path(f"config/{cname}").exists():
-        s = list(re.finditer("\(\d+\)", cname))
-        if s:
-            s = s[-1]
-            d = int(s.group().replace("(", "").replace(")", ""))
-            d += 1
-            i, j = s.span()
-            l = j - i - 2
-            cname = cname[: i + 1] + str(d) + cname[j - 1 :]
-        else:
-            cname = Path(f"config/{cname}").stem + " (1).json"
 
-    with open(f"config/{cname}", "w") as f:
+    with open(run_dir / cname, "w") as f:
         json.dump(param["config"], f)
+    return run_dir / cname
 
 
 def env_to_path(path):
@@ -71,7 +77,7 @@ def env_to_path(path):
         "batch_size": 32,
         "n_epoch_regress": 100,
         "n_epoch_gan": 250,
-        "datapath": "/home/vsch/scratch/data/clouds",
+        "datapath": "/home/sankarak/scratch/data/clouds",
         "n_in_mem": 1,
         "early_break_epoch": 0,
         "load_limit": -1,
@@ -80,9 +86,17 @@ def env_to_path(path):
 }"""
 
 """Possible explore-lr.json
-[
+{
+    "experiment":{
+        "name": " explore-lr-experiment"
+    },
+    runs: [
     {
-        "sbatch": {"runtime": "24:00:00"},
+        "sbatch": {
+            "runtime": "24:00:00",
+            "message": "learning rate exploration",
+            "conf_name": "explore-lr"
+        },
         "config": {
             "model": {},
             "train": {
@@ -91,7 +105,11 @@ def env_to_path(path):
         }
     },
     {
-        "sbatch": {"runtime": "24:00:00"},
+        "sbatch": {
+            "runtime": "24:00:00",
+            "message": "learning rate exploration",
+            "conf_name": "explore-lr"
+        },
         "config": {
             "model": {},
             "train": {
@@ -100,15 +118,20 @@ def env_to_path(path):
         }
     },
     {
-        "sbatch": {"runtime": "24:00:00"},
+        "sbatch": {
+            "runtime": "24:00:00",
+            "message": "learning rate exploration",
+            "conf_name": "explore-lr"
+        },
         "config": {
             "model": {},
             "train": {
                 "lr_g1": 0.001
             }
         }
-    },
+    }
 ]
+}
 
 """
 
@@ -124,6 +147,11 @@ default_sbatch = {
 
 if __name__ == "__main__":
 
+    EXP_ROOT_DIR = Path(os.environ["SCRATCH"]) / "clouds"
+    EXP_ROOT_DIR.mkdir(exist_ok=True)
+    EXP_ROOT_DIR = EXP_ROOT_DIR / "experiments"
+    EXP_ROOT_DIR.mkdir(exist_ok=True)
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-e",
@@ -138,12 +166,17 @@ if __name__ == "__main__":
     with open(default_json_file, "r") as f:
         default_json = json.load(f)
 
-    exploration_file = opts.exploration_file
+    explration_file = opts.exploration_file
     if not exploration_file.endswith(".json"):
         exploration_file += ".json"
     with open(f"config/{exploration_file}", "r") as f:
         exploration_params = json.load(f)
-        assert isinstance(exploration_params, list)
+        assert isinstance(exploration_params, dict)
+
+    exp_name = exploration_params["experiment"].get("name", "explore-experiment")
+    exp_dir = EXP_ROOT_DIR / exp_name
+    exp_dir = get_increasable_name(exp_dir)
+    exp_dir.mkdir()
 
     params = []
     for p in exploration_params:
@@ -152,14 +185,16 @@ if __name__ == "__main__":
                 "sbatch": {**default_sbatch, **p["sbatch"]},
                 "config": {
                     "model": {**default_json["model"], **p["config"]["model"]},
-                    "train": {**default_json["train"], **p["config"]["trao,"]},
+                    "train": {**default_json["train"], **p["config"]["train"]},
                 },
             }
         )
 
-    for param in params:
+    for i, param in enumerate(params):
+        run_dir = exp_dir / f"run_{i}"
+        run_dir.mkdir()
         sbp = param["sbatch"]
-        write_conf(param)
+        conf_path = write_conf(run_dir, param)  # returns Path() from pathlib
         template = f"""
 #!/bin/bash
 #SBATCH --account=rpp-bengioy               # Yoshua pays for your job
@@ -169,22 +204,18 @@ if __name__ == "__main__":
 #SBATCH --time={sbp["runtime"]}             # Run for 12h
 #SBATCH -o {env_to_path(sbp["slurm_out"])}  # Write the log in $SCRATCH
 
-module load python/3.6
-
-source $HOME/cloudenv/bin/activate
-
-rsync -avz /scratch/sankarak/data/clouds/imgs/ $SLURM_TMPDIR/imgs/
-rsync -avz /scratch/sankarak/data/clouds/metos/ $SLURM_TMPDIR/metos/
+module load singularity
 
 echo "Starting job"
 
-cd $HOME/clouds
+$DATADIR=/scratch/sankarak/data/clouds/
 
-ssh -N -D 9050 beluga1 & proxychains4 -q python -m src.train -m "{sbp["message"]}" -c "{sbp["conf_name"]}"
+singularity shell --nv --bind $HOME/clouds_dist:/home/clouds/,$DATADIR /scratch/sankarak/images/clouds.img \\
+    cd /home/clouds/ && python3 src/train.py -m "{sbp["message"]}" -c "{str(conf_path)} -o {str(run_dir)}
+
 """
-        dest = Path(os.environ["SCRATCH"]) / "clouds"
-        dest.mkdir(exist_ok=True)
-        file = dest / f"run-{sbp['conf_name']}.sh"
+
+        file = run_dir / f"run-{sbp['conf_name']}.sh"
         with file.open("w") as f:
             f.write(template)
-        print(subprocess.check_output(f"sbatch {str(file)}", shell=True))
+        # print(subprocess.check_output(f"sbatch {str(file)}", shell=True))
