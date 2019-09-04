@@ -293,6 +293,7 @@ if __name__ == "__main__":
     # print("Make sure you are using proxychains so that comet has internet access")
 
     scratch = str(Path(scratch) / "comets")
+    
     exp = OfflineExperiment(offline_directory=str(output_path))
     exp.log_parameter("__message", opts.message)
 
