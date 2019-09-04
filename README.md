@@ -1,7 +1,7 @@
 # clouds_dist
 
 
-#Dataset
+## Dataset
 * The dataset consists of 3100 training samples compressed in npz files 
 * Each training sample has the following attributes
     * img (reflectance image): (3, 256, 256) 2d with 3 channels represent the reflectance ranges 0-1
@@ -16,7 +16,7 @@ shows differences in scale
 ![alt text](https://github.com/krisrs1128/clouds_dist/tree/master/output/histogram.png  "histogram of 5 meteorological vars ")
     
 
-#Training script 
+## Training script 
 To run the training script, should be able do to something like
 ```
 module load singularity
