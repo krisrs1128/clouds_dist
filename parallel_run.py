@@ -19,7 +19,7 @@ def get_increasable_name(file_path):
             i, j = s.span()
             name = name[:i] + f"--{d}" + name[j - 1 :]
         else:
-            name = f.stem + "--1.json"
+            name = f.stem + "--1" + f.suffix
     return f.parent / name
 
 
@@ -190,9 +190,9 @@ if __name__ == "__main__":
         EXP_ROOT_DIR = opts.exp_dir
     if EXP_ROOT_DIR is None:
         EXP_ROOT_DIR = Path(os.environ["SCRATCH"]) / "clouds"
+        EXP_ROOT_DIR.mkdir(exist_ok=True)
+        EXP_ROOT_DIR = EXP_ROOT_DIR / "experiments"
 
-    EXP_ROOT_DIR.mkdir(exist_ok=True)
-    EXP_ROOT_DIR = EXP_ROOT_DIR / "experiments"
     EXP_ROOT_DIR.mkdir(exist_ok=True)
 
     exp_name = exploration_params["experiment"].get("name", "explore-experiment")
