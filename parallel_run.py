@@ -20,7 +20,7 @@ def get_increasable_name(file_path):
             name = name[:i] + f"--{d}" + name[j - 1 :]
         else:
             name = f.stem + "--1.json"
-    return f.parent() / name
+    return f.parent / name
 
 
 def write_conf(run_dir, param):
