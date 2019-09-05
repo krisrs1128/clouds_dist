@@ -203,7 +203,7 @@ if __name__ == "__main__":
     # -----------------------------------------
 
     params = []
-    for p in exploration_params:
+    for p in exploration_params["runs"]:
         params.append(
             {
                 "sbatch": {**default_sbatch, **p["sbatch"]},
