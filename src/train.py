@@ -297,6 +297,7 @@ if __name__ == "__main__":
             data_path[i] = os.environ.get(d.replace("$", ""))
     params.train.datapath = "/".join(data_path)
 
+    print("Loading data from ", str(params.train.datapath))
     assert Path(params.train.datapath).exists()
     assert (Path(params.train.datapath) / "imgs").exists()
     assert (Path(params.train.datapath) / "metos").exists()
