@@ -9,8 +9,8 @@ import re
 
 def get_increasable_name(file_path):
     f = Path(file_path)
+    name = f.name
     if f.exists():
-        name = f.name
         s = list(re.finditer("--\d+\.", name))
         if s:
             s = s[-1]
