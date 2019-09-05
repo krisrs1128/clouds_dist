@@ -239,8 +239,8 @@ $DATADIR=/scratch/sankarak/data/clouds/
 singularity shell --nv --bind $HOME/clouds_dist:/home/clouds/,$DATADIR,{str(exp_dir)} {sbp["singularity_path"]} \\
     cd /home/clouds/ && python3 src/train.py \\
         -m "{sbp["message"]}" \\
-        -c "{str(conf_path)} \\
-        -o {str(run_dir)} \\
+        -c "{str(conf_path)}"\\
+        -o "{str(run_dir)}" \\
         {"-f" if sbp["offline"] else ""}
 
 """
