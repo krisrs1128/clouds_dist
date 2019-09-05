@@ -26,7 +26,7 @@ class GAN(nn.Module):
         self.d = Discriminator(Cin, 128, device=device)
 
         self.g.apply(self.init_weights)
-        self.d.apply(self.init_weights)
+        # self.d.apply(self.init_weights)
 
     def init_weights(self, m):
         if type(m) == nn.Linear:

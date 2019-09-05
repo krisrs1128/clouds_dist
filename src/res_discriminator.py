@@ -19,8 +19,8 @@ class ResBlockDiscriminator(nn.Module):
 
         self.conv1 = nn.Conv2d(in_channels, out_channels, 3, 1, padding=1)
         self.conv2 = nn.Conv2d(out_channels, out_channels, 3, 1, padding=1)
-        nn.init.xavier_uniform(self.conv1.weight.data, 1.0)
-        nn.init.xavier_uniform(self.conv2.weight.data, 1.0)
+        nn.init.xavier_uniform_(self.conv1.weight.data, 1.0)
+        nn.init.xavier_uniform_(self.conv2.weight.data, 1.0)
 
         if stride == 1:
             self.model = nn.Sequential(
@@ -38,7 +38,7 @@ class ResBlockDiscriminator(nn.Module):
         if stride != 1:
 
             self.bypass_conv = nn.Conv2d(in_channels, out_channels, 1, 1, padding=0)
-            nn.init.xavier_uniform(self.bypass_conv.weight.data, np.sqrt(2))
+            nn.init.xavier_uniform_(self.bypass_conv.weight.data, np.sqrt(2))
 
             self.bypass = nn.Sequential(
                 SpectralNorm(self.bypass_conv),
@@ -64,9 +64,9 @@ class FirstResBlockDiscriminator(nn.Module):
         self.conv1 = nn.Conv2d(in_channels, out_channels, 3, 1, padding=1)
         self.conv2 = nn.Conv2d(out_channels, out_channels, 3, 1, padding=1)
         self.bypass_conv = nn.Conv2d(in_channels, out_channels, 1, 1, padding=0)
-        nn.init.xavier_uniform(self.conv1.weight.data, 1.0)
-        nn.init.xavier_uniform(self.conv2.weight.data, 1.0)
-        nn.init.xavier_uniform(self.bypass_conv.weight.data, np.sqrt(2))
+        nn.init.xavier_uniform_(self.conv1.weight.data, 1.0)
+        nn.init.xavier_uniform_(self.conv2.weight.data, 1.0)
+        nn.init.xavier_uniform_(self.bypass_conv.weight.data, np.sqrt(2))
 
         # we don't want to apply ReLU activation to raw image before convolution transformation.
         self.model = nn.Sequential(
@@ -95,7 +95,7 @@ class Discriminator(nn.Module):
             nn.AvgPool2d(8),
         )
         self.fc = nn.Linear(disc_size, 1)
-        nn.init.xavier_uniform(self.fc.weight.data, 1.0)
+        nn.init.xavier_uniform_(self.fc.weight.data, 1.0)
         self.fc = SpectralNorm(self.fc)
         if device:
             self.model = self.model.to(device)
