@@ -307,12 +307,13 @@ if __name__ == "__main__":
     result = trainer.run_trail()
 
     trainer.exp.end()
-    subprocess.check_output(
-        [
-            "bash",
-            "-c",
-            "python -m comet_ml.scripts.upload {}".format(
-                str(Path(output_path).resolve() / (trainer.exp.id + ".zip"))
-            ),
-        ]
-    )
+    if opts.offline and not opts.no_exp:
+        subprocess.check_output(
+            [
+                "bash",
+                "-c",
+                "python -m comet_ml.scripts.upload {}".format(
+                    str(Path(output_path).resolve() / (trainer.exp.id + ".zip"))
+                ),
+            ]
+        )
