@@ -91,47 +91,47 @@ def env_to_path(path):
         "name": "explore-lr-experiment",
         "exp_dir": "$SCRATCH/clouds"
     },
-    runs: [
-    {
-        "sbatch": {
-            "runtime": "24:00:00",
-            "message": "learning rate exploration",
-            "conf_name": "explore-lr"
+    "runs": [
+        {
+            "sbatch": {
+                "runtime": "24:00:00",
+                "message": "learning rate exploration",
+                "conf_name": "explore-lr"
+            },
+            "config": {
+                "model": {},
+                "train": {
+                    "lr_d": 0.001
+                }
+            }
         },
-        "config": {
-            "model": {},
-            "train": {
-                "lr_d": 0.001
+        {
+            "sbatch": {
+                "runtime": "24:00:00",
+                "message": "learning rate exploration",
+                "conf_name": "explore-lr"
+            },
+            "config": {
+                "model": {},
+                "train": {
+                    "lr_d": 0.0001
+                }
+            }
+        },
+        {
+            "sbatch": {
+                "runtime": "24:00:00",
+                "message": "learning rate exploration",
+                "conf_name": "explore-lr"
+            },
+            "config": {
+                "model": {},
+                "train": {
+                    "lr_g1": 0.001
+                }
             }
         }
-    },
-    {
-        "sbatch": {
-            "runtime": "24:00:00",
-            "message": "learning rate exploration",
-            "conf_name": "explore-lr"
-        },
-        "config": {
-            "model": {},
-            "train": {
-                "lr_d": 0.0001
-            }
-        }
-    },
-    {
-        "sbatch": {
-            "runtime": "24:00:00",
-            "message": "learning rate exploration",
-            "conf_name": "explore-lr"
-        },
-        "config": {
-            "model": {},
-            "train": {
-                "lr_g1": 0.001
-            }
-        }
-    }
-]
+    ]
 }
 
 """
@@ -236,7 +236,7 @@ echo "Starting job"
 
 $DATADIR=/scratch/sankarak/data/clouds/
 
-singularity shell --nv --bind $HOME/clouds_dist:/home/clouds/,$DATADIR,{str(run_dir)} {sbp["singularity_path"]} \\
+singularity shell --nv --bind $HOME/clouds_dist:/home/clouds/,$DATADIR,{str(exp_dir)} {sbp["singularity_path"]} \\
     cd /home/clouds/ && python3 src/train.py \\
         -m "{sbp["message"]}" \\
         -c "{str(conf_path)} \\
