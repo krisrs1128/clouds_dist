@@ -82,12 +82,12 @@ class FirstResBlockDiscriminator(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, Cin, disc_size, device=None):
+    def __init__(self, Cout, disc_size, device=None):
         super(Discriminator, self).__init__()
         self.disc_size = disc_size
 
         self.model = nn.Sequential(
-            FirstResBlockDiscriminator(Cin, disc_size, stride=2),
+            FirstResBlockDiscriminator(Cout, disc_size, stride=2),
             ResBlockDiscriminator(disc_size, disc_size, stride=2),
             ResBlockDiscriminator(disc_size, disc_size),
             ResBlockDiscriminator(disc_size, disc_size),

@@ -23,7 +23,7 @@ class GAN(nn.Module):
         self.g = UNet(
             Cin + Cout, Cout, n_blocks, filter_factors, kernel_size, dropout, device
         )
-        self.d = Discriminator(Cin, 128, device=device)
+        self.d = Discriminator(Cout, 128, device=device)
 
         self.g.apply(self.init_weights)
         # self.d.apply(self.init_weights)
