@@ -237,6 +237,7 @@ echo "Starting job"
 $DATADIR=/scratch/sankarak/data/clouds/
 
 singularity shell --nv --bind $HOME/clouds_dist:/home/clouds/,$DATADIR,{str(exp_dir)} {sbp["singularity_path"]} \\
+    echo $(pwd) && echo $(ls) && echo $(ls /home/clouds)\\
     cd /home/clouds/ && python3 src/train.py \\
         -m "{sbp["message"]}" \\
         -c "{str(conf_path)}"\\
