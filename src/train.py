@@ -311,8 +311,7 @@ if __name__ == "__main__":
             exp = OfflineExperiment(offline_directory=str(output_path))
         else:
             exp = Experiment()
-
-    exp.log_parameter("__message", opts.message)
+        exp.log_parameter("__message", opts.message)
 
     trainer = gan_trainer(params, exp, output_path)
 
