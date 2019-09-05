@@ -16,6 +16,7 @@ class GAN(nn.Module):
         filter_factors=None,
         kernel_size=3,
         dropout=0.5,
+        disc_size=64,
         device=None,
     ):
         super(GAN, self).__init__()
@@ -23,7 +24,7 @@ class GAN(nn.Module):
         self.g = UNet(
             Cin + Cout, Cout, n_blocks, filter_factors, kernel_size, dropout, device
         )
-        self.d = Discriminator(Cout, 128, device=device)
+        self.d = Discriminator(Cout, disc_size, device=device)
 
         self.g.apply(self.init_weights)
         # self.d.apply(self.init_weights)
