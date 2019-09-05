@@ -64,6 +64,7 @@ class gan_trainer:
                     print("{:<30}: {:<30}".format(str(k), str(v)))
             print()
         self.make_directories()
+        self.debug = Dict()
 
     def save(self, epoch=0):
         torch.save(self.gan.state_dict(), str(self.ckptdir / f"gan_{epoch}.pt"))
@@ -113,6 +114,10 @@ class gan_trainer:
         input_tensor.uniform_(-1, 1)
         return input_tensor
 
+    def log_debug(self, var, name):
+        self.debug[name].prev = self.debug[name].curr
+        self.debug[name].curr = var
+
     def train(self, n_epochs, lr_d=1e-2, lr_g=1e-2, lambda_gan=0.01, lambda_L1=1):
         # initialize trial
         d_optimizer = optim.Adam(self.d.parameters(), lr=lr_d)
@@ -157,6 +162,13 @@ class gan_trainer:
                 d_loss = 0.5 * (
                     MSE(fake_prob, fake_target) + MSE(real_prob, real_target)
                 )
+                self.log_debug(fake_prob, "fake_prob")
+                self.log_debug(fake_target, "fake_target")
+                self.log_debug(real_prob, "real_prob")
+                self.log_debug(real_target, "real_target")
+                if np.allclose(d_loss, 0.5):
+                    return
+
                 d_loss.backward(retain_graph=True)
                 d_optimizer.step()
 
