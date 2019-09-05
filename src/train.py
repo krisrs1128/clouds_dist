@@ -261,6 +261,7 @@ if __name__ == "__main__":
         type=str,
         help="where the run's data should be stored ; used to resume",
     )
+    parser.add_argument("-n", "--no_exp", default=False, action="store_true")
     opts = parser.parse_args()
 
     conf_path = opts.conf_name
@@ -291,10 +292,14 @@ if __name__ == "__main__":
 
     scratch = str(Path(scratch) / "comets")
 
-    if opts.offline:
-        exp = OfflineExperiment(offline_directory=str(output_path))
+    if opts.no_exp:
+        exp = None
     else:
-        exp = Experiment()
+        if opts.offline:
+            exp = OfflineExperiment(offline_directory=str(output_path))
+        else:
+            exp = Experiment()
+
     exp.log_parameter("__message", opts.message)
 
     trainer = gan_trainer(params, exp, output_path)
