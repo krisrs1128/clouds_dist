@@ -166,7 +166,7 @@ class gan_trainer:
                 self.log_debug(fake_target, "fake_target")
                 self.log_debug(real_prob, "real_prob")
                 self.log_debug(real_target, "real_target")
-                if np.allclose(d_loss, 0.5):
+                if np.allclose(d_loss.item(), 0.5):
                     return
 
                 d_loss.backward(retain_graph=True)
