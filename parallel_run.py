@@ -221,8 +221,7 @@ if __name__ == "__main__":
         run_dir.mkdir()
         sbp = param["sbatch"]
         conf_path = write_conf(run_dir, param)  # returns Path() from pathlib
-        template = f"""
-#!/bin/bash
+        template = f"""#!/bin/bash
 #SBATCH --account=rpp-bengioy               # Yoshua pays for your job
 #SBATCH --cpus-per-task={sbp["cpus"]}       # Ask for 6 CPUs
 #SBATCH --gres=gpu:1                        # Ask for 1 GPU
