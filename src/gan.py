@@ -2,7 +2,9 @@ import torch
 import torch.nn as nn
 
 from src.unet_concise import UNet
-from src.cloud_unet import Discriminator
+
+# from src.cloud_unet import Discriminator
+from src.res_discriminator import Discriminator
 
 
 class GAN(nn.Module):
@@ -21,7 +23,7 @@ class GAN(nn.Module):
         self.g = UNet(
             Cin + Cout, Cout, n_blocks, filter_factors, kernel_size, dropout, device
         )
-        self.d = Discriminator(Cout, n_channels=16, nlevels=4, device=device)
+        self.d = Discriminator(Cin, 128, device=device)
 
         self.g.apply(self.init_weights)
         self.d.apply(self.init_weights)
