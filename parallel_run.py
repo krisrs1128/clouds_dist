@@ -88,7 +88,8 @@ def env_to_path(path):
 """Possible explore-lr.json
 {
     "experiment":{
-        "name": " explore-lr-experiment"
+        "name": "explore-lr-experiment",
+        "exp_dir": "$SCRATCH/clouds"
     },
     runs: [
     {
@@ -143,16 +144,11 @@ default_sbatch = {
     "message": "explore exp run 12h",
     "conf_name": "explore",
     "singularity_path": "/scratch/sankarak/images/clouds.img",
-    "offline": True
+    "offline": True,
 }
 
 
 if __name__ == "__main__":
-
-    EXP_ROOT_DIR = Path(os.environ["SCRATCH"]) / "clouds"
-    EXP_ROOT_DIR.mkdir(exist_ok=True)
-    EXP_ROOT_DIR = EXP_ROOT_DIR / "experiments"
-    EXP_ROOT_DIR.mkdir(exist_ok=True)
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -160,9 +156,17 @@ if __name__ == "__main__":
         "--exploration_file",
         type=str,
         default="explore.json",
-        help="Where to fint the exploration file",
+        help="Where to find the exploration file",
+    )
+    parser.add_argument(
+        "-d",
+        "--exp_dir",
+        type=str,
+        help="Where to store the experiment, overrides what's in the exp file",
     )
     opts = parser.parse_args()
+
+    # -----------------------------------------
 
     default_json_file = "config/defaults.json"
     with open(default_json_file, "r") as f:
@@ -175,10 +179,28 @@ if __name__ == "__main__":
         exploration_params = json.load(f)
         assert isinstance(exploration_params, dict)
 
+    # -----------------------------------------
+
+    EXP_ROOT_DIR = None
+    if "exp_dir" in exploration_params["experiment"]:
+        EXP_ROOT_DIR = Path(
+            env_to_path(exploration_params["experiment"]["exp_dir"])
+        ).resolve()
+    if opts.exp_dir:
+        EXP_ROOT_DIR = opts.exp_dir
+    if EXP_ROOT_DIR is None:
+        EXP_ROOT_DIR = Path(os.environ["SCRATCH"]) / "clouds"
+
+    EXP_ROOT_DIR.mkdir(exist_ok=True)
+    EXP_ROOT_DIR = EXP_ROOT_DIR / "experiments"
+    EXP_ROOT_DIR.mkdir(exist_ok=True)
+
     exp_name = exploration_params["experiment"].get("name", "explore-experiment")
     exp_dir = EXP_ROOT_DIR / exp_name
     exp_dir = get_increasable_name(exp_dir)
     exp_dir.mkdir()
+
+    # -----------------------------------------
 
     params = []
     for p in exploration_params:
@@ -191,6 +213,8 @@ if __name__ == "__main__":
                 },
             }
         )
+
+    # -----------------------------------------
 
     for i, param in enumerate(params):
         run_dir = exp_dir / f"run_{i}"
