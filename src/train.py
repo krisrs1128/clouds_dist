@@ -305,7 +305,9 @@ if __name__ == "__main__":
 
     result = trainer.run_trail()
 
-    trainer.exp.end()
+    if not opts.no_exp:
+        trainer.exp.end()
+
     if opts.offline and not opts.no_exp:
         subprocess.check_output(
             [
