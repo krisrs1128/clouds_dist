@@ -102,8 +102,8 @@ class gan_trainer:
             self.opts.train.n_epochs,
             self.opts.train.lr_d,
             self.opts.train.lr_g1,
-            lambda_gan=0,
-            lambda_L1=1,
+            self.opts.lambda_gan,
+            self.opts.lambda_L1,
         )
         return {"loss": val_loss, "opts": self.opts}
 

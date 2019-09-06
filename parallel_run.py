@@ -63,17 +63,15 @@ def env_to_path(path):
         "kernel_size": 3,
         "dropout": 0.75,
         "Cin": 42,
-        "Cout": 3,
+        "Cout": 3
     },
     "train": {
         "n_epochs": 100,
         "lr_d": 0.01,
         "lr_g1": 0.0005,
         "lr_g2": 0.0001,
-        "lambda_gan_1": 0.01,
-        "lambda_L1_1": 1,
-        "lambda_gan_2": 0.03,
-        "lamdba_L1_2": 1,
+        "lambda_gan": 0.01,
+        "lambda_L1": 1,
         "batch_size": 32,
         "n_epoch_regress": 100,
         "n_epoch_gan": 250,
@@ -81,7 +79,7 @@ def env_to_path(path):
         "n_in_mem": 1,
         "early_break_epoch": 0,
         "load_limit": -1,
-        "num_workers": 3,
+        "num_workers": 3
     }
 }"""
 
