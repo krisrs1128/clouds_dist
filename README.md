@@ -87,7 +87,8 @@ config/defaults.json:
         "n_in_mem": 1,
         "early_break_epoch": 0,
         "load_limit": -1,
-        "num_workers": 3
+        "num_workers": 3,
+        "num_D_accumulations": 8
     }
 }
 ```

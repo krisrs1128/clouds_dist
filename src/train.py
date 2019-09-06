@@ -16,6 +16,7 @@ import numpy as np
 import os
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 # from tensorboardX import SummaryWriter
 import multiprocessing
@@ -31,6 +32,14 @@ def merge_defaults(opts, conf_path):
             result[group][k] = v
 
     return Dict(result)
+
+
+def loss_hinge_dis(dis_fake, dis_real):
+    # This version returns a single loss
+    # from https://github.com/ajbrock/BigGAN-PyTorch/blob/master/losses.py
+    loss = torch.mean(F.relu(1.0 - dis_real))
+    loss += torch.mean(F.relu(1.0 + dis_fake))
+    return loss
 
 
 class gan_trainer:
@@ -104,6 +113,7 @@ class gan_trainer:
             self.opts.train.lr_g1,
             self.opts.train.lambda_gan,
             self.opts.train.lambda_L1,
+            self.opts.train.num_D_accumulations,
         )
         return {"loss": val_loss, "opts": self.opts}
 
@@ -118,7 +128,15 @@ class gan_trainer:
         self.debug[name].prev = self.debug[name].curr
         self.debug[name].curr = var
 
-    def train(self, n_epochs, lr_d=1e-2, lr_g=1e-2, lambda_gan=0.01, lambda_L1=1):
+    def train(
+        self,
+        n_epochs,
+        lr_d=1e-2,
+        lr_g=1e-2,
+        lambda_gan=0.01,
+        lambda_L1=1,
+        num_D_accumulations=8,
+    ):
         # initialize trial
         d_optimizer = optim.Adam(self.d.parameters(), lr=lr_d)
         g_optimizer = optim.Adam(self.g.parameters(), lr=lr_g)
@@ -145,31 +163,35 @@ class gan_trainer:
 
                 shape = metos_data.shape
 
-                self.input_tensor = self.get_noise_tensor(shape)
-                self.input_tensor[:, : self.opts.model.Cin, :, :] = metos_data
-                self.input_tensor = self.input_tensor.to(device)
+                for acc in range(num_D_accumulations):
+                    self.input_tensor = self.get_noise_tensor(shape)
+                    self.input_tensor[:, : self.opts.model.Cin, :, :] = metos_data
+                    self.input_tensor = self.input_tensor.to(device)
 
-                real_img = real_img.to(device)
-                generated_img = self.g(self.input_tensor)
+                    real_img = real_img.to(device)
+                    generated_img = self.g(self.input_tensor)
 
-                real_prob = self.d(real_img)
-                fake_prob = self.d(generated_img.detach())
+                    real_prob = self.d(real_img)
+                    fake_prob = self.d(generated_img.detach())
 
-                real_target = torch.ones(real_prob.shape, device=device)
-                fake_target = torch.zeros(fake_prob.shape, device=device)
+                    real_target = torch.ones(real_prob.shape, device=device)
+                    fake_target = torch.zeros(fake_prob.shape, device=device)
 
-                d_optimizer.zero_grad()
-                d_loss = 0.5 * (
-                    MSE(fake_prob, fake_target) + MSE(real_prob, real_target)
-                )
-                self.log_debug(fake_prob, "fake_prob")
-                self.log_debug(fake_target, "fake_target")
-                self.log_debug(real_prob, "real_prob")
-                self.log_debug(real_target, "real_target")
-                if np.allclose(d_loss.item(), 0.5):
-                    return
+                    d_optimizer.zero_grad()
+                    d_loss = loss_hinge_dis(fake_prob, real_prob) / float(
+                        num_D_accumulations
+                    )
+                    # d_loss = 0.5 * (
+                    #     MSE(fake_prob, fake_target) + MSE(real_prob, real_target)
+                    # )
+                    # self.log_debug(fake_prob, "fake_prob")
+                    # self.log_debug(fake_target, "fake_target")
+                    # self.log_debug(real_prob, "real_prob")
+                    # self.log_debug(real_target, "real_target")
+                    # if np.allclose(d_loss.item(), 0.5):
+                    #     return
 
-                d_loss.backward(retain_graph=True)
+                    d_loss.backward(retain_graph=True)
                 d_optimizer.step()
 
                 g_optimizer.zero_grad()
