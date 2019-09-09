@@ -68,8 +68,7 @@ def env_to_path(path):
     "train": {
         "n_epochs": 100,
         "lr_d": 0.01,
-        "lr_g1": 0.0005,
-        "lr_g2": 0.0001,
+        "lr_g": 0.0005,
         "lambda_gan": 0.01,
         "lambda_L1": 1,
         "batch_size": 32,
@@ -126,7 +125,7 @@ def env_to_path(path):
             "config": {
                 "model": {},
                 "train": {
-                    "lr_g1": 0.001
+                    "lr_g": 0.001
                 }
             }
         }

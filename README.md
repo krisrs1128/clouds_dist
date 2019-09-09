@@ -76,8 +76,7 @@ config/defaults.json:
     "train": {
         "n_epochs": 100,
         "lr_d": 0.01,
-        "lr_g1": 0.0005,
-        "lr_g2": 0.0001,
+        "lr_g": 0.0005,
         "lambda_gan": 0.01,
         "lambda_L1": 1,
         "batch_size": 32,
@@ -155,12 +154,12 @@ For each dictionnary listed in `explore.json` the script will override the above
     {
         "sbatch": {
             "runtime": "24:00:00",
-            "conf_name": "lr_g1_001"
+            "conf_name": "lr_g_001"
         },
         "config": {
             "model": {},
             "train": {
-                "lr_g1": 0.001
+                "lr_g": 0.001
             }
         }
     },

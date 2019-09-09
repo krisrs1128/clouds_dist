@@ -110,7 +110,7 @@ class gan_trainer:
         val_loss = self.train(
             self.opts.train.n_epochs,
             self.opts.train.lr_d,
-            self.opts.train.lr_g1,
+            self.opts.train.lr_g,
             self.opts.train.lambda_gan,
             self.opts.train.lambda_L1,
             self.opts.train.num_D_accumulations,
