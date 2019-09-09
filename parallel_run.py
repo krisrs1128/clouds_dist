@@ -246,4 +246,4 @@ singularity shell --nv --bind $HOME/clouds_dist:/home/clouds/,$DATADIR,{str(exp_
         file = run_dir / f"run-{sbp['conf_name']}.sh"
         with file.open("w") as f:
             f.write(template)
-        # print(subprocess.check_output(f"sbatch {str(file)}", shell=True))
+        print(subprocess.check_output(f"sbatch {str(file)}", shell=True))
