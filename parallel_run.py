@@ -17,7 +17,7 @@ def get_increasable_name(file_path):
             d = int(s.group().replace("--", "").replace(".", ""))
             d += 1
             i, j = s.span()
-            name = name[:i] + f"--{d}" + name[j :]
+            name = name[:i] + f"--{d}" + name[j:]
         else:
             name = f.stem + "--1" + f.suffix
         f = f.parent / name
@@ -88,7 +88,8 @@ def env_to_path(path):
 {
     "experiment":{
         "name": "explore-lr-experiment",
-        "exp_dir": "$SCRATCH/clouds"
+        "exp_dir": "$SCRATCH/clouds",
+        "repeat": 1
     },
     "runs": [
         {
@@ -113,7 +114,10 @@ def env_to_path(path):
             "config": {
                 "model": {},
                 "train": {
-                    "lr_d": 0.0001
+                    "lr_d": {
+                        "sample": "uniform",
+                        "from": [0.00001, 0.01]
+                    }
                 }
             }
         },
@@ -126,13 +130,15 @@ def env_to_path(path):
             "config": {
                 "model": {},
                 "train": {
-                    "lr_g": 0.001
+                    "lr_g": {
+                        "sample": "range",
+                        "from": [0.00001, 0.01, 0.001]
+                    }
                 }
             }
         }
     ]
 }
-
 """
 
 default_sbatch = {
@@ -202,7 +208,10 @@ if __name__ == "__main__":
     # -----------------------------------------
 
     params = []
-    for p in exploration_params["runs"]:
+    exp_runs = exploration_params["runs"]
+    if "repeat" in exploration_params["experiment"]:
+        runs *= int(exploration_params["experiment"]["repeat"]) or 1
+    for p in exp_runs:
         params.append(
             {
                 "sbatch": {**default_sbatch, **p["sbatch"]},
