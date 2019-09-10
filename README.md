@@ -79,15 +79,14 @@ config/defaults.json:
         "kernel_size": 3,
         "dropout": 0.75,
         "Cin": 42,
-        "Cout": 3,
-        "disc_size": 64
+        "Cout": 3
     },
     "train": {
         "n_epochs": 100,
-        "lr_d": 0.01,
-        "lr_g": 0.0005,
+        "lr_d": 0.0002,
+        "lr_g": 0.00005,
         "lambda_gan": 0.01,
-        "lambda_L1": 1,
+        "lambda_L": 1,
         "batch_size": 32,
         "n_epoch_regress": 100,
         "n_epoch_gan": 250,
@@ -96,7 +95,8 @@ config/defaults.json:
         "early_break_epoch": 0,
         "load_limit": -1,
         "num_workers": 3,
-        "num_D_accumulations": 8
+        "num_D_accumulations": 8,
+        "matching_loss": "l2"
     }
 }
 ```

@@ -68,8 +68,8 @@ def env_to_path(path):
     },
     "train": {
         "n_epochs": 100,
-        "lr_d": 0.01,
-        "lr_g": 0.0005,
+        "lr_d": 0.0002,
+        "lr_g": 0.00005,
         "lambda_gan": 0.01,
         "lambda_L": 1,
         "batch_size": 32,
