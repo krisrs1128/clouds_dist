@@ -41,8 +41,10 @@ def sample_param(sample_dict):
     """
     if sample_dict["sample"] == "range":
         value = np.random.choice(np.arange(*sample_dict["from"]))
-    elif sample_dict["sample"] == "lsit":
+    elif sample_dict["sample"] == "list":
         value = np.random.choice(sample_dict["from"])
+    elif sample_dict["sample"] == "uniform":
+        value = np.random.uniform(*sample_dict["from"])
     else:
         raise ValueError("Unknonw sample type in dict " + str(sample_dict))
     return value

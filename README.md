@@ -167,3 +167,31 @@ For each dictionnary listed in `explore.json` the script will override the above
 ```
 
 This will run 3 sbatch jobs meaning "keep the default sbatch params, but extend runtime to 24h and vary learning rates". The `sbatch`, `config`, `model` and `train` fields are **mandatory**
+
+## Sampling parameters
+
+In `train.py`, the `sample_param` function allows for sampling a parameter from a configuration file: **any** value in the "config" file / field (basically = sub-values of "train" and "model") can be sampled from a `range`, a `list` or a `uniform` interval:
+
+```
+...
+"train":{
+    ...
+    "lr_g": 0.001,
+    "lr_d": {
+        "sample": "range",
+        "from": [0.000001, 0.1, 0.01] # a value will be sampled uniformly from [1.0000e-06, 1.0001e-02, ..., 9.0001e-02]
+    },
+    "lambda_L1": {
+        "sample": "list",
+        "from": [0.01, 0.1, 1, 10] # a value will be sampled uniformly from this list
+    },
+    "lambda_gan": {
+        "sample": "uniform",
+        "from": [0.001, 1] # a value will be sampled uniformly from the interval [0.001 ... 1]
+    }
+}
+```
+
+Note: if you select to sample from "range", as np.arange is used, "from" MUST be a list, and may contain
+    only 1 (=min) 2 (min and max) or 3 (min, max, step) values
+
