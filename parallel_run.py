@@ -210,7 +210,7 @@ if __name__ == "__main__":
     params = []
     exp_runs = exploration_params["runs"]
     if "repeat" in exploration_params["experiment"]:
-        runs *= int(exploration_params["experiment"]["repeat"]) or 1
+        exp_runs *= int(exploration_params["experiment"]["repeat"]) or 1
     for p in exp_runs:
         params.append(
             {
