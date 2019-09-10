@@ -146,7 +146,7 @@ class gan_trainer:
             self.opts.train.lr_d,
             self.opts.train.lr_g,
             self.opts.train.lambda_gan,
-            self.opts.train.lambda_L1,
+            self.opts.train.lambda_L,
             self.opts.train.num_D_accumulations,
         )
         return {"loss": val_loss, "opts": self.opts}
@@ -168,14 +168,19 @@ class gan_trainer:
         lr_d=1e-2,
         lr_g=1e-2,
         lambda_gan=0.01,
-        lambda_L1=1,
+        lambda_L=1,
         num_D_accumulations=8,
+        loss="l1",
     ):
         # initialize trial
-        d_optimizer = optim.Adam(self.d.parameters(), lr=lr_d)
+        d_optimizer = optim.Adam(
+            self.d.parameters(), lr=lr_d, betas=(0.0, 0.999), weight_decay=0, eps=1e-8
+        )
         g_optimizer = optim.Adam(self.g.parameters(), lr=lr_g)
 
-        L1 = nn.L1Loss()
+        self.optim = optim.Adam(params=self.parameters(), lr=self.lr)
+
+        matching_loss = nn.L1Loss() if loss == "l1" else nn.MSELoss()
         MSE = nn.MSELoss()
         device = self.device
         if self.verbose > 0:
@@ -225,30 +230,31 @@ class gan_trainer:
                     # if np.allclose(d_loss.item(), 0.5):
                     #     return
 
-                    d_loss.backward(retain_graph=True)
+                    # d_loss.backward(retain_graph=True)
+                    d_loss.backward()
                 d_optimizer.step()
 
                 g_optimizer.zero_grad()
                 fake_prob = self.d(generated_img)
-                L1_loss = L1(generated_img, real_img)
+                loss = matching_loss(generated_img, real_img)
                 gan_loss = MSE(fake_prob, real_target)
 
-                g_loss = lambda_gan * gan_loss + lambda_L1 * L1_loss
-                g_loss.backward()
+                g_loss_total = lambda_gan * gan_loss + lambda_L * loss
+                g_loss_total.backward()
                 g_optimizer.step()
                 if self.exp:
                     self.exp.log_metrics(
                         {
-                            "train/g_loss": g_loss.item(),
-                            "train/d_loss": d_loss.item(),
-                            "train/L1_loss": L1_loss.item(),
+                            "g_loss_total": g_loss_total.item(),
+                            "d_loss": d_loss.item(),
+                            "matching_loss": loss.item(),
                         }
                     )
                 t = time.time()
                 times.append(t - stime)
                 times = times[-100:]
                 if self.verbose > 0:
-                    ep_str = "epoch:{}/{} step {}/{} d_loss:{:0.4f} l1:{:0.4f} g_loss:{:0.4f} | "
+                    ep_str = "epoch:{}/{} step {}/{} d_loss:{:0.4f} l:{:0.4f} g_loss_total:{:0.4f} | "
                     ep_str += "t/step {:.1f} | t/ep {:.1f} | t {:.1f}"
                     print(
                         ep_str.format(
@@ -257,8 +263,8 @@ class gan_trainer:
                             i + 1,
                             len(self.trainloader),
                             d_loss.item(),
-                            L1_loss.item(),
-                            g_loss.item(),
+                            matching_loss.item(),
+                            g_loss_total.item(),
                             np.mean(times),
                             t - etime,
                             t - start_time,
