@@ -23,12 +23,39 @@ import multiprocessing
 import argparse
 
 
+def sample_param(sample_dict):
+    """sample a value (hyperparameter) from the instruction in the
+    sample dict:
+    {
+        "sample": "range | list",
+        "from": [min, max, step] | [v0, v1, v2 etc.]
+    }
+    if range, as np.arange is used, "from" MUST be a list, but may contain
+    only 1 (=min) or 2 (min and max) values, not necessarily 3
+
+    Args:
+        sample_dict (dict): instructions to sample a value
+
+    Returns:
+        scalar: sampled value
+    """
+    if sample_dict["sample"] == "range":
+        value = np.random.choice(np.arange(*sample_dict["from"]))
+    elif sample_dict["sample"] == "lsit":
+        value = np.random.choice(sample_dict["from"])
+    else:
+        raise ValueError("Unknonw sample type in dict " + str(sample_dict))
+    return value
+
+
 def merge_defaults(opts, conf_path):
     print("Loading params from", conf_path)
     with open(conf_path, "r") as f:
         result = json.load(f)
     for group in ["model", "train"]:
         for k, v in opts[group].items():
+            if isinstance(v, dict):
+                v = sample_param(v)
             result[group][k] = v
 
     return Dict(result)

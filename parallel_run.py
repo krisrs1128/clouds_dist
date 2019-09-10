@@ -9,18 +9,19 @@ import re
 
 def get_increasable_name(file_path):
     f = Path(file_path)
-    name = f.name
-    if f.exists():
-        s = list(re.finditer("--\d+\.", name))
+    while f.exists():
+        name = f.name
+        s = list(re.finditer("--\d+", name))
         if s:
             s = s[-1]
             d = int(s.group().replace("--", "").replace(".", ""))
             d += 1
             i, j = s.span()
-            name = name[:i] + f"--{d}" + name[j - 1 :]
+            name = name[:i] + f"--{d}" + name[j :]
         else:
             name = f.stem + "--1" + f.suffix
-    return f.parent / name
+        f = f.parent / name
+    return f
 
 
 def write_conf(run_dir, param):
