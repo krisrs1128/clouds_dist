@@ -71,7 +71,7 @@ def env_to_path(path):
         "lr_d": 0.01,
         "lr_g": 0.0005,
         "lambda_gan": 0.01,
-        "lambda_L1": 1,
+        "lambda_L": 1,
         "batch_size": 32,
         "n_epoch_regress": 100,
         "n_epoch_gan": 250,
@@ -80,7 +80,8 @@ def env_to_path(path):
         "early_break_epoch": 0,
         "load_limit": -1,
         "num_workers": 3,
-        "num_D_accumulations": 8
+        "num_D_accumulations": 8,
+        "matching_loss": "l2"
     }
 }"""
 

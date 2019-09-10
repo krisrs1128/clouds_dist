@@ -76,6 +76,12 @@ def loss_hinge_dis(dis_fake, dis_real):
     return loss
 
 
+def loss_hinge_gen(dis_fake):
+    # from https://github.com/ajbrock/BigGAN-PyTorch/blob/master/losses.py
+    loss = -torch.mean(dis_fake)
+    return loss
+
+
 class gan_trainer:
     def __init__(self, opts, comet_exp=None, output_dir=".", n_epochs=50, verbose=1):
         self.opts = opts
@@ -148,6 +154,7 @@ class gan_trainer:
             self.opts.train.lambda_gan,
             self.opts.train.lambda_L,
             self.opts.train.num_D_accumulations,
+            self.opts.train.matching_loss
         )
         return {"loss": val_loss, "opts": self.opts}
 
@@ -237,7 +244,7 @@ class gan_trainer:
                 g_optimizer.zero_grad()
                 fake_prob = self.d(generated_img)
                 loss = matching_loss(generated_img, real_img)
-                gan_loss = MSE(fake_prob, real_target)
+                gan_loss = loss_hinge_gen(fake_prob)
 
                 g_loss_total = lambda_gan * gan_loss + lambda_L * loss
                 g_loss_total.backward()
