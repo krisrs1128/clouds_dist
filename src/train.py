@@ -58,6 +58,9 @@ def merge_defaults(opts, conf_path):
         result = json.load(f)
     for group in ["model", "train"]:
         for k, v in opts[group].items():
+            result[group][k] = v
+    for group in ["model", "train"]:
+        for k, v in result[group].items():
             if isinstance(v, dict):
                 v = sample_param(v)
             result[group][k] = v
