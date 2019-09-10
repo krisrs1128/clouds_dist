@@ -39,6 +39,8 @@ def sample_param(sample_dict):
     Returns:
         scalar: sampled value
     """
+    if "sample" not in sample_dict:
+        return sample_dict
     if sample_dict["sample"] == "range":
         value = np.random.choice(np.arange(*sample_dict["from"]))
     elif sample_dict["sample"] == "list":
