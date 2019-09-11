@@ -258,3 +258,4 @@ singularity shell --nv --bind $HOME/clouds_dist:/home/clouds/,$DATADIR,{str(exp_
         with file.open("w") as f:
             f.write(template)
         print(subprocess.check_output(f"sbatch {str(file)}", shell=True))
+        print("In", str(run_dir), "\n")
