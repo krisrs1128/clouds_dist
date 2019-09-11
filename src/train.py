@@ -185,8 +185,6 @@ class gan_trainer:
         )
         g_optimizer = optim.Adam(self.g.parameters(), lr=lr_g)
 
-        self.optim = optim.Adam(params=self.parameters(), lr=self.lr)
-
         matching_loss = nn.L1Loss() if loss == "l1" else nn.MSELoss()
         MSE = nn.MSELoss()
         device = self.device
