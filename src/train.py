@@ -268,7 +268,7 @@ class gan_trainer:
                             i + 1,
                             len(self.trainloader),
                             d_loss.item(),
-                            matching_loss.item(),
+                            loss.item(),
                             g_loss_total.item(),
                             np.mean(times),
                             t - etime,
