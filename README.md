@@ -97,7 +97,7 @@ config/defaults.json:
         "num_workers": 3,
         "num_D_accumulations": 8,
         "matching_loss": "l2",
-        "with_stats": True
+        "with_stats": true
     }
 }
 ```
