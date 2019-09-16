@@ -89,10 +89,13 @@ class gan_trainer:
             self.opts.train.datapath,
             n_in_mem=self.opts.train.n_in_mem or 50,
             load_limit=self.opts.train.load_limit or -1,
-            transform=Rescale(self.opts.train.datapath,
-                              self.opts.train.n_in_mem,
-                              num_workers=self.opts.train.get("num_workers", 3),
-                              verbose = 1)
+            transform=Rescale(
+                self.opts.train.datapath,
+                self.opts.train.n_in_mem,
+                num_workers=self.opts.train.get("num_workers", 3),
+                with_stats=self.opts.train.with_stats,
+                verbose=1,
+            ),
         )
 
         self.trial_number = 0
@@ -159,7 +162,7 @@ class gan_trainer:
             self.opts.train.lambda_gan,
             self.opts.train.lambda_L,
             self.opts.train.num_D_accumulations,
-            self.opts.train.matching_loss
+            self.opts.train.matching_loss,
         )
         return {"loss": val_loss, "opts": self.opts}
 
@@ -218,10 +221,9 @@ class gan_trainer:
                     self.input_tensor = self.input_tensor.to(device)
 
                     real_img = batch["real_imgs"].to(device)
-                    #real_img = real_img.to(device)
-                    generated_img = self.g(self.input_tensor)       
+                    # real_img = real_img.to(device)
+                    generated_img = self.g(self.input_tensor)
 
-            
                     real_prob = self.d(real_img)
                     fake_prob = self.d(generated_img.detach())
 

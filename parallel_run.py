@@ -81,7 +81,8 @@ def env_to_path(path):
         "load_limit": -1,
         "num_workers": 3,
         "num_D_accumulations": 8,
-        "matching_loss": "l2"
+        "matching_loss": "l2",
+        "with_stats": True
     }
 }"""
 
