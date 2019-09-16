@@ -69,5 +69,3 @@ class Rescale:
                 )
         print()
         return means, maxes, mins
-
-‡
