@@ -10,23 +10,27 @@ class Rescale:
         self.num_workers = num_workers
         self.verbose = verbose
 
-        self.dataset = EarthData(
-            data_dir=self.data_path,
-            n_in_mem=self.n_in_mem
-        )
+        self.dataset = EarthData(data_dir=self.data_path, n_in_mem=self.n_in_mem)
 
         self.data_loader = torch.utils.data.DataLoader(
             self.dataset,
             batch_size=self.n_in_mem,
             shuffle=False,
-            num_workers=self.num_workers)
+            num_workers=self.num_workers,
+        )
 
         self.means, self.maxes, self.mins = self.get_stats(self.data_loader)
 
     def __call__(self, sample):
-        coords = (sample["coords"]-self.means["coords"])/(self.maxes["coords"] - self.mins["coords"])
-        real_imgs = (sample["real_imgs"]-self.means["real_imgs"])/(self.maxes["real_imgs"] - self.mins["real_imgs"])
-        metos =  (sample["metos"]-self.means["metos"])/(self.maxes["metos"] - self.mins["metos"])
+        coords = (sample["coords"] - self.means["coords"]) / (
+            self.maxes["coords"] - self.mins["coords"]
+        )
+        real_imgs = (sample["real_imgs"] - self.means["real_imgs"]) / (
+            self.maxes["real_imgs"] - self.mins["real_imgs"]
+        )
+        metos = (sample["metos"] - self.means["metos"]) / (
+            self.maxes["metos"] - self.mins["metos"]
+        )
         coords[np.isnan(coords)] = 0.0
         coords[np.isinf(coords)] = 0.0
         real_imgs[np.isnan(real_imgs)] = 0.0
@@ -46,17 +50,24 @@ class Rescale:
                     maxes[k] = v.max(dim=0)[0]
                     mins[k] = v.min(dim=0)[0]
                 else:
-                    n = (i * self.n_in_mem)
+                    n = i * self.n_in_mem
                     m = len(v)
-                    means[k] *= n/(n+m)
-                    means[k] += v.sum(dim=0)/(n+m)
-                    maxes[k][maxes[k] < v.max(dim=0)[0]] = v.max(dim=0)[0][v.max(dim=0)[0] > maxes[k]]
-                    mins[k][mins[k] > v.min(dim=0)[0]] = v.min(dim=0)[0][mins[k] > v.min(dim=0)[0]]
+                    means[k] *= n / (n + m)
+                    means[k] += v.sum(dim=0) / (n + m)
+                    maxes[k][maxes[k] < v.max(dim=0)[0]] = v.max(dim=0)[0][
+                        v.max(dim=0)[0] > maxes[k]
+                    ]
+                    mins[k][mins[k] > v.min(dim=0)[0]] = v.min(dim=0)[0][
+                        mins[k] > v.min(dim=0)[0]
+                    ]
             if self.verbose > 0:
-                print(" get_stats --- progress: {:.1f}%".format((i + 1) / len(self.data_loader) * 100))
+                print(
+                    "\r get_stats --- progress: {:.1f}%".format(
+                        (i + 1) / len(self.data_loader) * 100
+                    ),
+                    end="",
+                )
+        print()
         return means, maxes, mins
 
-
-
-
-
+‡
