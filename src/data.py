@@ -29,11 +29,12 @@ class EarthData(Dataset):
     >>>    print(x.shape)
     """
 
-    def __init__(self, data_dir, n_in_mem=500, load_limit=-1):
+    def __init__(self, data_dir, n_in_mem=500, load_limit=-1, transform=None):
         super(EarthData).__init__()
         self.n_in_mem = n_in_mem
         self.cur_ix = []
         self.subsample = {}
+        self.transform = transform
 
         self.paths = {
             "imgs": glob(os.path.join(data_dir, "imgs", "*.npz")),
@@ -63,8 +64,9 @@ class EarthData(Dataset):
                 path = [s for s in self.paths[key] if self.ids[j] in s][0]
                 data[key] = dict(np.load(path).items())
                 # print("loading {} {}".format(j, key))
-
             self.subsample[j] = process_sample(data)
+            if self.transform:
+                self.subsample[j] = self.transform(self.subsample[j])
 
         return self.subsample[i]
 
@@ -87,4 +89,4 @@ def process_sample(data):
     )
     metos[np.isnan(metos)] = 0.0
     metos[np.isinf(metos)] = 0.0
-    return (coords, torch.Tensor(imgs), torch.Tensor(metos))
+    return {"coords": torch.Tensor(coords), "real_imgs": torch.Tensor(imgs), "metos": torch.Tensor(metos)}
