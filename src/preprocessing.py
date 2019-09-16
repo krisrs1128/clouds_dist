@@ -4,11 +4,14 @@ import torch
 
 
 class Rescale:
-    def __init__(self, data_path, n_in_mem=50, num_workers=3, verbose=1):
+    def __init__(
+        self, data_path, n_in_mem=50, num_workers=3, with_stats=True, verbose=1
+    ):
         self.n_in_mem = n_in_mem
         self.data_path = data_path
         self.num_workers = num_workers
         self.verbose = verbose
+        self.with_stats = with_stats
 
         self.dataset = EarthData(data_dir=self.data_path, n_in_mem=self.n_in_mem)
 
@@ -18,8 +21,14 @@ class Rescale:
             shuffle=False,
             num_workers=self.num_workers,
         )
-
-        self.means, self.maxes, self.mins = self.get_stats(self.data_loader)
+        if with_stats:
+            self.means, self.maxes, self.mins = self.get_stats(self.data_loader)
+        else:
+            self.means, self.maxes, self.mins = (
+                {"coords": 0, "real_imgs": 0, "metos": 0},
+                {"coords": 1, "real_imgs": 1, "metos": 1},
+                {"coords": 0, "real_imgs": 0, "metos": 0},
+            )
 
     def __call__(self, sample):
         coords = (sample["coords"] - self.means["coords"]) / (
@@ -31,12 +40,13 @@ class Rescale:
         metos = (sample["metos"] - self.means["metos"]) / (
             self.maxes["metos"] - self.mins["metos"]
         )
-        coords[np.isnan(coords)] = 0.0
-        coords[np.isinf(coords)] = 0.0
-        real_imgs[np.isnan(real_imgs)] = 0.0
-        real_imgs[np.isinf(real_imgs)] = 0.0
-        metos[np.isnan(metos)] = 0.0
-        metos[np.isinf(metos)] = 0.0
+        if self.with_stats:
+            coords[np.isnan(coords)] = 0.0
+            coords[np.isinf(coords)] = 0.0
+            real_imgs[np.isnan(real_imgs)] = 0.0
+            real_imgs[np.isinf(real_imgs)] = 0.0
+            metos[np.isnan(metos)] = 0.0
+            metos[np.isinf(metos)] = 0.0
         return {"coords": coords, "real_imgs": real_imgs, "metos": metos}
 
     def get_stats(self, data_loader):
