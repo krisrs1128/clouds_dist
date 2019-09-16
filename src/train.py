@@ -82,6 +82,16 @@ def loss_hinge_gen(dis_fake):
     return loss
 
 
+def weighted_mse_loss(input, target):
+    # from https://discuss.pytorch.org/t/pixelwise-weights-for-mseloss/1254/2
+    out = (input - target) ** 2
+    weights = input.sum(1) != 0
+    weights = weights.expand_as(out) / weights.sum()
+    out = out * weights.expand_as(out)
+    loss = out.sum()
+    return loss
+
+
 class gan_trainer:
     def __init__(self, opts, comet_exp=None, output_dir=".", n_epochs=50, verbose=1):
         self.opts = opts
@@ -193,7 +203,13 @@ class gan_trainer:
         )
         g_optimizer = optim.Adam(self.g.parameters(), lr=lr_g)
 
-        matching_loss = nn.L1Loss() if loss == "l1" else nn.MSELoss()
+        matching_loss = (
+            nn.L1Loss()
+            if loss == "l1"
+            else weighted_mse_loss
+            if loss == "weighted"
+            else nn.MSELoss()
+        )
         MSE = nn.MSELoss()
         device = self.device
         if self.verbose > 0:
@@ -250,7 +266,7 @@ class gan_trainer:
 
                 g_optimizer.zero_grad()
                 fake_prob = self.d(generated_img)
-                loss = matching_loss(generated_img, real_img)
+                loss = matching_loss(real_img, generated_img)
                 gan_loss = loss_hinge_gen(fake_prob)
 
                 g_loss_total = lambda_gan * gan_loss + lambda_L * loss
