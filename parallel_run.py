@@ -9,18 +9,19 @@ import re
 
 def get_increasable_name(file_path):
     f = Path(file_path)
-    name = f.name
-    if f.exists():
-        s = list(re.finditer("--\d+\.", name))
+    while f.exists():
+        name = f.name
+        s = list(re.finditer("--\d+", name))
         if s:
             s = s[-1]
             d = int(s.group().replace("--", "").replace(".", ""))
             d += 1
             i, j = s.span()
-            name = name[:i] + f"--{d}" + name[j - 1 :]
+            name = name[:i] + f"--{d}" + name[j:]
         else:
-            name = f.stem + "--1.json"
-    return f.parent / name
+            name = f.stem + "--1" + f.suffix
+        f = f.parent / name
+    return f
 
 
 def write_conf(run_dir, param):
@@ -63,17 +64,14 @@ def env_to_path(path):
         "kernel_size": 3,
         "dropout": 0.75,
         "Cin": 42,
-        "Cout": 3,
+        "Cout": 3
     },
     "train": {
         "n_epochs": 100,
-        "lr_d": 0.01,
-        "lr_g1": 0.0005,
-        "lr_g2": 0.0001,
-        "lambda_gan_1": 0.01,
-        "lambda_L1_1": 1,
-        "lambda_gan_2": 0.03,
-        "lamdba_L1_2": 1,
+        "lr_d": 0.0002,
+        "lr_g": 0.00005,
+        "lambda_gan": 0.01,
+        "lambda_L": 1,
         "batch_size": 32,
         "n_epoch_regress": 100,
         "n_epoch_gan": 250,
@@ -82,6 +80,8 @@ def env_to_path(path):
         "early_break_epoch": 0,
         "load_limit": -1,
         "num_workers": 3,
+        "num_D_accumulations": 8,
+        "matching_loss": "l2"
     }
 }"""
 
@@ -89,7 +89,8 @@ def env_to_path(path):
 {
     "experiment":{
         "name": "explore-lr-experiment",
-        "exp_dir": "$SCRATCH/clouds"
+        "exp_dir": "$SCRATCH/clouds",
+        "repeat": 1
     },
     "runs": [
         {
@@ -114,7 +115,10 @@ def env_to_path(path):
             "config": {
                 "model": {},
                 "train": {
-                    "lr_d": 0.0001
+                    "lr_d": {
+                        "sample": "uniform",
+                        "from": [0.00001, 0.01]
+                    }
                 }
             }
         },
@@ -127,13 +131,15 @@ def env_to_path(path):
             "config": {
                 "model": {},
                 "train": {
-                    "lr_g1": 0.001
+                    "lr_g": {
+                        "sample": "range",
+                        "from": [0.00001, 0.01, 0.001]
+                    }
                 }
             }
         }
     ]
 }
-
 """
 
 default_sbatch = {
@@ -190,9 +196,9 @@ if __name__ == "__main__":
         EXP_ROOT_DIR = opts.exp_dir
     if EXP_ROOT_DIR is None:
         EXP_ROOT_DIR = Path(os.environ["SCRATCH"]) / "clouds"
+        EXP_ROOT_DIR.mkdir(exist_ok=True)
+        EXP_ROOT_DIR = EXP_ROOT_DIR / "experiments"
 
-    EXP_ROOT_DIR.mkdir(exist_ok=True)
-    EXP_ROOT_DIR = EXP_ROOT_DIR / "experiments"
     EXP_ROOT_DIR.mkdir(exist_ok=True)
 
     exp_name = exploration_params["experiment"].get("name", "explore-experiment")
@@ -203,7 +209,10 @@ if __name__ == "__main__":
     # -----------------------------------------
 
     params = []
-    for p in exploration_params:
+    exp_runs = exploration_params["runs"]
+    if "repeat" in exploration_params["experiment"]:
+        exp_runs *= int(exploration_params["experiment"]["repeat"]) or 1
+    for p in exp_runs:
         params.append(
             {
                 "sbatch": {**default_sbatch, **p["sbatch"]},
@@ -221,8 +230,7 @@ if __name__ == "__main__":
         run_dir.mkdir()
         sbp = param["sbatch"]
         conf_path = write_conf(run_dir, param)  # returns Path() from pathlib
-        template = f"""
-#!/bin/bash
+        template = f"""#!/bin/bash
 #SBATCH --account=rpp-bengioy               # Yoshua pays for your job
 #SBATCH --cpus-per-task={sbp["cpus"]}       # Ask for 6 CPUs
 #SBATCH --gres=gpu:1                        # Ask for 1 GPU
@@ -237,10 +245,12 @@ echo "Starting job"
 $DATADIR=/scratch/sankarak/data/clouds/
 
 singularity shell --nv --bind $HOME/clouds_dist:/home/clouds/,$DATADIR,{str(exp_dir)} {sbp["singularity_path"]} \\
+    echo $(pwd) && echo $(ls) && echo $(ls /home/clouds)\\
+
     cd /home/clouds/ && python3 src/train.py \\
         -m "{sbp["message"]}" \\
-        -c "{str(conf_path)} \\
-        -o {str(run_dir)} \\
+        -c "{str(conf_path)}"\\
+        -o "{str(run_dir)}" \\
         {"-f" if sbp["offline"] else ""}
 
 """
@@ -248,4 +258,5 @@ singularity shell --nv --bind $HOME/clouds_dist:/home/clouds/,$DATADIR,{str(exp_
         file = run_dir / f"run-{sbp['conf_name']}.sh"
         with file.open("w") as f:
             f.write(template)
-        # print(subprocess.check_output(f"sbatch {str(file)}", shell=True))
+        print(subprocess.check_output(f"sbatch {str(file)}", shell=True))
+        print("In", str(run_dir), "\n")

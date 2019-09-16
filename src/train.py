@@ -16,10 +16,40 @@ import numpy as np
 import os
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 # from tensorboardX import SummaryWriter
 import multiprocessing
 import argparse
+
+
+def sample_param(sample_dict):
+    """sample a value (hyperparameter) from the instruction in the
+    sample dict:
+    {
+        "sample": "range | list",
+        "from": [min, max, step] | [v0, v1, v2 etc.]
+    }
+    if range, as np.arange is used, "from" MUST be a list, but may contain
+    only 1 (=min) or 2 (min and max) values, not necessarily 3
+
+    Args:
+        sample_dict (dict): instructions to sample a value
+
+    Returns:
+        scalar: sampled value
+    """
+    if "sample" not in sample_dict:
+        return sample_dict
+    if sample_dict["sample"] == "range":
+        value = np.random.choice(np.arange(*sample_dict["from"]))
+    elif sample_dict["sample"] == "list":
+        value = np.random.choice(sample_dict["from"])
+    elif sample_dict["sample"] == "uniform":
+        value = np.random.uniform(*sample_dict["from"])
+    else:
+        raise ValueError("Unknonw sample type in dict " + str(sample_dict))
+    return value
 
 
 def merge_defaults(opts, conf_path):
@@ -29,8 +59,27 @@ def merge_defaults(opts, conf_path):
     for group in ["model", "train"]:
         for k, v in opts[group].items():
             result[group][k] = v
+    for group in ["model", "train"]:
+        for k, v in result[group].items():
+            if isinstance(v, dict):
+                v = sample_param(v)
+            result[group][k] = v
 
     return Dict(result)
+
+
+def loss_hinge_dis(dis_fake, dis_real):
+    # This version returns a single loss
+    # from https://github.com/ajbrock/BigGAN-PyTorch/blob/master/losses.py
+    loss = torch.mean(F.relu(1.0 - dis_real))
+    loss += torch.mean(F.relu(1.0 + dis_fake))
+    return loss
+
+
+def loss_hinge_gen(dis_fake):
+    # from https://github.com/ajbrock/BigGAN-PyTorch/blob/master/losses.py
+    loss = -torch.mean(dis_fake)
+    return loss
 
 
 class gan_trainer:
@@ -69,6 +118,7 @@ class gan_trainer:
                     print("{:<30}: {:<30}".format(str(k), str(v)))
             print()
         self.make_directories()
+        self.debug = Dict()
 
     def save(self, epoch=0):
         torch.save(self.gan.state_dict(), str(self.ckptdir / f"gan_{epoch}.pt"))
@@ -105,9 +155,11 @@ class gan_trainer:
         val_loss = self.train(
             self.opts.train.n_epochs,
             self.opts.train.lr_d,
-            self.opts.train.lr_g1,
-            lambda_gan=0,
-            lambda_L1=1,
+            self.opts.train.lr_g,
+            self.opts.train.lambda_gan,
+            self.opts.train.lambda_L,
+            self.opts.train.num_D_accumulations,
+            self.opts.train.matching_loss
         )
         return {"loss": val_loss, "opts": self.opts}
 
@@ -118,12 +170,27 @@ class gan_trainer:
         input_tensor.uniform_(-1, 1)
         return input_tensor
 
-    def train(self, n_epochs, lr_d=1e-2, lr_g=1e-2, lambda_gan=0.01, lambda_L1=1):
+    def log_debug(self, var, name):
+        self.debug[name].prev = self.debug[name].curr
+        self.debug[name].curr = var
+
+    def train(
+        self,
+        n_epochs,
+        lr_d=1e-2,
+        lr_g=1e-2,
+        lambda_gan=0.01,
+        lambda_L=1,
+        num_D_accumulations=8,
+        loss="l1",
+    ):
         # initialize trial
-        d_optimizer = optim.Adam(self.d.parameters(), lr=lr_d)
+        d_optimizer = optim.Adam(
+            self.d.parameters(), lr=lr_d, betas=(0.0, 0.999), weight_decay=0, eps=1e-8
+        )
         g_optimizer = optim.Adam(self.g.parameters(), lr=lr_g)
 
-        L1 = nn.L1Loss()
+        matching_loss = nn.L1Loss() if loss == "l1" else nn.MSELoss()
         MSE = nn.MSELoss()
         device = self.device
         if self.verbose > 0:
@@ -145,47 +212,61 @@ class gan_trainer:
 
                 shape = batch["metos"].shape
 
-                self.input_tensor = self.get_noise_tensor(shape)
-                self.input_tensor[:, : self.opts.model.Cin, :, :] = batch["metos"]
-                self.input_tensor = self.input_tensor.to(device)
+                for acc in range(num_D_accumulations):
+                    self.input_tensor = self.get_noise_tensor(shape)
+                    self.input_tensor[:, : self.opts.model.Cin, :, :] = batch["metos"]
+                    self.input_tensor = self.input_tensor.to(device)
 
-                real_img = batch["real_imgs"].to(device)
-                generated_img = self.g(self.input_tensor)
+                    real_img = batch["real_imgs"].to(device)
+                    #real_img = real_img.to(device)
+                    generated_img = self.g(self.input_tensor)       
 
-                real_prob = self.d(real_img)
-                fake_prob = self.d(generated_img.detach())
+            
+                    real_prob = self.d(real_img)
+                    fake_prob = self.d(generated_img.detach())
 
-                real_target = torch.ones(real_prob.shape, device=device)
-                fake_target = torch.zeros(fake_prob.shape, device=device)
+                    real_target = torch.ones(real_prob.shape, device=device)
+                    fake_target = torch.zeros(fake_prob.shape, device=device)
 
-                d_optimizer.zero_grad()
-                d_loss = 0.5 * (
-                    MSE(fake_prob, fake_target) + MSE(real_prob, real_target)
-                )
-                d_loss.backward(retain_graph=True)
+                    d_optimizer.zero_grad()
+                    d_loss = loss_hinge_dis(fake_prob, real_prob) / float(
+                        num_D_accumulations
+                    )
+                    # d_loss = 0.5 * (
+                    #     MSE(fake_prob, fake_target) + MSE(real_prob, real_target)
+                    # )
+                    # self.log_debug(fake_prob, "fake_prob")
+                    # self.log_debug(fake_target, "fake_target")
+                    # self.log_debug(real_prob, "real_prob")
+                    # self.log_debug(real_target, "real_target")
+                    # if np.allclose(d_loss.item(), 0.5):
+                    #     return
+
+                    # d_loss.backward(retain_graph=True)
+                    d_loss.backward()
                 d_optimizer.step()
 
                 g_optimizer.zero_grad()
                 fake_prob = self.d(generated_img)
-                L1_loss = L1(generated_img, real_img)
-                gan_loss = MSE(fake_prob, real_target)
+                loss = matching_loss(generated_img, real_img)
+                gan_loss = loss_hinge_gen(fake_prob)
 
-                g_loss = lambda_gan * gan_loss + lambda_L1 * L1_loss
-                g_loss.backward()
+                g_loss_total = lambda_gan * gan_loss + lambda_L * loss
+                g_loss_total.backward()
                 g_optimizer.step()
                 if self.exp:
                     self.exp.log_metrics(
                         {
-                            "train/g_loss": g_loss.item(),
-                            "train/d_loss": d_loss.item(),
-                            "train/L1_loss": L1_loss.item(),
+                            "g_loss_total": g_loss_total.item(),
+                            "d_loss": d_loss.item(),
+                            "matching_loss": loss.item(),
                         }
                     )
                 t = time.time()
                 times.append(t - stime)
                 times = times[-100:]
                 if self.verbose > 0:
-                    ep_str = "epoch:{}/{} step {}/{} d_loss:{:0.4f} l1:{:0.4f} g_loss:{:0.4f} | "
+                    ep_str = "epoch:{}/{} step {}/{} d_loss:{:0.4f} l:{:0.4f} g_loss_total:{:0.4f} | "
                     ep_str += "t/step {:.1f} | t/ep {:.1f} | t {:.1f}"
                     print(
                         ep_str.format(
@@ -194,8 +275,8 @@ class gan_trainer:
                             i + 1,
                             len(self.trainloader),
                             d_loss.item(),
-                            L1_loss.item(),
-                            g_loss.item(),
+                            loss.item(),
+                            g_loss_total.item(),
                             np.mean(times),
                             t - etime,
                             t - start_time,
@@ -290,6 +371,7 @@ if __name__ == "__main__":
             data_path[i] = os.environ.get(d.replace("$", ""))
     params.train.datapath = "/".join(data_path)
 
+    print("Loading data from ", str(params.train.datapath))
     assert Path(params.train.datapath).exists()
     assert (Path(params.train.datapath) / "imgs").exists()
     assert (Path(params.train.datapath) / "metos").exists()
