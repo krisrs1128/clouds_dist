@@ -53,7 +53,8 @@ class Rescale:
                     maxes[k][maxes[k] < v.max(dim=0)[0]] = v.max(dim=0)[0][v.max(dim=0)[0] > maxes[k]]
                     mins[k][mins[k] > v.min(dim=0)[0]] = v.min(dim=0)[0][mins[k] > v.min(dim=0)[0]]
             if self.verbose > 0:
-                print(" get_stats --- progress: {:.1f}%".format((i + 1) / len(self.data_loader) * 100))
+                print("\r get_stats --- progress: {:.1f}%".format((i + 1) / len(self.data_loader) * 100), end='')
+        print()
         return means, maxes, mins
 
 
