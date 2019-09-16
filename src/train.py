@@ -6,7 +6,7 @@ from src.data import EarthData
 from src.gan import GAN
 from torch import optim
 from torch.utils import data
-
+from preprocessing import Rescale
 from addict import Dict
 
 import json
@@ -40,7 +40,12 @@ class gan_trainer:
             self.opts.train.datapath,
             n_in_mem=self.opts.train.n_in_mem or 50,
             load_limit=self.opts.train.load_limit or -1,
+            transform=Rescale(self.opts.train.datapath,
+                              self.opts.train.n_in_mem,
+                              num_workers=self.opts.train.get("num_workers", 3),
+                              verbose = 1)
         )
+
         self.trial_number = 0
         self.n_epochs = n_epochs
         self.start_time = datetime.now()
@@ -131,20 +136,20 @@ class gan_trainer:
             torch.cuda.empty_cache()
             self.gan.train()  # train mode
             etime = time.time()
-            for i, (coords, real_img, metos_data) in enumerate(self.trainloader):
+            for i, batch in enumerate(self.trainloader):
                 if i > (self.opts.train.early_break_epoch or 1e9):
                     break
                 stime = time.time()
                 if i == 0 and self.verbose > 0:
                     print("\n\nLoading time: {:.3f}".format(stime - etime))
 
-                shape = metos_data.shape
+                shape = batch["metos"].shape
 
                 self.input_tensor = self.get_noise_tensor(shape)
-                self.input_tensor[:, : self.opts.model.Cin, :, :] = metos_data
+                self.input_tensor[:, : self.opts.model.Cin, :, :] = batch["metos"]
                 self.input_tensor = self.input_tensor.to(device)
 
-                real_img = real_img.to(device)
+                real_img = batch["real_imgs"].to(device)
                 generated_img = self.g(self.input_tensor)
 
                 real_prob = self.d(real_img)
@@ -204,7 +209,7 @@ class gan_trainer:
 
             # output sample images
             input_tensor = self.get_noise_tensor(shape)
-            input_tensor[:, : self.opts.model.Cin, :, :] = metos_data
+            input_tensor[:, : self.opts.model.Cin, :, :] = batch["metos"]
             input_tensor = input_tensor.to(device)
 
             generated_img = self.g(input_tensor)
