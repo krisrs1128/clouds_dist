@@ -4,9 +4,9 @@ from datetime import datetime
 from pathlib import Path
 from src.data import EarthData
 from src.gan import GAN
+from src.preprocessing import Rescale
 from torch import optim
 from torch.utils import data
-from preprocessing import Rescale
 from addict import Dict
 
 import json
