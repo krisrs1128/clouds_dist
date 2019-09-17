@@ -86,7 +86,7 @@ def weighted_mse_loss(input, target):
     # from https://discuss.pytorch.org/t/pixelwise-weights-for-mseloss/1254/2
     out = (input - target) ** 2
     weights = input.sum(1) != 0
-    weights = weights.expand_as(out) / weights.sum()
+    weights = weights.unsqueeze(1).expand_as(out) / weights.sum()
     out = out * weights.expand_as(out)
     loss = out.sum()
     return loss
