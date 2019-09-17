@@ -225,6 +225,7 @@ class gan_trainer:
             for i, batch in enumerate(self.trainloader):
                 if i > (self.opts.train.early_break_epoch or 1e9):
                     break
+                self.batch = batch
                 stime = time.time()
                 if i == 0 and self.verbose > 0:
                     print("\n\nLoading time: {:.3f}".format(stime - etime))
