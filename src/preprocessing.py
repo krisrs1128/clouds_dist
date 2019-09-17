@@ -1,4 +1,4 @@
-from data import EarthData
+from src.data import EarthData
 import numpy as np
 import torch
 
