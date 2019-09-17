@@ -79,7 +79,8 @@ config/defaults.json:
         "kernel_size": 3,
         "dropout": 0.75,
         "Cin": 42,
-        "Cout": 3
+        "Cout": 3,
+        "Cnoise": 0
     },
     "train": {
         "n_epochs": 100,

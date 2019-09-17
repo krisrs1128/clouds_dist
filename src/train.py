@@ -85,9 +85,9 @@ def loss_hinge_gen(dis_fake):
 def weighted_mse_loss(input, target):
     # from https://discuss.pytorch.org/t/pixelwise-weights-for-mseloss/1254/2
     out = (input - target) ** 2
-    weights = input.sum(1) != 0
+    weights = (input.sum(1) != 0).to(torch.float32)
     weights = weights.unsqueeze(1).expand_as(out) / weights.sum()
-    out = out * weights.expand_as(out)
+    out = out * weights
     loss = out.sum()
     return loss
 
@@ -178,7 +178,7 @@ class gan_trainer:
 
     def get_noise_tensor(self, shape):
         b, h, w = shape[0], shape[2], shape[3]
-        Ctot = self.opts.model.Cin + self.opts.model.Cout
+        Ctot = self.opts.model.Cin + self.opts.model.Cnoise
         input_tensor = torch.FloatTensor(b, Ctot, h, w)
         input_tensor.uniform_(-1, 1)
         return input_tensor

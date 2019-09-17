@@ -9,9 +9,6 @@ from torch.autograd import Variable
 from torch.nn import Parameter
 from torch.optim.optimizer import Optimizer, required
 
-channels = 3
-DISC_SIZE = 128
-
 
 class ResBlockDiscriminator(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
