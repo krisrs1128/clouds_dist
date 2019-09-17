@@ -254,7 +254,7 @@ if __name__ == "__main__":
 
     # -----------------------------------------
 
-    default_json_file = "config/defaults.json"
+    default_json_file = "shared/defaults.json"
     with open(default_json_file, "r") as f:
         default_json = json.load(f)
 
