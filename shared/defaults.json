@@ -3,7 +3,7 @@
         "n_blocks": 5,
         "filter_factors": null,
         "kernel_size": 3,
-        "dropout": 0.75,
+        "dropout": 0.25,
         "Cin": 42,
         "Cout": 3,
         "Cnoise": 0
@@ -15,8 +15,6 @@
         "lambda_gan": 0.01,
         "lambda_L": 1,
         "batch_size": 32,
-        "n_epoch_regress": 100,
-        "n_epoch_gan": 250,
         "datapath": "/home/sankarak/scratch/data/clouds",
         "n_in_mem": 1,
         "early_break_epoch": 0,

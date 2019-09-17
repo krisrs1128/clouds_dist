@@ -276,9 +276,14 @@ class gan_trainer:
                 if self.exp:
                     self.exp.log_metrics(
                         {
-                            "g_loss_total": g_loss_total.item(),
-                            "d_loss": d_loss.item(),
-                            "matching_loss": loss.item(),
+                            "g/losss/total": g_loss_total.item(),
+                            "g/loss/disc": gan_loss.item(),
+                            "g/loss/matching": loss.item(),
+                            "d/loss": d_loss.item(),
+                            "track_gen/min": generated_img.min(),
+                            "track_gen/max": generated_img.max(),
+                            "track_gen/mean": generated_img.mean(),
+                            "track_gen/std": generated_img.std(),
                         }
                     )
                 t = time.time()
