@@ -15,7 +15,7 @@
         "lambda_gan": 0.01,
         "lambda_L": 1,
         "batch_size": 32,
-        "datapath": "/home/sankarak/scratch/data/clouds",
+        "datapath": "/scratch/sankarak/data/clouds/",
         "n_in_mem": 1,
         "early_break_epoch": 0,
         "load_limit": -1,
