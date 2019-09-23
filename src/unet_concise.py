@@ -42,7 +42,7 @@ class UNet(nn.Module):
     Example
     -------
     >>> model = UNet(42, 3)
-    >>> x = torch.randn(1, 42, 512, 512)
+    >>> x = torch.randn(1, 42, 216, 216)
     >>> y = model(x)
     """
 
@@ -50,10 +50,11 @@ class UNet(nn.Module):
         self,
         Cin,
         Cout,
-        n_blocks=5,
+        n_blocks=4,
         filter_factors=None,
         kernel_size=3,
         dropout=0.5,
+        bottleneck_dim=27,
         device=None,
     ):
         super().__init__()
@@ -65,7 +66,7 @@ class UNet(nn.Module):
         self.pool = nn.MaxPool2d(2, 2)
         self.upsample = nn.UpsamplingNearest2d(scale_factor=2)
 
-        input_sizes = [32 * s for s in self.filter_factors]
+        input_sizes = [bottleneck_dim * s for s in self.filter_factors]
 
         # link up all the encoder and decoder components
         self.down = [UNetModule(Cin, input_sizes[0], kernel_size, dropout)]
