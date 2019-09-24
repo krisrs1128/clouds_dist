@@ -160,12 +160,21 @@ class gan_trainer:
             num_workers=self.opts.train.get("num_workers", 3),
         )
 
-        self.gan = GAN(**self.opts.model, device=self.device).to(self.device)
+        if self.trainset.metos_shape[-1] % 2 ** self.opts.model.n_blocks != 0:
+            raise ValueError(
+                "Data shape ({}) and n_blocks ({}) are not compatible".format(
+                    self.trainset.metos_shape[-1], self.opts.model.n_blocks
+                )
+            )
+        btdim = self.trainset.metos_shape[-1] // 2 ** self.opts.model.n_blocks
+        self.gan = GAN(**self.opts.model, bottleneck_dim=btdim, device=self.device).to(
+            self.device
+        )
         self.g = self.gan.g
         self.d = self.gan.d
 
         # train using "regress then GAN" approach
-        val_loss = self.train(
+        self.train(
             self.opts.train.n_epochs,
             self.opts.train.lr_d,
             self.opts.train.lr_g,
@@ -174,7 +183,6 @@ class gan_trainer:
             self.opts.train.num_D_accumulations,
             self.opts.train.matching_loss,
         )
-        return {"loss": val_loss, "opts": self.opts}
 
     def get_noise_tensor(self, shape):
         b, h, w = shape[0], shape[2], shape[3]
@@ -408,7 +416,7 @@ if __name__ == "__main__":
 
     trainer = gan_trainer(params, exp, output_path)
 
-    result = trainer.run_trail()
+    trainer.run_trail()
 
     if not opts.no_exp:
         trainer.exp.end()
