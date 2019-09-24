@@ -4,7 +4,7 @@
         "filter_factors": null,
         "kernel_size": 3,
         "dropout": 0.25,
-        "Cin": 42,
+        "Cin": 43,
         "Cout": 3,
         "Cnoise": 0
     },
