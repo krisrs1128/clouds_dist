@@ -79,7 +79,8 @@ config/defaults.json:
         "kernel_size": 3,
         "dropout": 0.75,
         "Cin": 42,
-        "Cout": 3
+        "Cout": 3,
+        "Cnoise": 0
     },
     "train": {
         "n_epochs": 100,
@@ -88,8 +89,6 @@ config/defaults.json:
         "lambda_gan": 0.01,
         "lambda_L": 1,
         "batch_size": 32,
-        "n_epoch_regress": 100,
-        "n_epoch_gan": 250,
         "datapath": "/home/sankarak/scratch/data/clouds",
         "n_in_mem": 1,
         "early_break_epoch": 0,

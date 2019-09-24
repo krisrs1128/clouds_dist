@@ -7,6 +7,78 @@ import argparse
 import re
 
 
+def get_template(param, sbp, run_dir, name):
+    if name == "victor_mila":
+        return f"""#!/bin/bash
+#SBATCH --cpus-per-task=8       # Ask for 6 CPUs
+#SBATCH --gres=gpu:titanxp:1                        # Ask for 1 GPU
+#SBATCH --mem=32G                 # Ask for 32 GB of RAM
+#SBATCH --time=24:00:00             # Run for 12h
+#SBATCH -o {str(run_dir)}/slurm-%j.out  # Write the log in $SCRATCH
+
+cd /network/home/schmidtv/clouds_dist
+
+echo "Starting job"
+
+source /network/home/schmidtv/anaconda3/bin/activate
+
+conda activate cyclePT
+
+python -m src.train \\
+                -m "{sbp['message']}" \\
+                -c "{str(conf_path)}" \\
+                -o "{str(run_dir)}"
+echo 'done'
+"""
+    elif name == "mustafa_beluga":
+        return f"""#!/bin/bash
+#SBATCH --cpus-per-task=8       # Ask for 6 CPUs
+#SBATCH --gres=gpu:titanxp:1                        # Ask for 1 GPU
+#SBATCH --mem=32G                 # Ask for 32 GB of RAM
+#SBATCH --time=24:00:00             # Run for 12h
+#SBATCH -o {str(run_dir)}/slurm-%j.out  # Write the log in $SCRATCH
+
+cd /network/home/muhammem/clouds_dist
+
+echo "Starting job"
+
+source XXXXXXanaconda3/bin/activate
+
+conda activate XXXXXXenvname
+
+python -m src.train \\
+                -m "{sbp['message']}" \\
+                -c "{str(conf_path)}" \\
+                -o "{str(run_dir)}"
+echo 'done'
+"""
+    else:
+        return f"""#!/bin/bash
+#SBATCH --account=rpp-bengioy               # Yoshua pays for your job
+#SBATCH --cpus-per-task={sbp["cpus"]}       # Ask for 6 CPUs
+#SBATCH --gres=gpu:1                        # Ask for 1 GPU
+#SBATCH --mem={sbp["mem"]}G                 # Ask for 32 GB of RAM
+#SBATCH --time={sbp["runtime"]}             # Run for 12h
+#SBATCH -o {env_to_path(sbp["slurm_out"])}  # Write the log in $SCRATCH
+
+module load singularity
+
+echo "Starting job"
+
+$DATADIR=/scratch/sankarak/data/clouds/
+
+singularity shell --nv --bind $HOME/clouds_dist:/home/clouds/,$DATADIR,{str(exp_dir)} {sbp["singularity_path"]} \\
+    echo $(pwd) && echo $(ls) && echo $(ls /home/clouds)\\
+
+    cd /home/clouds/ && python3 src/train.py \\
+        -m "{sbp["message"]}" \\
+        -c "{str(conf_path)}"\\
+        -o "{str(run_dir)}" \\
+        {"-f" if sbp["offline"] else ""}
+
+"""
+
+
 def get_increasable_name(file_path):
     f = Path(file_path)
     while f.exists():
@@ -64,7 +136,8 @@ def env_to_path(path):
         "kernel_size": 3,
         "dropout": 0.75,
         "Cin": 42,
-        "Cout": 3
+        "Cout": 3,
+        "Cnoise": 0
     },
     "train": {
         "n_epochs": 100,
@@ -73,8 +146,6 @@ def env_to_path(path):
         "lambda_gan": 0.01,
         "lambda_L": 1,
         "batch_size": 32,
-        "n_epoch_regress": 100,
-        "n_epoch_gan": 250,
         "datapath": "/home/sankarak/scratch/data/clouds",
         "n_in_mem": 1,
         "early_break_epoch": 0,
@@ -171,11 +242,19 @@ if __name__ == "__main__":
         type=str,
         help="Where to store the experiment, overrides what's in the exp file",
     )
+    parser.add_argument(
+        "-t",
+        "--template_name",
+        type=str,
+        default="default",
+        help="what template to use to write the sbatch files",
+    )
+
     opts = parser.parse_args()
 
     # -----------------------------------------
 
-    default_json_file = "config/defaults.json"
+    default_json_file = "shared/defaults.json"
     with open(default_json_file, "r") as f:
         default_json = json.load(f)
 
@@ -231,30 +310,8 @@ if __name__ == "__main__":
         run_dir.mkdir()
         sbp = param["sbatch"]
         conf_path = write_conf(run_dir, param)  # returns Path() from pathlib
-        template = f"""#!/bin/bash
-#SBATCH --account=rpp-bengioy               # Yoshua pays for your job
-#SBATCH --cpus-per-task={sbp["cpus"]}       # Ask for 6 CPUs
-#SBATCH --gres=gpu:1                        # Ask for 1 GPU
-#SBATCH --mem={sbp["mem"]}G                 # Ask for 32 GB of RAM
-#SBATCH --time={sbp["runtime"]}             # Run for 12h
-#SBATCH -o {env_to_path(sbp["slurm_out"])}  # Write the log in $SCRATCH
 
-module load singularity
-
-echo "Starting job"
-
-$DATADIR=/scratch/sankarak/data/clouds/
-
-singularity shell --nv --bind $HOME/clouds_dist:/home/clouds/,$DATADIR,{str(exp_dir)} {sbp["singularity_path"]} \\
-    echo $(pwd) && echo $(ls) && echo $(ls /home/clouds)\\
-
-    cd /home/clouds/ && python3 src/train.py \\
-        -m "{sbp["message"]}" \\
-        -c "{str(conf_path)}"\\
-        -o "{str(run_dir)}" \\
-        {"-f" if sbp["offline"] else ""}
-
-"""
+        template = get_template(param, sbp, run_dir, opts.template_name)
 
         file = run_dir / f"run-{sbp['conf_name']}.sh"
         with file.open("w") as f:

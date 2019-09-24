@@ -105,4 +105,5 @@ class UNet(nn.Module):
             out = up(f)
 
         out = self.conv_final(out)
-        return torch.sigmoid(out)
+        return out
+        # return torch.sigmoid(out)

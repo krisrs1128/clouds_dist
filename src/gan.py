@@ -12,6 +12,7 @@ class GAN(nn.Module):
         self,
         Cin,
         Cout,
+        Cnoise,
         n_blocks=5,
         filter_factors=None,
         kernel_size=3,
