@@ -435,7 +435,7 @@ if __name__ == "__main__":
         conf_name = conf_path
         if not conf_name.endswith(".json"):
             conf_name += ".json"
-        conf_path = Path("config") / conf_name
+        conf_path = Path("shared") / conf_name
         assert conf_path.exists()
 
     # --------------------
