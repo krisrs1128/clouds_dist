@@ -45,6 +45,16 @@ class EarthData(Dataset):
             :load_limit
         ]
 
+        # ------------------------------------
+        # ----- Infer Data Size for Unet -----
+        # ------------------------------------
+        data = {}
+        for key in ["imgs", "metos"]:
+            path = [s for s in self.paths[key] if self.ids[0] in s][0]
+            data[key] = dict(np.load(path).items())
+        sample = process_sample(data)
+        self.metos_shape = tuple(sample["metos"].shape)
+
     def __len__(self):
         return len(self.ids)
 
@@ -89,4 +99,8 @@ def process_sample(data):
     )
     metos[np.isnan(metos)] = 0.0
     metos[np.isinf(metos)] = 0.0
-    return {"coords": torch.Tensor(coords), "real_imgs": torch.Tensor(imgs), "metos": torch.Tensor(metos)}
+    return {
+        "coords": torch.Tensor(coords),
+        "real_imgs": torch.Tensor(imgs),
+        "metos": torch.Tensor(metos),
+    }
