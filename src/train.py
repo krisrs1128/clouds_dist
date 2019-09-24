@@ -389,7 +389,7 @@ if __name__ == "__main__":
     # -------------------------
     # ----- Set Up Parser -----
     # -------------------------
-    
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-m",
@@ -424,7 +424,7 @@ if __name__ == "__main__":
     # ----------------------------------
     # ----- Get Configuration File -----
     # ----------------------------------
-    
+
     conf_path = opts.conf_name
     output_path = Path(opts.output_dir)
 
@@ -435,13 +435,13 @@ if __name__ == "__main__":
         conf_name = conf_path
         if not conf_name.endswith(".json"):
             conf_name += ".json"
-        conf_path = Path("shared") / conf_name
+        conf_path = Path(__file__).parent.parent / "shared" / conf_name
         assert conf_path.exists()
 
     # --------------------
     # ----- Get Opts -----
     # --------------------
-    
+
     opts = merge_defaults({"model": {}, "train": {}}, conf_path)
 
     data_path = opts.train.datapath.split("/")
@@ -453,7 +453,7 @@ if __name__ == "__main__":
     # ----------------------------------
     # ----- Check Data Directories -----
     # ----------------------------------
-    
+
     print("Loading data from ", str(opts.train.datapath))
     assert Path(opts.train.datapath).exists()
     assert (Path(opts.train.datapath) / "imgs").exists()
@@ -463,7 +463,7 @@ if __name__ == "__main__":
     # ------------------------------
     # ----- Configure comet.ml -----
     # ------------------------------
-    
+
     if opts.no_exp:
         exp = None
     else:
@@ -476,7 +476,7 @@ if __name__ == "__main__":
     # --------------------------
     # ----- Start Training -----
     # --------------------------
-    
+
     trainer = gan_trainer(opts, exp, output_path)
 
     result = trainer.run_trail()
@@ -484,7 +484,7 @@ if __name__ == "__main__":
     # --------------------------------
     # ----- End Comet Experiment -----
     # --------------------------------
-    
+
     if not opts.no_exp:
         trainer.exp.end()
 
