@@ -421,16 +421,20 @@ if __name__ == "__main__":
     parser.add_argument("-n", "--no_exp", default=False, action="store_true")
     opts = parser.parse_args()
 
-    # ----------------------------------
-    # ----- Get Configuration File -----
-    # ----------------------------------
+    # ---------------------------
+    # ----- Set output path -----
+    # ---------------------------
 
-    conf_path = opts.conf_name
     output_path = Path(opts.output_dir)
 
     if not output_path.exists():
         output_path.mkdir()
 
+    # ----------------------------------
+    # ----- Get Configuration File -----
+    # ----------------------------------
+
+    conf_path = opts.conf_name
     if not Path(conf_path).exists():
         conf_name = conf_path
         if not conf_name.endswith(".json"):
