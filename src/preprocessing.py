@@ -143,3 +143,15 @@ class Rescale:
         torch.cuda.empty_cache()
         return stats
 
+class Crop:
+    def __init__(self, crop_size=20):
+        self.crop_size = crop_size
+        return
+
+    def __call__(self, sample):
+        result = {
+            k: v[:, self.crop_size : -self.crop_size, self.crop_size : -self.crop_size]
+            for k, v in sample.items()
+        }
+        return result
+
