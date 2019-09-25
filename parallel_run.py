@@ -221,7 +221,7 @@ default_sbatch = {
     "cpus": 8,
     "mem": 32,
     "runtime": "12:00:00",
-    "slurm_out": "$HOME/logs/slurm-%j.out",
+    "slurm_out": "$HOME/logs/clouds-job-%j.out",
     "message": "explore exp run 12h",
     "conf_name": "explore",
     "singularity_path": "/scratch/sankarak/images/clouds.img",
