@@ -160,12 +160,21 @@ class gan_trainer:
             num_workers=self.opts.train.get("num_workers", 3),
         )
 
-        self.gan = GAN(**self.opts.model, device=self.device).to(self.device)
+        if self.trainset.metos_shape[-1] % 2 ** self.opts.model.n_blocks != 0:
+            raise ValueError(
+                "Data shape ({}) and n_blocks ({}) are not compatible".format(
+                    self.trainset.metos_shape[-1], self.opts.model.n_blocks
+                )
+            )
+        btdim = self.trainset.metos_shape[-1] // 2 ** self.opts.model.n_blocks
+        self.gan = GAN(**self.opts.model, bottleneck_dim=btdim, device=self.device).to(
+            self.device
+        )
         self.g = self.gan.g
         self.d = self.gan.d
 
         # train using "regress then GAN" approach
-        val_loss = self.train(
+        self.train(
             self.opts.train.n_epochs,
             self.opts.train.lr_d,
             self.opts.train.lr_g,
@@ -174,7 +183,6 @@ class gan_trainer:
             self.opts.train.num_D_accumulations,
             self.opts.train.matching_loss,
         )
-        return {"loss": val_loss, "opts": self.opts}
 
     def get_noise_tensor(self, shape):
         b, h, w = shape[0], shape[2], shape[3]
@@ -187,6 +195,47 @@ class gan_trainer:
         self.debug[name].prev = self.debug[name].curr
         self.debug[name].curr = var
 
+    def infer(self, batch, step, store_images, imgdir, exp):
+        # output sample images
+        shape = batch["metos"].shape
+
+        real_img = batch["real_imgs"].to(self.device)
+
+        input_tensor = self.get_noise_tensor(shape)
+        input_tensor[:, : self.opts.model.Cin, :, :] = batch["metos"]
+        input_tensor = input_tensor.to(self.device)
+
+        generated_img = self.g(input_tensor)
+
+        for i in range(input_tensor.shape[0]):
+            # concatenate verticaly:
+            # [3 metos, generated clouds, ground truth clouds]
+            tmp_tensor = input_tensor[i, 22:25].clone().detach()
+            tmp_tensor -= tmp_tensor.min()
+            tmp_tensor /= tmp_tensor.max()
+            imgs = torch.cat((tmp_tensor, generated_img[i], real_img[i]), 1)
+            imgs_cpu = imgs.cpu().detach().numpy()
+            imgs_cpu = np.swapaxes(imgs_cpu, 0, 2)
+            if store_images:
+                np.save(str(imgdir / f"imgs_{step}_{i}.npy"), imgs_cpu)
+            if exp:
+                try:
+                    exp.log_image(imgs_cpu, name=f"imgs_{step}_{i}")
+                except Exception as e:
+                    print(f"\n{e}\n")
+
+    def should_save(self, steps):
+        return not self.opts.train.save_every_steps or (
+            self.opts.train.save_every_steps
+            and self.opts.train.save_every_steps % steps == 0
+        )
+
+    def should_infer(self, steps):
+        return not self.opts.train.infer_every_steps or (
+            self.opts.train.infer_every_steps
+            and self.opts.train.infer_every_steps % steps == 0
+        )
+
     def train(
         self,
         n_epochs,
@@ -197,7 +246,9 @@ class gan_trainer:
         num_D_accumulations=8,
         loss="l1",
     ):
-        # initialize trial
+        # -------------------------------
+        # ----- Set Up Optimization -----
+        # -------------------------------
         d_optimizer = optim.Adam(
             self.d.parameters(), lr=lr_d, betas=(0.0, 0.999), weight_decay=0, eps=1e-8
         )
@@ -213,16 +264,23 @@ class gan_trainer:
         MSE = nn.MSELoss()
         device = self.device
         if self.verbose > 0:
-            print("-------------------------")
-            print("--  Starting training  --")
-            print("-------------------------")
+            print("-----------------------------")
+            print("----- Starting training -----")
+            print("-----------------------------")
         times = []
         start_time = time.time()
+        total_steps = 0
         for epoch in range(n_epochs):
+            # -------------------------
+            # ----- Prepare Epoch -----
+            # -------------------------
             torch.cuda.empty_cache()
             self.gan.train()  # train mode
             etime = time.time()
             for i, batch in enumerate(self.trainloader):
+                # --------------------------------
+                # ----- Start Step Procedure -----
+                # --------------------------------
                 if i > (self.opts.train.early_break_epoch or 1e9):
                     break
                 self.batch = batch
@@ -233,12 +291,15 @@ class gan_trainer:
                 shape = batch["metos"].shape
 
                 for acc in range(num_D_accumulations):
+                    # ---------------------------------------------
+                    # ----- Accumulate Discriminator Gradient -----
+                    # ---------------------------------------------
                     self.input_tensor = self.get_noise_tensor(shape)
                     self.input_tensor[:, : self.opts.model.Cin, :, :] = batch["metos"]
                     self.input_tensor = self.input_tensor.to(device)
 
                     real_img = batch["real_imgs"].to(device)
-                    # real_img = real_img.to(device)
+
                     generated_img = self.g(self.input_tensor)
 
                     real_prob = self.d(real_img)
@@ -251,20 +312,15 @@ class gan_trainer:
                     d_loss = loss_hinge_dis(fake_prob, real_prob) / float(
                         num_D_accumulations
                     )
-                    # d_loss = 0.5 * (
-                    #     MSE(fake_prob, fake_target) + MSE(real_prob, real_target)
-                    # )
-                    # self.log_debug(fake_prob, "fake_prob")
-                    # self.log_debug(fake_target, "fake_target")
-                    # self.log_debug(real_prob, "real_prob")
-                    # self.log_debug(real_target, "real_target")
-                    # if np.allclose(d_loss.item(), 0.5):
-                    #     return
-
-                    # d_loss.backward(retain_graph=True)
                     d_loss.backward()
+                # ----------------------------------
+                # ----- Backprop Discriminator -----
+                # ----------------------------------
                 d_optimizer.step()
 
+                # ----------------------------
+                # ----- Generator Update -----
+                # ----------------------------
                 g_optimizer.zero_grad()
                 fake_prob = self.d(generated_img)
                 loss = matching_loss(real_img, generated_img)
@@ -273,6 +329,11 @@ class gan_trainer:
                 g_loss_total = lambda_gan * gan_loss + lambda_L * loss
                 g_loss_total.backward()
                 g_optimizer.step()
+
+                # -------------------
+                # ----- Logging -----
+                # -------------------
+
                 if self.exp:
                     self.exp.log_metrics(
                         {
@@ -286,9 +347,23 @@ class gan_trainer:
                             "track_gen/std": generated_img.std(),
                         }
                     )
+
+                if self.should_infer(total_steps):
+                    self.infer(
+                        batch,
+                        total_steps,
+                        self.opts.train.store_images,
+                        self.imgdir,
+                        self.exp,
+                    )
+
+                if self.should_save(total_steps):
+                    self.save(total_steps)
+
                 t = time.time()
                 times.append(t - stime)
                 times = times[-100:]
+                total_steps += 1
                 if self.verbose > 0:
                     ep_str = "epoch:{}/{} step {}/{} d_loss:{:0.4f} l:{:0.4f} g_loss_total:{:0.4f} | "
                     ep_str += "t/step {:.1f} | t/ep {:.1f} | t {:.1f}"
@@ -308,33 +383,9 @@ class gan_trainer:
                         end="\r",
                     )
 
-            # ------------
-            # END OF EPOCH
-            # ------------
-
-            # output sample images
-            input_tensor = self.get_noise_tensor(shape)
-            input_tensor[:, : self.opts.model.Cin, :, :] = batch["metos"]
-            input_tensor = input_tensor.to(device)
-
-            generated_img = self.g(input_tensor)
-
-            for i in range(input_tensor.shape[0]):
-                # concatenate verticaly 3 metos, generated clouds, ground truth clouds
-                tmp_tensor = input_tensor[i, 22:25].clone().detach()
-                tmp_tensor -= tmp_tensor.min()
-                tmp_tensor /= tmp_tensor.max()
-                imgs = torch.cat((tmp_tensor, generated_img[i], real_img[i]), 1)
-                imgs_cpu = imgs.cpu().detach().numpy()
-                imgs_cpu = np.swapaxes(imgs_cpu, 0, 2)
-                np.save(str(self.imgdir / f"imgs_{epoch}_{i}.npy"), imgs_cpu)
-                if self.exp:
-                    try:
-                        self.exp.log_image(imgs_cpu, name=f"imgs_{epoch}_{i}")
-                    except Exception as e:
-                        print(f"\n{e}\n")
-
-            self.save(epoch)
+            # ------------------------
+            # ----- END OF EPOCH -----
+            # ------------------------
 
 
 if __name__ == "__main__":
@@ -342,6 +393,10 @@ if __name__ == "__main__":
     scratch = os.environ.get("SCRATCH") or os.path.join(
         os.environ.get("HOME"), "scratch"
     )
+
+    # -------------------------
+    # ----- Set Up Parser -----
+    # -------------------------
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -374,34 +429,52 @@ if __name__ == "__main__":
     parser.add_argument("-n", "--no_exp", default=False, action="store_true")
     opts = parser.parse_args()
 
-    conf_path = opts.conf_name
+    # ---------------------------
+    # ----- Set output path -----
+    # ---------------------------
+
     output_path = Path(opts.output_dir)
 
     if not output_path.exists():
         output_path.mkdir()
 
+    # ----------------------------------
+    # ----- Get Configuration File -----
+    # ----------------------------------
+
+    conf_path = opts.conf_name
     if not Path(conf_path).exists():
         conf_name = conf_path
         if not conf_name.endswith(".json"):
             conf_name += ".json"
-        conf_path = Path("config") / conf_name
+        conf_path = Path(__file__).parent.parent / "shared" / conf_name
         assert conf_path.exists()
 
-    params = merge_defaults({"model": {}, "train": {}}, conf_path)
+    # --------------------
+    # ----- Get Opts -----
+    # --------------------
 
-    data_path = params.train.datapath.split("/")
+    opts = merge_defaults({"model": {}, "train": {}}, conf_path)
+
+    data_path = opts.train.datapath.split("/")
     for i, d in enumerate(data_path):
         if "$" in d:
             data_path[i] = os.environ.get(d.replace("$", ""))
-    params.train.datapath = "/".join(data_path)
+    opts.train.datapath = "/".join(data_path)
 
-    print("Loading data from ", str(params.train.datapath))
-    assert Path(params.train.datapath).exists()
-    assert (Path(params.train.datapath) / "imgs").exists()
-    assert (Path(params.train.datapath) / "metos").exists()
+    # ----------------------------------
+    # ----- Check Data Directories -----
+    # ----------------------------------
+
+    print("Loading data from ", str(opts.train.datapath))
+    assert Path(opts.train.datapath).exists()
+    assert (Path(opts.train.datapath) / "imgs").exists()
+    assert (Path(opts.train.datapath) / "metos").exists()
     # print("Make sure you are using proxychains so that comet has internet access")
 
-    scratch = str(Path(scratch) / "comets")
+    # ------------------------------
+    # ----- Configure comet.ml -----
+    # ------------------------------
 
     if opts.no_exp:
         exp = None
@@ -412,9 +485,17 @@ if __name__ == "__main__":
             exp = Experiment()
         exp.log_parameter("__message", opts.message)
 
-    trainer = gan_trainer(params, exp, output_path)
+    # --------------------------
+    # ----- Start Training -----
+    # --------------------------
 
-    result = trainer.run_trail()
+    trainer = gan_trainer(opts, exp, output_path)
+
+    trainer.run_trail()
+
+    # --------------------------------
+    # ----- End Comet Experiment -----
+    # --------------------------------
 
     if not opts.no_exp:
         trainer.exp.end()

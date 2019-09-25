@@ -1,4 +1,5 @@
-# from https://github.com/christiancosgrove/pytorch-spectral-normalization-gan/blob/master/model_resnet.py
+# from https://github.com/christiancosgrove/
+# pytorch-spectral-normalization-gan/blob/master/model_resnet.py
 
 import numpy as np
 import torch
@@ -45,7 +46,7 @@ class ResBlockDiscriminator(nn.Module):
             #     self.bypass = nn.AvgPool2d(2, stride=stride, padding=0)
             # else:
             #     self.bypass = nn.Sequential(
-            #         SpectralNorm(nn.Conv2d(in_channels,out_channels, 1, 1, padding=0)),
+            #        SpectralNorm(nn.Conv2d(in_channels,out_channels, 1, 1, padding=0)),
             #         nn.AvgPool2d(2, stride=stride, padding=0)
             #     )
 
@@ -65,7 +66,8 @@ class FirstResBlockDiscriminator(nn.Module):
         nn.init.xavier_uniform_(self.conv2.weight.data, 1.0)
         nn.init.xavier_uniform_(self.bypass_conv.weight.data, np.sqrt(2))
 
-        # we don't want to apply ReLU activation to raw image before convolution transformation.
+        # we don't want to apply ReLU activation to raw image
+        # before convolution transformation.
         self.model = nn.Sequential(
             SpectralNorm(self.conv1),
             nn.ReLU(),
@@ -102,7 +104,8 @@ class Discriminator(nn.Module):
         return self.fc(self.model(x).view(-1, self.disc_size))
 
 
-# from https://github.com/christiancosgrove/pytorch-spectral-normalization-gan/blob/master/spectral_normalization.py
+# from https://github.com/christiancosgrove/pytorch-spectral-normalization-gan
+# /blob/master/spectral_normalization.py
 
 
 def l2normalize(v, eps=1e-12):
