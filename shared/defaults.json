@@ -11,6 +11,8 @@
     "train": {
         "batch_size": 32,
         "datapath": "/home/sankarak/scratch/data/clouds",
+        "preprocessed_data_path": "/scratch/alghali/data/clouds/",
+        "preprocessed_data": true,
         "early_break_epoch": 0,
         "infer_every_steps": 5000,
         "lambda_gan": 0.01,
