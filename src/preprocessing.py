@@ -5,16 +5,17 @@ import torch
 
 class Rescale:
     def __init__(
-        self, data_path, n_in_mem=50, num_workers=3, with_stats="on", verbose=1
+        self, data_path, n_in_mem=50, num_workers=3, verbose=1
     ):
         self.n_in_mem = n_in_mem
         self.data_path = data_path
         self.num_workers = num_workers
         self.verbose = verbose
-        self.with_stats = with_stats
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.dataset = EarthData(data_dir=self.data_path, n_in_mem=self.n_in_mem)
+        self.dataset = EarthData(
+            data_dir=self.data_path, n_in_mem=self.n_in_mem
+        )
 
         self.data_loader = torch.utils.data.DataLoader(
             self.dataset,
@@ -22,13 +23,8 @@ class Rescale:
             shuffle=False,
             num_workers=self.num_workers,
         )
-        if self.with_stats in ("on", "per_channel"):
-            self.means, self.ranges = self.get_stats()
-        else:
-            self.means, self.ranges = (
-                {"real_imgs": 0, "metos": 0},
-                {"real_imgs": 1, "metos": 1},
-            )
+        self.means, self.ranges = self.get_stats()
+
 
     def expand_as(self, a, b):
         """Repeat a vector b that gives 1 value per channel so that it
@@ -61,27 +57,19 @@ class Rescale:
         )
 
     def __call__(self, sample):
-        if self.with_stats == "per_channel":
-            img_mean_expand = self.expand_as(
-                sample["real_imgs"], self.means["real_imgs"]
-            )
-            img_range_expand = self.expand_as(
-                sample["real_imgs"], self.ranges["real_imgs"]
-            )
-            metos_mean_expand = self.expand_as(sample["metos"], self.means["metos"])
-            metos_range_expand = self.expand_as(sample["metos"], self.ranges["metos"])
+        img_mean_expand = self.expand_as(
+            sample["real_imgs"], self.means["real_imgs"]
+        )
+        img_range_expand = self.expand_as(
+            sample["real_imgs"], self.ranges["real_imgs"]
+        )
+        metos_mean_expand = self.expand_as(sample["metos"], self.means["metos"])
+        metos_range_expand = self.expand_as(sample["metos"], self.ranges["metos"])
 
-            sample["real_imgs"] = (
-                sample["real_imgs"] - img_mean_expand
-            ) / img_range_expand
-            sample["metos"] = (sample["metos"] - metos_mean_expand) / metos_range_expand
-        else:
-            sample["real_imgs"] = (
-                sample["real_imgs"] - self.means["real_imgs"]
-            ) / self.ranges["real_imgs"]
-            sample["metos"] = (sample["metos"] - self.means["metos"]) / self.ranges[
-                "metos"
-            ]
+        sample["real_imgs"] = (
+            sample["real_imgs"] - img_mean_expand
+        ) / img_range_expand
+        sample["metos"] = (sample["metos"] - metos_mean_expand) / metos_range_expand
 
         sample["real_imgs"][np.isnan(sample["real_imgs"])] = 0.0
         sample["real_imgs"][np.isinf(sample["real_imgs"])] = 0.0
@@ -89,7 +77,7 @@ class Rescale:
         sample["metos"][np.isinf(sample["metos"])] = 0.0
         return sample
 
-    def get_stats(self, data_loader):
+    def get_stats(self):
         maxes = {}
         mins = {}
         means = {}
@@ -98,30 +86,20 @@ class Rescale:
             for k, v in batch.items():
                 v = v.to(self.device)
                 if i == 0:
-                    if self.with_stats == "per_channel":
-                        means[k] = v.mean(dim=(0, 2, 3))
-                        maxes[k] = v.max(0)[0].max(1)[0].max(1)[0]
-                        mins[k] = v.min(0)[0].min(1)[0].min(1)[0]
-                    else:
-                        means[k] = v.mean(dim=0)
-                        maxes[k] = v.max(dim=0)[0]
-                        mins[k] = v.min(dim=0)[0]
+                    means[k] = v.mean(dim=(0, 2, 3))
+                    maxes[k] = v.max(0)[0].max(1)[0].max(1)[0]
+                    mins[k] = v.min(0)[0].min(1)[0].min(1)[0]
 
                 else:
                     n = i * self.n_in_mem
                     m = len(v)
                     means[k] *= n / (n + m)
 
-                    if self.with_stats == "per_channel":
-                        means[k] += v.sum(dim=(0, 2, 3)) / (
-                                (n + m) * v.shape[2] * v.shape[3]
-                        )
-                        cur_max = v.max(0)[0].max(1)[0].max(1)[0]
-                        cur_min = v.min(0)[0].min(1)[0].min(1)[0]
-                    else:
-                        means[k] += v.sum(dim=0) / (n + m)
-                        cur_max = v.max(dim=0)[0]
-                        cur_min = v.min(dim=0)[0]
+                    means[k] += v.sum(dim=(0, 2, 3)) / (
+                        (n + m) * v.shape[2] * v.shape[3]
+                    )
+                    cur_max = v.max(0)[0].max(1)[0].max(1)[0]
+                    cur_min = v.min(0)[0].min(1)[0].min(1)[0]
 
                     maxes[k][maxes[k] < cur_max] = cur_max[maxes[k] < cur_max]
                     mins[k][mins[k] > cur_min] = cur_min[mins[k] > cur_min]
@@ -143,6 +121,7 @@ class Rescale:
         torch.cuda.empty_cache()
         return stats
 
+
 class Crop:
     def __init__(self, crop_size=20):
         self.crop_size = crop_size
@@ -154,4 +133,3 @@ class Crop:
             for k, v in sample.items()
         }
         return result
-
