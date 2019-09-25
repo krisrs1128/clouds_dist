@@ -126,6 +126,7 @@ def env_to_path(path):
 
 """ default config as ref:
 {
+    {
     "model": {
         "n_blocks": 5,
         "filter_factors": null,
@@ -138,6 +139,8 @@ def env_to_path(path):
     "train": {
         "batch_size": 32,
         "datapath": "/home/sankarak/scratch/data/clouds",
+        "preprocessed_data_path": "/scratch/alghali/data/clouds/",
+        "preprocessed_data": true,
         "early_break_epoch": 0,
         "infer_every_steps": 5000,
         "lambda_gan": 0.01,
@@ -152,8 +155,9 @@ def env_to_path(path):
         "num_workers": 3,
         "save_every_steps": 5000,
         "store_images": false,
-        "with_stats": true
+        "with_stats": "on"
     }
+}
 }"""
 
 """Possible explore-lr.json
