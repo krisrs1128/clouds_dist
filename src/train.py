@@ -97,7 +97,7 @@ class gan_trainer:
 
         if self.opts.train.preprocessed_data:
             self.trainset = EarthData(
-                self.opts.train.preprocessed_datapath,
+                self.opts.train.preprocessed_data_path,
                 pre_processed=self.opts.train.preprocessed_data,
                 n_in_mem=self.opts.train.n_in_mem or 50,
                 load_limit=self.opts.train.load_limit or -1,
@@ -120,19 +120,6 @@ class gan_trainer:
                     Crop(20)]
                 )
             )
-
-        self.trainset = EarthData(
-            self.opts.train.datapath,
-            n_in_mem=self.opts.train.n_in_mem or 50,
-            load_limit=self.opts.train.load_limit or -1,
-            transform=Rescale(
-                self.opts.train.datapath,
-                self.opts.train.n_in_mem,
-                num_workers=self.opts.train.get("num_workers", 3),
-                with_stats=self.opts.train.with_stats,
-                verbose=1,
-            ),
-        )
 
         self.trial_number = 0
         self.n_epochs = n_epochs
@@ -186,6 +173,8 @@ class gan_trainer:
             num_workers=self.opts.train.get("num_workers", 3),
         )
 
+
+        #calculate the bottleneck dimension
         if self.trainset.metos_shape[-1] % 2 ** self.opts.model.n_blocks != 0:
             raise ValueError(
                 "Data shape ({}) and n_blocks ({}) are not compatible".format(
