@@ -4,11 +4,11 @@ from datetime import datetime
 from pathlib import Path
 from src.data import EarthData
 from src.gan import GAN
-from src.preprocessing import Rescale
+from src.preprocessing import Rescale, Crop
 from torch import optim
 from torch.utils import data
 from addict import Dict
-
+from torchvision import transforms
 import json
 import time
 import subprocess
@@ -18,8 +18,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# from tensorboardX import SummaryWriter
-import multiprocessing
+
 import argparse
 
 
@@ -95,6 +94,33 @@ def weighted_mse_loss(input, target):
 class gan_trainer:
     def __init__(self, opts, comet_exp=None, output_dir=".", n_epochs=50, verbose=1):
         self.opts = opts
+
+        if self.opts.train.preprocessed_data:
+            self.trainset = EarthData(
+                self.opts.train.preprocessed_datapath,
+                pre_processed=self.opts.train.preprocessed_data,
+                n_in_mem=self.opts.train.n_in_mem or 50,
+                load_limit=self.opts.train.load_limit or -1,
+                transform=Crop(20)
+            )
+        else:
+            self.trainset = EarthData(
+                self.opts.train.datapath,
+                pre_processed=self.opts.train.preprocessed_data,
+                n_in_mem=self.opts.train.n_in_mem or 50,
+                load_limit=self.opts.train.load_limit or -1,
+                transform=transforms.Compose([
+                    Rescale(
+                        data_path=self.opts.train.datapath,
+                        n_in_mem=self.opts.train.n_in_mem,
+                        num_workers=self.opts.train.num_workers,
+                        with_stats=self.opts.train.with_stats,
+                        device=self.device,
+                        verbose=1),
+                    Crop(20)]
+                )
+            )
+
         self.trainset = EarthData(
             self.opts.train.datapath,
             n_in_mem=self.opts.train.n_in_mem or 50,
