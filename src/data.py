@@ -101,12 +101,11 @@ def process_sample(data):
             data["metos"]["RH"],
             data["metos"]["Scattering_angle"].reshape(1, 256, 256),
             data["metos"]["TS"].reshape(1, 256, 256),
+            coords.reshape(2, 256, 256)
         ]
     )
     metos[np.isnan(metos)] = 0.0
     metos[np.isinf(metos)] = 0.0
-    return {
-        "coords": torch.Tensor(coords),
-        "real_imgs": torch.Tensor(imgs),
+    return {"real_imgs": torch.Tensor(imgs),
         "metos": torch.Tensor(metos),
     }
