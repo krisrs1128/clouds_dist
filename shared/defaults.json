@@ -27,6 +27,6 @@
         "num_workers": 3,
         "save_every_steps": 5000,
         "store_images": false,
-        "with_stats": true
+        "with_stats": "on"
     }
 }
