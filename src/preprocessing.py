@@ -31,23 +31,23 @@ class Rescale:
             )
 
     def __call__(self, sample):
-        coords = (sample["coords"] - self.means["coords"]) / (
+        sample["coords"] = (sample["coords"] - self.means["coords"]) / (
             self.maxes["coords"] - self.mins["coords"]
         )
-        real_imgs = (sample["real_imgs"] - self.means["real_imgs"]) / (
+        sample["real_imgs"] = (sample["real_imgs"] - self.means["real_imgs"]) / (
             self.maxes["real_imgs"] - self.mins["real_imgs"]
         )
-        metos = (sample["metos"] - self.means["metos"]) / (
+        sample["metos"] = (sample["metos"] - self.means["metos"]) / (
             self.maxes["metos"] - self.mins["metos"]
         )
         if self.with_stats:
-            coords[np.isnan(coords)] = 0.0
-            coords[np.isinf(coords)] = 0.0
-            real_imgs[np.isnan(real_imgs)] = 0.0
-            real_imgs[np.isinf(real_imgs)] = 0.0
-            metos[np.isnan(metos)] = 0.0
-            metos[np.isinf(metos)] = 0.0
-        return {"coords": coords, "real_imgs": real_imgs, "metos": metos}
+            sample["coords"] [np.isnan(sample["coords"] )] = 0.0
+            sample["coords"] [np.isinf(sample["coords"] )] = 0.0
+            sample["real_imgs"][np.isnan(sample["real_imgs"])] = 0.0
+            sample["real_imgs"][np.isinf(sample["real_imgs"])] = 0.0
+            sample["metos"][np.isnan(sample["metos"])] = 0.0
+            sample["metos"][np.isinf(sample["metos"])] = 0.0
+        return sample
 
     def get_stats(self, data_loader):
         means = {}
