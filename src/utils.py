@@ -43,12 +43,13 @@ def sample_param(sample_dict):
     return value
 
 
-def merge_defaults(opts, conf_path):
+def merge_defaults(extra_opts, conf_path):
     print("Loading params from", conf_path)
     result = load_conf(conf_path)
     for group in ["model", "train", "data"]:
-        for k, v in opts[group].items():
-            result[group][k] = v
+        if group in extra_opts:
+            for k, v in extra_opts[group].items():
+                result[group][k] = v
     for group in ["model", "train", "data"]:
         for k, v in result[group].items():
             if isinstance(v, dict):

@@ -414,7 +414,7 @@ if __name__ == "__main__":
     # ----- Get Opts -----
     # --------------------
 
-    opts = merge_defaults({"model": {}, "train": {}}, conf_path)
+    opts = merge_defaults({"model": {}, "train": {}, "data": {}}, conf_path)
 
     data_path = opts.data.path.split("/")
     for i, d in enumerate(data_path):
