@@ -8,7 +8,6 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-
 class EarthData(Dataset):
     """
     Earth Clouds / Metereology Data
@@ -29,12 +28,15 @@ class EarthData(Dataset):
     >>>    print(x.shape)
     """
 
-    def __init__(self, data_dir, pre_processed=True, n_in_mem=500, load_limit=-1, transform=None):
+    def __init__(self, data_dir, preprocessed_data_path=None, n_in_mem=500, load_limit=-1, transform=None):
         super(EarthData).__init__()
         self.n_in_mem = n_in_mem
         self.subsample = {}
         self.transform = transform
-        self.preprocessed= pre_processed
+        self.preprocessed_data_path = preprocessed_data_path
+
+        if preprocessed_data_path:
+            data_dir = preprocessed_data_path
 
         self.paths = {
             "real_imgs": glob(os.path.join(data_dir, "imgs", "*.npz")),
@@ -52,9 +54,13 @@ class EarthData(Dataset):
         data = {}
         for key in ["real_imgs", "metos"]:
             path = [s for s in self.paths[key] if self.ids[0] in s][0]
-            data[key] = dict(np.load(path).items())
-        sample = process_sample(data)
-        self.metos_shape = tuple(sample["metos"].shape)
+            if self.preprocessed_data_path:
+                data[key] = np.load(path)[key]
+            else:
+                data[key] = dict(np.load(path).items())
+        if self.preprocessed_data_path is None:
+            data = process_sample(data)
+        self.metos_shape = tuple(data["metos"].shape)
 
     def __len__(self):
         return len(self.ids)
@@ -73,11 +79,12 @@ class EarthData(Dataset):
             data = {}
             for key in ["real_imgs", "metos"]:
                 path = [s for s in self.paths[key] if self.ids[j] in s][0]
-                if self.pre_processed:
+                if self.preprocessed_data_path:
                     data[key] = np.load(path)[key]
                 else:
                     data[key] = dict(np.load(path).items())
-            if not self.pre_processed:
+
+            if self.preprocessed_data_path is None:
                 data = process_sample(data)
 
             self.subsample[j] = data
