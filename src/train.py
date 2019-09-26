@@ -313,9 +313,7 @@ class gan_trainer:
                     fake_target = torch.zeros(fake_prob.shape, device=device)
 
                     d_optimizer.zero_grad()
-                    d_loss = loss_hinge_dis(fake_prob, real_prob) / float(
-                        num_D_accumulations
-                    )
+                    d_loss = loss_hinge_dis(fake_prob, real_prob) / float(num_D_accumulations)
                     d_loss.backward()
                 # ----------------------------------
                 # ----- Backprop Discriminator -----
@@ -354,11 +352,7 @@ class gan_trainer:
 
                 if self.should_infer(total_steps):
                     self.infer(
-                        batch,
-                        total_steps,
-                        self.opts.train.store_images,
-                        self.imgdir,
-                        self.exp,
+                        batch, total_steps, self.opts.train.store_images, self.imgdir, self.exp
                     )
 
                 if self.should_save(total_steps):
@@ -394,9 +388,7 @@ class gan_trainer:
 
 if __name__ == "__main__":
 
-    scratch = os.environ.get("SCRATCH") or os.path.join(
-        os.environ.get("HOME"), "scratch"
-    )
+    scratch = os.environ.get("SCRATCH") or os.path.join(os.environ.get("HOME"), "scratch")
 
     # -------------------------
     # ----- Set Up Parser -----
@@ -404,11 +396,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-m",
-        "--message",
-        type=str,
-        default="",
-        help="Add a message to the commet experiment",
+        "-m", "--message", type=str, default="", help="Add a message to the commet experiment"
     )
     parser.add_argument(
         "-f",

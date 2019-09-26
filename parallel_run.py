@@ -66,14 +66,13 @@ module load singularity
 echo "Starting job"
 
 singularity exec --nv --bind {param["config"]["train"]["datapath"]},{param["config"]["train"]["preprocessed_data_path"]}{str(exp_dir)} {sbp["singularity_path"]}\\
+
         python3 src/train.py \\
         -m "{sbp["message"]}" \\
         -c "{str(conf_path)}"\\
         -o "{str(run_dir)}" \\
         {"-f" if sbp["offline"] else ""}
 """
-
-
 
 def get_increasable_name(file_path):
     f = Path(file_path)

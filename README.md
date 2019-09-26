@@ -24,10 +24,22 @@ singularity shell --bind /scratch/sankarak/data/clouds/:/data,/home/sankarak/clo
 > python3 train.py
 ```
 
+Given that you have the right environment setup, the quickest way to run the script (for dev purposes for instance) is:
+
+```
+$ python -m src.train --no_exp --output_dir .
+# or even shorter
+$ python -m src.train -n -o .
+
+# > Load default conf in shared/defaults.json
+# > Don't use a comet.ml experiment
+# > Output everything here (.) - that means checkpoints and images
+```
+
 ### Train.py args
 
 `src/train.py` expects these flags:
-* `--message | -m "this is a message"`, in the spirit of a commit message, will be added to the comet experiment: `exp.log_parameter("__message", opts.message)`
+* `t--message | -m "this is a message"`, in the spirit of a commit message, will be added to the comet experiment: `exp.log_parameter("__message", opts.message)`
 * `--conf_name | -c largeLRs` the name of the training procedure configuration `json` file. Argument to `conf_name` is the name of the file to be found in `config/`
 * `--output_dir | -o $SCRATCH/clouds/runs` where to store the procedure's output: images, comet files, checkpoints conf file etc.
 * `--offline | -f` default is a standard comet.ml experiment. on beluga, such experiments are not possible because compute nodes don't have an internet access so use this flag to dump the experiment locally in the model's `output_path`
@@ -69,7 +81,7 @@ $ proxychains4 ping google.com # should work now
 
 **Remember:** update this section when new arguments are added to the possible configrations
 
-config/defaults.json:
+shared/defaults.json:
 
 ```
 {
