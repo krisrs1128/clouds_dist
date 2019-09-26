@@ -1,10 +1,10 @@
-import json
 import copy
 from pathlib import Path
 import subprocess
 import os
 import argparse
 import re
+import yaml
 
 
 def get_template(param, sbp, run_dir, name):
@@ -71,6 +71,7 @@ singularity exec --nv --bind {param["config"]["train"]["datapath"]},{str(exp_dir
         {"-f" if sbp["offline"] else ""}
 """
 
+
 def get_increasable_name(file_path):
     f = Path(file_path)
     while f.exists():
@@ -91,19 +92,19 @@ def get_increasable_name(file_path):
 def write_conf(run_dir, param):
     """Write config file from params to config/conf_name
     If conf_name exisits, increments a counter in the name:
-    explore.json -> explore (1).json -> explore (2).json ...
+    explore.yaml -> explore (1).yaml -> explore (2).yaml ...
     """
     cname = param["sbatch"].get("conf_name", "overwritable_conf")
-    if not cname.endswith(".json"):
-        cname += ".json"
+    if not cname.endswith(".yaml"):
+        cname += ".yaml"
 
     with open(run_dir / cname, "w") as f:
-        json.dump(param["config"], f)
+        yaml.dump(param["config"], f, default_flow_style=False)
     return run_dir / cname
 
 
 def env_to_path(path):
-    """Transorms an environment variable mention in a json
+    """Transorms an environment variable mention in a conf file
     into its actual value. E.g. $HOME/clouds -> /home/vsch/clouds
 
     Args:
@@ -121,92 +122,81 @@ def env_to_path(path):
 
 
 """ default config as ref:
-{
-    "model": {
-        "n_blocks": 5,
-        "filter_factors": null,
-        "kernel_size": 3,
-        "dropout": 0.25,
-        "Cin": 44,
-        "Cout": 3,
-        "Cnoise": 0
-    },
-    "train": {
-        "batch_size": 32,
-        "datapath": "/home/sankarak/scratch/data/clouds",
-        "early_break_epoch": 0,
-        "infer_every_steps": 5000,
-        "lambda_gan": 0.01,
-        "lambda_L": 1,
-        "load_limit": -1,
-        "lr_d": 0.0002,
-        "lr_g": 0.00005,
-        "matching_loss": "l2",
-        "n_epochs": 100,
-        "n_in_mem": 1,
-        "num_D_accumulations": 8,
-        "num_workers": 3,
-        "save_every_steps": 5000,
-        "store_images": false,
-        "with_stats": true
-    }
-}"""
+# -----------------------
+# -----    Model    -----
+# -----------------------
+model:
+    n_blocks: 5
+    filter_factors: null
+    kernel_size: 3
+    dropout: 0.25
+    Cin: 44
+    Cout: 3
+    Cnoise: 0
+# ------------------------------
+# -----    Train Params    -----
+# ------------------------------
+train:
+    batch_size: 32
+    early_break_epoch: 0
+    infer_every_steps: 5000
+    lambda_gan: 0.01
+    lambda_L: 1
+    load_limit: -1
+    lr_d: 0.0002
+    lr_g: 0.00005
+    matching_loss: "l2"
+    n_epochs: 100
+    num_D_accumulations: 8
+    save_every_steps: 5000
+    store_images: false
+# ---------------------------
+# -----    Data Conf    -----
+# ---------------------------
+data:
+    path: "/scratch/sankarak/data/clouds/"
+    n_in_mem: 1
+    num_workers: 3
+    with_stats: true
+"""
 
-"""Possible explore-lr.json
-{
-    "experiment":{
-        "name": "explore-lr-experiment",
-        "exp_dir": "$SCRATCH/clouds",
-        "repeat": 1
-    },
-    "runs": [
-        {
-            "sbatch": {
-                "runtime": "24:00:00",
-                "message": "learning rate exploration",
-                "conf_name": "explore-lr"
-            },
-            "config": {
-                "model": {},
-                "train": {
-                    "lr_d": 0.001
-                }
-            }
-        },
-        {
-            "sbatch": {
-                "runtime": "24:00:00",
-                "message": "learning rate exploration",
-                "conf_name": "explore-lr"
-            },
-            "config": {
-                "model": {},
-                "train": {
-                    "lr_d": {
-                        "sample": "uniform",
-                        "from": [0.00001, 0.01]
-                    }
-                }
-            }
-        },
-        {
-            "sbatch": {
-                "runtime": "24:00:00",
-                "message": "learning rate exploration",
-                "conf_name": "explore-lr"
-            },
-            "config": {
-                "model": {},
-                "train": {
-                    "lr_g": {
-                        "sample": "range",
-                        "from": [0.00001, 0.01, 0.001]
-                    }
-                }
-            }
-        }
-    ]
-}
+"""Possible explore-lr.yaml
+experiment:
+    name: explore-lr-experiment
+    exp_dir: $SCRATCH/clouds
+    repeat: 1
+
+runs:
+  - sbatch:
+      runtime: "24:00:00"
+      message: learning rate exploration
+      conf_name: explore-lr
+    config: 
+      model: {} # empty dictionnary, don't change anything
+      train: 
+          lr_d: 0.001 # overwrite config.train.lr_d
+
+  - sbatch:
+      runtime: "24:00:00"
+      message: learning rate exploration
+      conf_name: explore-lr
+      config:
+        model: {}
+        train:
+          lr_d:
+            sample: uniform
+            from: [0.00001, 0.01]
+
+  - sbatch:
+      runtime: "24:00:00"
+      message: "learning rate exploration"
+      conf_name: "explore-lr"
+    config:
+      model: {}
+      train:
+        lr_g:
+          sample: range
+          from: [0.00001, 0.01, 0.001]
 """
 
 default_sbatch = {
@@ -228,7 +218,7 @@ if __name__ == "__main__":
         "-e",
         "--exploration_file",
         type=str,
-        default="explore.json",
+        default="explore.yaml",
         help="Where to find the exploration file",
     )
     parser.add_argument(
@@ -249,24 +239,22 @@ if __name__ == "__main__":
 
     # -----------------------------------------
 
-    default_json_file = "shared/defaults.json"
-    with open(default_json_file, "r") as f:
-        default_json = json.load(f)
+    default_yaml_file = "shared/defaults.yaml"
+    with open(default_yaml_file, "r") as f:
+        default_yaml = yaml.safe_load(f)
 
     exploration_file = opts.exploration_file
-    if not exploration_file.endswith(".json"):
-        exploration_file += ".json"
+    if not exploration_file.endswith(".yaml"):
+        exploration_file += ".yaml"
     with open(f"config/{exploration_file}", "r") as f:
-        exploration_params = json.load(f)
+        exploration_params = yaml.safe_load(f)
         assert isinstance(exploration_params, dict)
 
     # -----------------------------------------
 
     EXP_ROOT_DIR = None
     if "exp_dir" in exploration_params["experiment"]:
-        EXP_ROOT_DIR = Path(
-            env_to_path(exploration_params["experiment"]["exp_dir"])
-        ).resolve()
+        EXP_ROOT_DIR = Path(env_to_path(exploration_params["experiment"]["exp_dir"])).resolve()
     if opts.exp_dir:
         EXP_ROOT_DIR = opts.exp_dir
     if EXP_ROOT_DIR is None:
@@ -292,8 +280,8 @@ if __name__ == "__main__":
             {
                 "sbatch": {**default_sbatch, **p["sbatch"]},
                 "config": {
-                    "model": {**default_json["model"], **p["config"]["model"]},
-                    "train": {**default_json["train"], **p["config"]["train"]},
+                    "model": {**default_yaml["model"], **p["config"]["model"]},
+                    "train": {**default_yaml["train"], **p["config"]["train"]},
                 },
             }
         )

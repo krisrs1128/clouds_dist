@@ -9,7 +9,6 @@ from torch import optim
 from torch.utils import data
 from addict import Dict
 
-import json
 import time
 import subprocess
 import numpy as np
@@ -21,51 +20,6 @@ import torch.nn.functional as F
 # from tensorboardX import SummaryWriter
 import multiprocessing
 import argparse
-
-
-def sample_param(sample_dict):
-    """sample a value (hyperparameter) from the instruction in the
-    sample dict:
-    {
-        "sample": "range | list",
-        "from": [min, max, step] | [v0, v1, v2 etc.]
-    }
-    if range, as np.arange is used, "from" MUST be a list, but may contain
-    only 1 (=min) or 2 (min and max) values, not necessarily 3
-
-    Args:
-        sample_dict (dict): instructions to sample a value
-
-    Returns:
-        scalar: sampled value
-    """
-    if "sample" not in sample_dict:
-        return sample_dict
-    if sample_dict["sample"] == "range":
-        value = np.random.choice(np.arange(*sample_dict["from"]))
-    elif sample_dict["sample"] == "list":
-        value = np.random.choice(sample_dict["from"])
-    elif sample_dict["sample"] == "uniform":
-        value = np.random.uniform(*sample_dict["from"])
-    else:
-        raise ValueError("Unknonw sample type in dict " + str(sample_dict))
-    return value
-
-
-def merge_defaults(opts, conf_path):
-    print("Loading params from", conf_path)
-    with open(conf_path, "r") as f:
-        result = json.load(f)
-    for group in ["model", "train"]:
-        for k, v in opts[group].items():
-            result[group][k] = v
-    for group in ["model", "train"]:
-        for k, v in result[group].items():
-            if isinstance(v, dict):
-                v = sample_param(v)
-            result[group][k] = v
-
-    return Dict(result)
 
 
 def loss_hinge_dis(dis_fake, dis_real):
@@ -123,7 +77,7 @@ class gan_trainer:
 
         if self.verbose > 0:
             print("-------------------------")
-            print("--       Params        --")
+            print("-----    Params     -----")
             print("-------------------------")
             for o, d in opts.items():
                 print(o)
@@ -405,7 +359,7 @@ if __name__ == "__main__":
         "--conf_name",
         type=str,
         default="defaults",
-        help="name of conf file in config/ | may ommit the .json extension",
+        help="name of conf file in config/ | may ommit the .yaml extension",
     )
     parser.add_argument(
         "-o",
@@ -432,8 +386,8 @@ if __name__ == "__main__":
     conf_path = opts.conf_name
     if not Path(conf_path).exists():
         conf_name = conf_path
-        if not conf_name.endswith(".json"):
-            conf_name += ".json"
+        if not conf_name.endswith(".yaml"):
+            conf_name += ".yaml"
         conf_path = Path(__file__).parent.parent / "shared" / conf_name
         assert conf_path.exists()
 

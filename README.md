@@ -31,7 +31,7 @@ $ python -m src.train --no_exp --output_dir .
 # or even shorter
 $ python -m src.train -n -o .
 
-# > Load default conf in shared/defaults.json
+# > Load default conf in shared/defaults.yaml
 # > Don't use a comet.ml experiment
 # > Output everything here (.) - that means checkpoints and images
 ```
@@ -40,7 +40,7 @@ $ python -m src.train -n -o .
 
 `src/train.py` expects these flags:
 * `t--message | -m "this is a message"`, in the spirit of a commit message, will be added to the comet experiment: `exp.log_parameter("__message", opts.message)`
-* `--conf_name | -c largeLRs` the name of the training procedure configuration `json` file. Argument to `conf_name` is the name of the file to be found in `config/`
+* `--conf_name | -c largeLRs` the name of the training procedure configuration `yaml` file. Argument to `conf_name` is the name of the file to be found in `config/`
 * `--output_dir | -o $SCRATCH/clouds/runs` where to store the procedure's output: images, comet files, checkpoints conf file etc.
 * `--offline | -f` default is a standard comet.ml experiment. on beluga, such experiments are not possible because compute nodes don't have an internet access so use this flag to dump the experiment locally in the model's `output_path`
 
@@ -81,7 +81,7 @@ $ proxychains4 ping google.com # should work now
 
 **Remember:** update this section when new arguments are added to the possible configrations
 
-shared/defaults.json:
+shared/defaults.yaml:
 
 ```
 {
@@ -121,10 +121,10 @@ shared/defaults.json:
 Use `parallel_run.py`:
 
 ```
-python parallel_run.py -e explore-lr.json
+python parallel_run.py -e explore-lr.yaml
 ```
 
-This script will execute a `sbatch` job for each element listed in explor-lr.json with default arguments:
+This script will execute a `sbatch` job for each element listed in explor-lr.yaml with default arguments:
 
 * `sbatch` params: 
     ```
@@ -139,15 +139,15 @@ This script will execute a `sbatch` job for each element listed in explor-lr.jso
         "offline": True
     }
     ```
-* training params: `defaults.json` as above.
+* training params: `defaults.yaml` as above.
 
 The argument passed to `-e` should be in `config/` and should not include it in its name.
 
-* [x] Ok `python parallel_run.py -e explore-lr.json`
-* [x] Ok `python parallel_run.py -e explore-lr` (refers to `config/explore-lr.json` but no need to specify `.json`)
-* [ ] Not Ok `python parallel_run.py -e config/explore-lr.json`
+* [x] Ok `python parallel_run.py -e explore-lr.yaml`
+* [x] Ok `python parallel_run.py -e explore-lr` (refers to `config/explore-lr.yaml` but no need to specify `.yaml`)
+* [ ] Not Ok `python parallel_run.py -e config/explore-lr.yaml`
 
-The dictionnary in `explore.json` contains 2 main fields:
+The dictionnary in `explore.yaml` contains 2 main fields:
 
 * `experiment`, which defines common parameters for one exploration experiment
   * `name`: mandatory, the experiment's name
