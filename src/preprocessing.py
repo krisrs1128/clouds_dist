@@ -10,6 +10,7 @@ class Rescale:
         self.n_in_mem = n_in_mem
         self.data_path = data_path
         self.num_workers = num_workers
+        self.batch_size = n_in_mem
         self.verbose = verbose
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -91,7 +92,7 @@ class Rescale:
                     mins[k] = v.min(0)[0].min(1)[0].min(1)[0]
 
                 else:
-                    n = i * self.n_in_mem
+                    n = i * self.batch_size
                     m = len(v)
                     means[k] *= n / (n + m)
 
