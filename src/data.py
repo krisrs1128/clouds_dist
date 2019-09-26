@@ -68,6 +68,7 @@ class EarthData(Dataset):
                 data[key] = dict(np.load(path).items())
         if self.preprocessed_data_path is None:
             data = process_sample(data)
+        self.toy_data = data
         self.metos_shape = tuple(data["metos"].shape)
 
     def __len__(self):
