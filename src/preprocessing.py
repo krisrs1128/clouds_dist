@@ -4,9 +4,7 @@ import torch
 
 
 class Rescale:
-    def __init__(
-        self, data_path, n_in_mem=50, num_workers=3, verbose=1
-    ):
+    def __init__(self, data_path, n_in_mem=50, num_workers=3, verbose=1):
         self.n_in_mem = n_in_mem
         self.data_path = data_path
         self.num_workers = num_workers
@@ -14,9 +12,7 @@ class Rescale:
         self.verbose = verbose
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.dataset = EarthData(
-            data_dir=self.data_path, n_in_mem=self.n_in_mem
-        )
+        self.dataset = EarthData(data_dir=self.data_path, n_in_mem=self.n_in_mem)
 
         self.data_loader = torch.utils.data.DataLoader(
             self.dataset,
@@ -25,7 +21,6 @@ class Rescale:
             num_workers=self.num_workers,
         )
         self.means, self.ranges = self.get_stats()
-
 
     def expand_as(self, a, b):
         """Repeat a vector b that gives 1 value per channel so that it
@@ -58,18 +53,12 @@ class Rescale:
         )
 
     def __call__(self, sample):
-        img_mean_expand = self.expand_as(
-            sample["real_imgs"], self.means["real_imgs"]
-        )
-        img_range_expand = self.expand_as(
-            sample["real_imgs"], self.ranges["real_imgs"]
-        )
+        img_mean_expand = self.expand_as(sample["real_imgs"], self.means["real_imgs"])
+        img_range_expand = self.expand_as(sample["real_imgs"], self.ranges["real_imgs"])
         metos_mean_expand = self.expand_as(sample["metos"], self.means["metos"])
         metos_range_expand = self.expand_as(sample["metos"], self.ranges["metos"])
 
-        sample["real_imgs"] = (
-            sample["real_imgs"] - img_mean_expand
-        ) / img_range_expand
+        sample["real_imgs"] = (sample["real_imgs"] - img_mean_expand) / img_range_expand
         sample["metos"] = (sample["metos"] - metos_mean_expand) / metos_range_expand
 
         sample["real_imgs"][np.isnan(sample["real_imgs"])] = 0.0

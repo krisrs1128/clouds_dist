@@ -84,36 +84,43 @@ $ proxychains4 ping google.com # should work now
 shared/defaults.yaml:
 
 ```
-{
-    "model": {
-        "n_blocks": 5,
-        "filter_factors": null,
-        "kernel_size": 3,
-        "dropout": 0.25,
-        "Cin": 44,
-        "Cout": 3,
-        "Cnoise": 0
-    },
-    "train": {
-        "batch_size": 32,
-        "datapath": "/home/sankarak/scratch/data/clouds",
-        "early_break_epoch": 0,
-        "infer_every_steps": 5000,
-        "lambda_gan": 0.01,
-        "lambda_L": 1,
-        "load_limit": -1,
-        "lr_d": 0.0002,
-        "lr_g": 0.00005,
-        "matching_loss": "l2",
-        "n_epochs": 100,
-        "n_in_mem": 1,
-        "num_D_accumulations": 8,
-        "num_workers": 3,
-        "save_every_steps": 5000,
-        "store_images": false,
-        "with_stats": true
-    }
-}
+# -----------------------
+# -----    Model    -----
+# -----------------------
+model:
+    n_blocks: 5
+    filter_factors: null
+    kernel_size: 3
+    dropout: 0.25
+    Cin: 44
+    Cout: 3
+    Cnoise: 0
+# ------------------------------
+# -----    Train Params    -----
+# ------------------------------
+train:
+    batch_size: 32
+    early_break_epoch: 0
+    infer_every_steps: 5000
+    lambda_gan: 0.01
+    lambda_L: 1
+    load_limit: -1
+    lr_d: 0.0002
+    lr_g: 0.00005
+    matching_loss: "l2"
+    n_epochs: 100
+    num_D_accumulations: 8
+    save_every_steps: 5000
+    store_images: false
+# ---------------------------
+# -----    Data Conf    -----
+# ---------------------------
+data:
+    path: "/scratch/sankarak/data/clouds/"
+    n_in_mem: 1
+    num_workers: 3
+    with_stats: true
+
 ```
 
 ## Running several jobs

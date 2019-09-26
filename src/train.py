@@ -50,20 +50,20 @@ class gan_trainer:
         self.opts = opts
 
         transfs = []
-        if self.opts.train.preprocessed_data_path is None:
+        if self.opts.data.preprocessed_data_path is None:
             transfs += [
                 Rescale(
-                    data_path=self.opts.train.datapath,
-                    n_in_mem=self.opts.train.n_in_mem,
-                    num_workers=self.opts.train.num_workers,
+                    data_path=self.opts.data.path,
+                    n_in_mem=self.opts.data.n_in_mem,
+                    num_workers=self.opts.data.num_workers,
                     verbose=1,
                 )
             ]
 
         self.trainset = EarthData(
-            self.opts.train.datapath,
-            preprocessed_data_path=self.opts.train.preprocessed_data_path,
-            n_in_mem=self.opts.train.n_in_mem or 50,
+            self.opts.data.path,
+            preprocessed_data_path=self.opts.data.preprocessed_data_path,
+            n_in_mem=self.opts.data.n_in_mem or 50,
             load_limit=self.opts.train.load_limit or -1,
             transform=transforms.Compose(transfs),
         )
@@ -269,7 +269,9 @@ class gan_trainer:
                     fake_target = torch.zeros(fake_prob.shape, device=device)
 
                     d_optimizer.zero_grad()
-                    d_loss = loss_hinge_dis(fake_prob, real_prob) / float(num_D_accumulations)
+                    d_loss = loss_hinge_dis(fake_prob, real_prob) / float(
+                        num_D_accumulations
+                    )
                     d_loss.backward()
                 # ----------------------------------
                 # ----- Backprop Discriminator -----
@@ -308,7 +310,11 @@ class gan_trainer:
 
                 if self.should_infer(total_steps):
                     self.infer(
-                        batch, total_steps, self.opts.train.store_images, self.imgdir, self.exp
+                        batch,
+                        total_steps,
+                        self.opts.train.store_images,
+                        self.imgdir,
+                        self.exp,
                     )
 
                 if self.should_save(total_steps):
@@ -344,7 +350,9 @@ class gan_trainer:
 
 if __name__ == "__main__":
 
-    scratch = os.environ.get("SCRATCH") or os.path.join(os.environ.get("HOME"), "scratch")
+    scratch = os.environ.get("SCRATCH") or os.path.join(
+        os.environ.get("HOME"), "scratch"
+    )
 
     # -------------------------
     # ----- Set Up Parser -----
@@ -352,7 +360,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-m", "--message", type=str, default="", help="Add a message to the commet experiment"
+        "-m",
+        "--message",
+        type=str,
+        default="",
+        help="Add a message to the commet experiment",
     )
     parser.add_argument(
         "-f",
@@ -404,20 +416,20 @@ if __name__ == "__main__":
 
     opts = merge_defaults({"model": {}, "train": {}}, conf_path)
 
-    data_path = opts.train.datapath.split("/")
+    data_path = opts.data.path.split("/")
     for i, d in enumerate(data_path):
         if "$" in d:
             data_path[i] = os.environ.get(d.replace("$", ""))
-    opts.train.datapath = "/".join(data_path)
+    opts.data.path = "/".join(data_path)
 
     # ----------------------------------
     # ----- Check Data Directories -----
     # ----------------------------------
 
-    print("Loading data from ", str(opts.train.datapath))
-    assert Path(opts.train.datapath).exists()
-    assert (Path(opts.train.datapath) / "imgs").exists()
-    assert (Path(opts.train.datapath) / "metos").exists()
+    print("Loading data from ", str(opts.data.path))
+    assert Path(opts.data.path).exists()
+    assert (Path(opts.data.path) / "imgs").exists()
+    assert (Path(opts.data.path) / "metos").exists()
     # print("Make sure you are using proxychains so that comet has internet access")
 
     # ------------------------------

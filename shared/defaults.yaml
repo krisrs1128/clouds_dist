@@ -1,6 +1,6 @@
+--- # -----------------------
 # -----------------------
 # -----    Model    -----
-# -----------------------
 model:
     n_blocks: 5
     filter_factors: null
@@ -18,7 +18,6 @@ train:
     infer_every_steps: 5000
     lambda_gan: 0.01
     lambda_L: 1
-    load_limit: -1
     lr_d: 0.0002
     lr_g: 0.00005
     matching_loss: "l2"
@@ -31,6 +30,8 @@ train:
 # ---------------------------
 data:
     path: "/scratch/sankarak/data/clouds/"
+    preprocessed_data_path: null
     n_in_mem: 1
     num_workers: 3
     with_stats: true
+    load_limit: -1

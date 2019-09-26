@@ -7,7 +7,7 @@ import re
 import yaml
 
 
-def get_template(param, sbp, run_dir, name):
+def get_template(param, sbp, run_dir, exp_dir, name):
     if name == "victor_mila":
         return f"""#!/bin/bash
 #SBATCH --cpus-per-task=8       # Ask for 6 CPUs
@@ -65,7 +65,7 @@ module load singularity
 
 echo "Starting job"
 
-singularity exec --nv --bind {param["config"]["train"]["datapath"]},{param["config"]["train"]["preprocessed_data_path"]}{str(exp_dir)} {sbp["singularity_path"]}\\
+singularity exec --nv --bind {param["config"]["data"]["path"]},{param["config"]["data"]["preprocessed_data_path"]}{str(exp_dir)} {sbp["singularity_path"]}\\
 
         python3 src/train.py \\
         -m "{sbp["message"]}" \\
@@ -257,7 +257,9 @@ if __name__ == "__main__":
 
     EXP_ROOT_DIR = None
     if "exp_dir" in exploration_params["experiment"]:
-        EXP_ROOT_DIR = Path(env_to_path(exploration_params["experiment"]["exp_dir"])).resolve()
+        EXP_ROOT_DIR = Path(
+            env_to_path(exploration_params["experiment"]["exp_dir"])
+        ).resolve()
     if opts.exp_dir:
         EXP_ROOT_DIR = opts.exp_dir
     if EXP_ROOT_DIR is None:
@@ -297,7 +299,7 @@ if __name__ == "__main__":
         sbp = param["sbatch"]
         conf_path = write_conf(run_dir, param)  # returns Path() from pathlib
 
-        template = get_template(param, sbp, run_dir, opts.template_name)
+        template = get_template(param, sbp, run_dir, exp_dir, opts.template_name)
 
         file = run_dir / f"run-{sbp['conf_name']}.sh"
         with file.open("w") as f:

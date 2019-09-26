@@ -8,6 +8,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
+
 class EarthData(Dataset):
     """
     Earth Clouds / Metereology Data
@@ -28,7 +29,14 @@ class EarthData(Dataset):
     >>>    print(x.shape)
     """
 
-    def __init__(self, data_dir, preprocessed_data_path=None, n_in_mem=500, load_limit=-1, transform=None):
+    def __init__(
+        self,
+        data_dir,
+        preprocessed_data_path=None,
+        n_in_mem=500,
+        load_limit=-1,
+        transform=None,
+    ):
         super(EarthData).__init__()
         self.n_in_mem = n_in_mem
         self.subsample = {}
@@ -108,11 +116,9 @@ def process_sample(data):
             data["metos"]["RH"],
             data["metos"]["Scattering_angle"].reshape(1, 256, 256),
             data["metos"]["TS"].reshape(1, 256, 256),
-            coords.reshape(2, 256, 256)
+            coords.reshape(2, 256, 256),
         ]
     )
     metos[np.isnan(metos)] = 0.0
     metos[np.isinf(metos)] = 0.0
-    return {"real_imgs": torch.Tensor(imgs),
-        "metos": torch.Tensor(metos),
-    }
+    return {"real_imgs": torch.Tensor(imgs), "metos": torch.Tensor(metos)}
