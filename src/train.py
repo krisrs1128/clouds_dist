@@ -6,7 +6,6 @@ from src.data import EarthData
 from src.gan import GAN
 from src.preprocessing import Rescale, Crop
 from torch import optim
-from torch.utils import data
 from addict import Dict
 from torchvision import transforms
 import json
@@ -95,31 +94,23 @@ class gan_trainer:
     def __init__(self, opts, comet_exp=None, output_dir=".", n_epochs=50, verbose=1):
         self.opts = opts
 
-        if self.opts.train.preprocessed_data:
-            self.trainset = EarthData(
-                self.opts.train.preprocessed_data_path,
-                pre_processed=self.opts.train.preprocessed_data,
-                n_in_mem=self.opts.train.n_in_mem or 50,
-                load_limit=self.opts.train.load_limit or -1,
-                transform=Crop(20)
-            )
-        else:
-            self.trainset = EarthData(
-                self.opts.train.datapath,
-                pre_processed=self.opts.train.preprocessed_data,
-                n_in_mem=self.opts.train.n_in_mem or 50,
-                load_limit=self.opts.train.load_limit or -1,
-                transform=transforms.Compose([
-                    Rescale(
-                        data_path=self.opts.train.datapath,
-                        n_in_mem=self.opts.train.n_in_mem,
-                        num_workers=self.opts.train.num_workers,
-                        with_stats=self.opts.train.with_stats,
-                        device=self.device,
-                        verbose=1),
-                    Crop(20)]
-                )
-            )
+        transfs = []
+        if self.opts.train.preprocessed_data_path is None:
+            transfs += [Rescale(
+                            data_path=self.opts.train.datapath,
+                            n_in_mem=self.opts.train.n_in_mem,
+                            num_workers=self.opts.train.num_workers,
+                            verbose=1,
+                        )]
+
+        self.trainset = EarthData(
+            self.opts.train.datapath,
+            preprocessed_data_path=self.opts.train.preprocessed_data_path,
+            n_in_mem=self.opts.train.n_in_mem or 50,
+            load_limit=self.opts.train.load_limit or -1,
+            transform=transforms.Compose(transfs)
+        )
+
 
         self.trial_number = 0
         self.n_epochs = n_epochs
@@ -173,8 +164,7 @@ class gan_trainer:
             num_workers=self.opts.train.get("num_workers", 3),
         )
 
-
-        #calculate the bottleneck dimension
+        # calculate the bottleneck dimension
         if self.trainset.metos_shape[-1] % 2 ** self.opts.model.n_blocks != 0:
             raise ValueError(
                 "Data shape ({}) and n_blocks ({}) are not compatible".format(
@@ -240,15 +230,15 @@ class gan_trainer:
                     print(f"\n{e}\n")
 
     def should_save(self, steps):
-        return not self.opts.train.save_every_steps or (
-            self.opts.train.save_every_steps
+        print(steps)
+        return not self.opts.train.save_every_steps or (steps
             and self.opts.train.save_every_steps % steps == 0
         )
 
     def should_infer(self, steps):
+
         return not self.opts.train.infer_every_steps or (
-            self.opts.train.infer_every_steps
-            and self.opts.train.infer_every_steps % steps == 0
+            steps and self.opts.train.infer_every_steps % steps == 0
         )
 
     def train(
@@ -403,7 +393,7 @@ class gan_trainer:
             # ------------------------
 
 
-if __name__ == "__main__":
+if __name__ == "__main___":
 
     scratch = os.environ.get("SCRATCH") or os.path.join(
         os.environ.get("HOME"), "scratch"
