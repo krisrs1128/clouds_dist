@@ -10,7 +10,8 @@
     },
     "train": {
         "batch_size": 32,
-        "datapath": "/scratch/sankarak/data/clouds/",
+        "datapath": "/scratch/sankarak/data/clouds",
+        "preprocessed_data_path": "/scratch/alghali/data/clouds/",
         "early_break_epoch": 0,
         "infer_every_steps": 5000,
         "lambda_gan": 0.01,
@@ -20,11 +21,10 @@
         "lr_g": 0.00005,
         "matching_loss": "l2",
         "n_epochs": 100,
-        "n_in_mem": 1,
+        "n_in_mem": 25,
         "num_D_accumulations": 8,
-        "num_workers": 3,
+        "num_workers": 12,
         "save_every_steps": 5000,
-        "store_images": false,
-        "with_stats": true
+        "store_images": false
     }
 }

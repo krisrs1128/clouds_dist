@@ -63,7 +63,10 @@ echo 'done'
 
 module load singularity
 
-singularity exec --nv --bind {param["config"]["train"]["datapath"]},{str(exp_dir)} {sbp["singularity_path"]}\\
+echo "Starting job"
+
+singularity exec --nv --bind {param["config"]["train"]["datapath"]},{param["config"]["train"]["preprocessed_data_path"]}{str(exp_dir)} {sbp["singularity_path"]}\\
+
         python3 src/train.py \\
         -m "{sbp["message"]}" \\
         -c "{str(conf_path)}"\\
@@ -134,6 +137,8 @@ def env_to_path(path):
     "train": {
         "batch_size": 32,
         "datapath": "/home/sankarak/scratch/data/clouds",
+        "preprocessed_data_path": "/scratch/alghali/data/clouds/",
+        "preprocessed_data": true,
         "early_break_epoch": 0,
         "infer_every_steps": 5000,
         "lambda_gan": 0.01,
@@ -148,7 +153,7 @@ def env_to_path(path):
         "num_workers": 3,
         "save_every_steps": 5000,
         "store_images": false,
-        "with_stats": true
+        "with_stats": "on"
     }
 }"""
 
@@ -213,7 +218,7 @@ default_sbatch = {
     "cpus": 8,
     "mem": 32,
     "runtime": "12:00:00",
-    "slurm_out": "$HOME/logs/slurm-%j.out",
+    "slurm_out": "$HOME/logs/clouds-job-%j.out",
     "message": "explore exp run 12h",
     "conf_name": "explore",
     "singularity_path": "/scratch/sankarak/images/clouds.img",
