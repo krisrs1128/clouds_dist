@@ -387,13 +387,13 @@ if __name__ == "__main__":
         help="where the run's data should be stored ; used to resume",
     )
     parser.add_argument("-n", "--no_exp", default=False, action="store_true")
-    opts = parser.parse_args()
+    parsed_opts = parser.parse_args()
 
     # ---------------------------
     # ----- Set output path -----
     # ---------------------------
 
-    output_path = Path(opts.output_dir)
+    output_path = Path(parsed_opts.output_dir).resolve()
 
     if not output_path.exists():
         output_path.mkdir()
@@ -402,7 +402,7 @@ if __name__ == "__main__":
     # ----- Get Configuration File -----
     # ----------------------------------
 
-    conf_path = opts.conf_name
+    conf_path = parsed_opts.conf_name
     if not Path(conf_path).exists():
         conf_name = conf_path
         if not conf_name.endswith(".yaml"):
@@ -436,14 +436,14 @@ if __name__ == "__main__":
     # ----- Configure comet.ml -----
     # ------------------------------
 
-    if opts.no_exp:
+    if parsed_opts.no_exp:
         exp = None
     else:
-        if opts.offline:
+        if parsed_opts.offline:
             exp = OfflineExperiment(offline_directory=str(output_path))
         else:
             exp = Experiment()
-        exp.log_parameter("__message", opts.message)
+        exp.log_parameter("__message", parsed_opts.message)
 
     # --------------------------
     # ----- Start Training -----
@@ -457,10 +457,10 @@ if __name__ == "__main__":
     # ----- End Comet Experiment -----
     # --------------------------------
 
-    if not opts.no_exp:
+    if not parsed_opts.no_exp:
         trainer.exp.end()
 
-    if opts.offline and not opts.no_exp:
+    if parsed_opts.offline and not parsed_opts.no_exp:
         subprocess.check_output(
             [
                 "bash",
