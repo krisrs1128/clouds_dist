@@ -176,6 +176,7 @@ runs:
       conf_name: explore-lr
     config: 
       model: {} # empty dictionnary, don't change anything
+      data: {}
       train: 
           lr_d: 0.001 # overwrite config.train.lr_d
 
@@ -185,6 +186,7 @@ runs:
       conf_name: explore-lr
       config:
         model: {}
+        data: {}
         train:
           lr_d:
             sample: uniform
@@ -196,6 +198,7 @@ runs:
       conf_name: "explore-lr"
     config:
       model: {}
+      data: {}
       train:
         lr_g:
           sample: range
@@ -285,8 +288,18 @@ if __name__ == "__main__":
             {
                 "sbatch": {**default_sbatch, **p["sbatch"]},
                 "config": {
-                    "model": {**default_yaml["model"], **p["config"]["model"]},
-                    "train": {**default_yaml["train"], **p["config"]["train"]},
+                    "model": {
+                        **default_yaml["model"],
+                        **(p["config"]["model"] if "model" in p["config"] else {}),
+                    },
+                    "train": {
+                        **default_yaml["train"],
+                        **(p["config"]["train"] if "train" in p["config"] else {}),
+                    },
+                    "train": {
+                        **default_yaml["data"],
+                        **(p["config"]["data"] if "data" in p["config"] else {}),
+                    },
                 },
             }
         )
