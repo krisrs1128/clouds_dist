@@ -230,7 +230,6 @@ class gan_trainer:
                     print(f"\n{e}\n")
 
     def should_save(self, steps):
-        print(steps)
         return not self.opts.train.save_every_steps or (steps
             and self.opts.train.save_every_steps % steps == 0
         )
@@ -393,7 +392,7 @@ class gan_trainer:
             # ------------------------
 
 
-if __name__ == "__main___":
+if __name__ == "__main__":
 
     scratch = os.environ.get("SCRATCH") or os.path.join(
         os.environ.get("HOME"), "scratch"
