@@ -24,7 +24,7 @@ class GAN(nn.Module):
         super(GAN, self).__init__()
 
         self.g = UNet(
-            Cin + Cout,
+            Cin + Cnoise,
             Cout,
             n_blocks,
             filter_factors,

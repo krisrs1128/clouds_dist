@@ -63,7 +63,10 @@ echo 'done'
 
 module load singularity
 
-singularity exec --nv --bind {param["config"]["train"]["datapath"]},{str(exp_dir)} {sbp["singularity_path"]}\\
+echo "Starting job"
+
+singularity exec --nv --bind {param["config"]["train"]["datapath"]},{param["config"]["train"]["preprocessed_data_path"]}{str(exp_dir)} {sbp["singularity_path"]}\\
+
         python3 src/train.py \\
         -m "{sbp["message"]}" \\
         -c "{str(conf_path)}"\\
@@ -203,7 +206,7 @@ default_sbatch = {
     "cpus": 8,
     "mem": 32,
     "runtime": "12:00:00",
-    "slurm_out": "$HOME/logs/slurm-%j.out",
+    "slurm_out": "$HOME/logs/clouds-job-%j.out",
     "message": "explore exp run 12h",
     "conf_name": "explore",
     "singularity_path": "/scratch/sankarak/images/clouds.img",

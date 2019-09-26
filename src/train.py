@@ -1,25 +1,23 @@
 #!/usr/bin/env python
 from comet_ml import Experiment, OfflineExperiment
+import argparse
+import os
+import subprocess
+import time
 from datetime import datetime
 from pathlib import Path
-from src.data import EarthData
-from src.gan import GAN
-from src.preprocessing import Rescale
-from torch import optim
-from torch.utils import data
-from addict import Dict
 
-import time
-import subprocess
 import numpy as np
-import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from addict import Dict
+from torch import optim
+from torchvision import transforms
 
-# from tensorboardX import SummaryWriter
-import multiprocessing
-import argparse
+from src.data import EarthData
+from src.gan import GAN
+from src.preprocessing import Crop, Rescale
 
 
 def loss_hinge_dis(dis_fake, dis_real):
@@ -49,17 +47,24 @@ def weighted_mse_loss(input, target):
 class gan_trainer:
     def __init__(self, opts, comet_exp=None, output_dir=".", n_epochs=50, verbose=1):
         self.opts = opts
+
+        transfs = []
+        if self.opts.train.preprocessed_data_path is None:
+            transfs += [
+                Rescale(
+                    data_path=self.opts.train.datapath,
+                    n_in_mem=self.opts.train.n_in_mem,
+                    num_workers=self.opts.train.num_workers,
+                    verbose=1,
+                )
+            ]
+
         self.trainset = EarthData(
             self.opts.train.datapath,
+            preprocessed_data_path=self.opts.train.preprocessed_data_path,
             n_in_mem=self.opts.train.n_in_mem or 50,
             load_limit=self.opts.train.load_limit or -1,
-            transform=Rescale(
-                self.opts.train.datapath,
-                self.opts.train.n_in_mem,
-                num_workers=self.opts.train.get("num_workers", 3),
-                with_stats=self.opts.train.with_stats,
-                verbose=1,
-            ),
+            transform=transforms.Compose(transfs),
         )
 
         self.trial_number = 0
@@ -114,6 +119,7 @@ class gan_trainer:
             num_workers=self.opts.train.get("num_workers", 3),
         )
 
+        # calculate the bottleneck dimension
         if self.trainset.metos_shape[-1] % 2 ** self.opts.model.n_blocks != 0:
             raise ValueError(
                 "Data shape ({}) and n_blocks ({}) are not compatible".format(
@@ -180,13 +186,13 @@ class gan_trainer:
 
     def should_save(self, steps):
         return not self.opts.train.save_every_steps or (
-            self.opts.train.save_every_steps and self.opts.train.save_every_steps % steps == 0
+            steps and self.opts.train.save_every_steps % steps == 0
         )
 
     def should_infer(self, steps):
+
         return not self.opts.train.infer_every_steps or (
-            self.opts.train.infer_every_steps
-            and self.opts.train.infer_every_steps % steps == 0
+            steps and self.opts.train.infer_every_steps % steps == 0
         )
 
     def train(
