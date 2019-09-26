@@ -174,10 +174,10 @@ runs:
       runtime: "24:00:00"
       message: learning rate exploration
       conf_name: explore-lr
-    config: 
+    config:
       model: {} # empty dictionnary, don't change anything
       data: {}
-      train: 
+      train:
           lr_d: 0.001 # overwrite config.train.lr_d
 
   - sbatch:
