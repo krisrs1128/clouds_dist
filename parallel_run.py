@@ -126,7 +126,6 @@ def env_to_path(path):
 
 """ default config as ref:
 {
-    {
     "model": {
         "n_blocks": 5,
         "filter_factors": null,
@@ -157,7 +156,6 @@ def env_to_path(path):
         "store_images": false,
         "with_stats": "on"
     }
-}
 }"""
 
 """Possible explore-lr.json
