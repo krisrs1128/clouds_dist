@@ -250,9 +250,12 @@ if __name__ == "__main__":
         default_yaml = yaml.safe_load(f)
 
     exploration_file = opts.exploration_file
-    if not exploration_file.endswith(".yaml"):
-        exploration_file += ".yaml"
-    with open(f"config/{exploration_file}", "r") as f:
+    if not Path(exploration_file).exists():
+        if not exploration_file.endswith(".yaml"):
+            exploration_file += ".yaml"
+        if "config" not in exploration_file:
+            exploration_file = "config/" + exploration_file
+    with open(exploration_file, "r") as f:
         exploration_params = yaml.safe_load(f)
         assert isinstance(exploration_params, dict)
 
