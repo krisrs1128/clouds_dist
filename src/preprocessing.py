@@ -61,10 +61,10 @@ class Rescale:
         sample["real_imgs"] = (sample["real_imgs"] - img_mean_expand) / img_range_expand
         sample["metos"] = (sample["metos"] - metos_mean_expand) / metos_range_expand
 
-        sample["real_imgs"][np.isnan(sample["real_imgs"])] = 0.0
-        sample["real_imgs"][np.isinf(sample["real_imgs"])] = 0.0
-        sample["metos"][np.isnan(sample["metos"])] = 0.0
-        sample["metos"][np.isinf(sample["metos"])] = 0.0
+        sample["real_imgs"][np.isnan(sample["real_imgs"]).astype(np.bool)] = 0.0
+        sample["real_imgs"][np.isinf(sample["real_imgs"]).astype(np.bool)] = 0.0
+        sample["metos"][np.isnan(sample["metos"]).astype(np.bool)] = 0.0
+        sample["metos"][np.isinf(sample["metos"]).astype(np.bool)] = 0.0
         return sample
 
     def get_stats(self):
