@@ -7,11 +7,11 @@ import re
 import yaml
 
 
-def get_template(param, sbp, run_dir, exp_dir, name):
+def get_template(param, sbp, conf_path, run_dir, exp_dir, name):
     if name == "victor_mila":
         return f"""#!/bin/bash
-#SBATCH --cpus-per-task=8       # Ask for 6 CPUs
-#SBATCH --gres=gpu:titanxp:1                        # Ask for 1 GPU
+#SBATCH --cpus-per-task={sbp.get("cpu", 8)}       # Ask for 6 CPUs
+#SBATCH --gres={sbp.get("gpu", "gpu:titanxp:1")}                        # Ask for 1 GPU
 #SBATCH --mem=32G                 # Ask for 32 GB of RAM
 #SBATCH --time=24:00:00             # Run for 12h
 #SBATCH -o {str(run_dir)}/slurm-%j.out  # Write the log in $SCRATCH
@@ -315,7 +315,9 @@ if __name__ == "__main__":
         sbp = param["sbatch"]
         conf_path = write_conf(run_dir, param)  # returns Path() from pathlib
 
-        template = get_template(param, sbp, run_dir, exp_dir, opts.template_name)
+        template = get_template(
+            param, sbp, conf_path, run_dir, exp_dir, opts.template_name
+        )
 
         file = run_dir / f"run-{sbp['conf_name']}.sh"
         with file.open("w") as f:
