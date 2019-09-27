@@ -299,7 +299,7 @@ if __name__ == "__main__":
                         **default_yaml["train"],
                         **(p["config"]["train"] if "train" in p["config"] else {}),
                     },
-                    "train": {
+                    "data": {
                         **default_yaml["data"],
                         **(p["config"]["data"] if "data" in p["config"] else {}),
                     },
