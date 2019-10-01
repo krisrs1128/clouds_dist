@@ -1,69 +1,24 @@
 #!/usr/bin/env python
 from comet_ml import Experiment, OfflineExperiment
+import argparse
+import os
+import subprocess
+import time
 from datetime import datetime
 from pathlib import Path
-from src.data import EarthData
-from src.gan import GAN
-from src.preprocessing import Rescale, Crop
-from torch import optim
-from addict import Dict
-from torchvision import transforms
-import json
-import time
-import subprocess
+
 import numpy as np
-import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from addict import Dict
+from torch import optim
+from torchvision import transforms
 
-
-import argparse
-
-
-def sample_param(sample_dict):
-    """sample a value (hyperparameter) from the instruction in the
-    sample dict:
-    {
-        "sample": "range | list",
-        "from": [min, max, step] | [v0, v1, v2 etc.]
-    }
-    if range, as np.arange is used, "from" MUST be a list, but may contain
-    only 1 (=min) or 2 (min and max) values, not necessarily 3
-
-    Args:
-        sample_dict (dict): instructions to sample a value
-
-    Returns:
-        scalar: sampled value
-    """
-    if "sample" not in sample_dict:
-        return sample_dict
-    if sample_dict["sample"] == "range":
-        value = np.random.choice(np.arange(*sample_dict["from"]))
-    elif sample_dict["sample"] == "list":
-        value = np.random.choice(sample_dict["from"])
-    elif sample_dict["sample"] == "uniform":
-        value = np.random.uniform(*sample_dict["from"])
-    else:
-        raise ValueError("Unknonw sample type in dict " + str(sample_dict))
-    return value
-
-
-def merge_defaults(opts, conf_path):
-    print("Loading params from", conf_path)
-    with open(conf_path, "r") as f:
-        result = json.load(f)
-    for group in ["model", "train"]:
-        for k, v in opts[group].items():
-            result[group][k] = v
-    for group in ["model", "train"]:
-        for k, v in result[group].items():
-            if isinstance(v, dict):
-                v = sample_param(v)
-            result[group][k] = v
-
-    return Dict(result)
+from src.data import EarthData
+from src.gan import GAN
+from src.preprocessing import Crop, Rescale
+from src.utils import merge_defaults, load_conf, sample_param
 
 
 def loss_hinge_dis(dis_fake, dis_real):
@@ -95,22 +50,23 @@ class gan_trainer:
         self.opts = opts
 
         transfs = []
-        if self.opts.train.preprocessed_data_path is None:
-            transfs += [Rescale(
-                            data_path=self.opts.train.datapath,
-                            n_in_mem=self.opts.train.n_in_mem,
-                            num_workers=self.opts.train.num_workers,
-                            verbose=1,
-                        )]
+        if self.opts.data.preprocessed_data_path is None:
+            transfs += [
+                Rescale(
+                    data_path=self.opts.data.path,
+                    n_in_mem=self.opts.data.n_in_mem,
+                    num_workers=self.opts.data.num_workers,
+                    verbose=1,
+                )
+            ]
 
         self.trainset = EarthData(
-            self.opts.train.datapath,
-            preprocessed_data_path=self.opts.train.preprocessed_data_path,
-            n_in_mem=self.opts.train.n_in_mem or 50,
+            self.opts.data.path,
+            preprocessed_data_path=self.opts.data.preprocessed_data_path,
+            n_in_mem=self.opts.data.n_in_mem or 50,
             load_limit=self.opts.train.load_limit or -1,
-            transform=transforms.Compose(transfs)
+            transform=transforms.Compose(transfs),
         )
-
 
         self.trial_number = 0
         self.n_epochs = n_epochs
@@ -127,7 +83,7 @@ class gan_trainer:
 
         if self.verbose > 0:
             print("-------------------------")
-            print("--       Params        --")
+            print("-----    Params     -----")
             print("-------------------------")
             for o, d in opts.items():
                 print(o)
@@ -230,8 +186,8 @@ class gan_trainer:
                     print(f"\n{e}\n")
 
     def should_save(self, steps):
-        return not self.opts.train.save_every_steps or (steps
-            and self.opts.train.save_every_steps % steps == 0
+        return not self.opts.train.save_every_steps or (
+            steps and self.opts.train.save_every_steps % steps == 0
         )
 
     def should_infer(self, steps):
@@ -313,7 +269,9 @@ class gan_trainer:
                     fake_target = torch.zeros(fake_prob.shape, device=device)
 
                     d_optimizer.zero_grad()
-                    d_loss = loss_hinge_dis(fake_prob, real_prob) / float(num_D_accumulations)
+                    d_loss = loss_hinge_dis(fake_prob, real_prob) / float(
+                        num_D_accumulations
+                    )
                     d_loss.backward()
                 # ----------------------------------
                 # ----- Backprop Discriminator -----
@@ -352,7 +310,11 @@ class gan_trainer:
 
                 if self.should_infer(total_steps):
                     self.infer(
-                        batch, total_steps, self.opts.train.store_images, self.imgdir, self.exp
+                        batch,
+                        total_steps,
+                        self.opts.train.store_images,
+                        self.imgdir,
+                        self.exp,
                     )
 
                 if self.should_save(total_steps):
@@ -388,7 +350,9 @@ class gan_trainer:
 
 if __name__ == "__main__":
 
-    scratch = os.environ.get("SCRATCH") or os.path.join(os.environ.get("HOME"), "scratch")
+    scratch = os.environ.get("SCRATCH") or os.path.join(
+        os.environ.get("HOME"), "scratch"
+    )
 
     # -------------------------
     # ----- Set Up Parser -----
@@ -396,7 +360,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-m", "--message", type=str, default="", help="Add a message to the commet experiment"
+        "-m",
+        "--message",
+        type=str,
+        default="",
+        help="Add a message to the commet experiment",
     )
     parser.add_argument(
         "-f",
@@ -410,7 +378,7 @@ if __name__ == "__main__":
         "--conf_name",
         type=str,
         default="defaults",
-        help="name of conf file in config/ | may ommit the .json extension",
+        help="name of conf file in config/ | may ommit the .yaml extension",
     )
     parser.add_argument(
         "-o",
@@ -419,13 +387,13 @@ if __name__ == "__main__":
         help="where the run's data should be stored ; used to resume",
     )
     parser.add_argument("-n", "--no_exp", default=False, action="store_true")
-    opts = parser.parse_args()
+    parsed_opts = parser.parse_args()
 
     # ---------------------------
     # ----- Set output path -----
     # ---------------------------
 
-    output_path = Path(opts.output_dir)
+    output_path = Path(parsed_opts.output_dir).resolve()
 
     if not output_path.exists():
         output_path.mkdir()
@@ -434,11 +402,11 @@ if __name__ == "__main__":
     # ----- Get Configuration File -----
     # ----------------------------------
 
-    conf_path = opts.conf_name
+    conf_path = parsed_opts.conf_name
     if not Path(conf_path).exists():
         conf_name = conf_path
-        if not conf_name.endswith(".json"):
-            conf_name += ".json"
+        if not conf_name.endswith(".yaml"):
+            conf_name += ".yaml"
         conf_path = Path(__file__).parent.parent / "shared" / conf_name
         assert conf_path.exists()
 
@@ -446,36 +414,36 @@ if __name__ == "__main__":
     # ----- Get Opts -----
     # --------------------
 
-    opts = merge_defaults({"model": {}, "train": {}}, conf_path)
+    opts = merge_defaults({"model": {}, "train": {}, "data": {}}, conf_path)
 
-    data_path = opts.train.datapath.split("/")
+    data_path = opts.data.path.split("/")
     for i, d in enumerate(data_path):
         if "$" in d:
             data_path[i] = os.environ.get(d.replace("$", ""))
-    opts.train.datapath = "/".join(data_path)
+    opts.data.path = "/".join(data_path)
 
     # ----------------------------------
     # ----- Check Data Directories -----
     # ----------------------------------
 
-    print("Loading data from ", str(opts.train.datapath))
-    assert Path(opts.train.datapath).exists()
-    assert (Path(opts.train.datapath) / "imgs").exists()
-    assert (Path(opts.train.datapath) / "metos").exists()
+    print("Loading data from ", str(opts.data.path))
+    assert Path(opts.data.path).exists()
+    assert (Path(opts.data.path) / "imgs").exists()
+    assert (Path(opts.data.path) / "metos").exists()
     # print("Make sure you are using proxychains so that comet has internet access")
 
     # ------------------------------
     # ----- Configure comet.ml -----
     # ------------------------------
 
-    if opts.no_exp:
+    if parsed_opts.no_exp:
         exp = None
     else:
-        if opts.offline:
+        if parsed_opts.offline:
             exp = OfflineExperiment(offline_directory=str(output_path))
         else:
             exp = Experiment()
-        exp.log_parameter("__message", opts.message)
+        exp.log_parameter("__message", parsed_opts.message)
 
     # --------------------------
     # ----- Start Training -----
@@ -489,10 +457,10 @@ if __name__ == "__main__":
     # ----- End Comet Experiment -----
     # --------------------------------
 
-    if not opts.no_exp:
+    if not parsed_opts.no_exp:
         trainer.exp.end()
 
-    if opts.offline and not opts.no_exp:
+    if parsed_opts.offline and not parsed_opts.no_exp:
         subprocess.check_output(
             [
                 "bash",
