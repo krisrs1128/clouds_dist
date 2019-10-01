@@ -20,7 +20,7 @@ train:
     lambda_L: 1 # Matching loss scaling constant
     lr_d: 0.0002 # Discriminator's learning rate
     lr_g: 0.00005 # Generator's learning rate
-    matching_loss: l2 # Which matchin loss to use: l2 | l1 | weighted
+    matching_loss: l2 # Which matching loss to use: l2 | l1 | weighted
     n_epochs: 100 # How many training epochs
     num_D_accumulations: 8 # How many gradients to accumulate in current batch (different geenrator predictions) before doing one discriminator optimization step
     save_every_steps: 5000 # How often to save  the model's weights

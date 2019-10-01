@@ -65,7 +65,7 @@ module load singularity
 
 echo "Starting job"
 
-singularity exec --nv --bind {param["config"]["data"]["path"]},{param["config"]["data"]["preprocessed_data_path"]}{str(exp_dir)} {sbp["singularity_path"]}\\
+singularity exec --nv --bind {param["config"]["data"]["path"]},{param["config"]["data"]["preprocessed_data_path"]} {sbp["singularity_path"]}\\
 
         python3 src/train.py \\
         -m "{sbp["message"]}" \\
