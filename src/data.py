@@ -19,7 +19,6 @@ class EarthData(Dataset):
     simulation. The returned tuple is (coords, imgs, metos).
 
     :param data_dir: The path containing the imgs/ and metos/ subdirectories.
-    :n_in_mem: The number of samples to load (into CPU memory) at a time.
 
     Example
     -------
@@ -35,12 +34,10 @@ class EarthData(Dataset):
         self,
         data_dir,
         preprocessed_data_path=None,
-        n_in_mem=500,
         load_limit=-1,
         transform=None,
     ):
         super(EarthData).__init__()
-        self.n_in_mem = n_in_mem
         self.subsample = {}
         self.transform = transform
         self.preprocessed_data_path = preprocessed_data_path
@@ -58,8 +55,6 @@ class EarthData(Dataset):
             },
         }
         self.ids = list(self.paths["real_imgs"].keys())[:load_limit]
-
-        print("Loading elements (n_in_mem): ", n_in_mem)
 
         # ------------------------------------
         # ----- Infer Data Size for Unet -----

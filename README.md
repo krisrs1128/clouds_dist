@@ -117,7 +117,6 @@ train:
 # ---------------------------
 data:
     path: "/scratch/sankarak/data/clouds/"
-    n_in_mem: 1
     num_workers: 3
     with_stats: true
 

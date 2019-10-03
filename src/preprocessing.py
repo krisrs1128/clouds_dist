@@ -4,19 +4,18 @@ import torch
 
 
 class Rescale:
-    def __init__(self, data_path, n_in_mem=50, num_workers=3, verbose=1):
-        self.n_in_mem = n_in_mem
+    def __init__(self, data_path, batch_size, num_workers=3, verbose=1):
         self.data_path = data_path
         self.num_workers = num_workers
-        self.batch_size = n_in_mem
+        self.batch_size = batch_size
         self.verbose = verbose
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.dataset = EarthData(data_dir=self.data_path, n_in_mem=self.n_in_mem)
+        self.dataset = EarthData(data_dir=self.data_path)
 
         self.data_loader = torch.utils.data.DataLoader(
             self.dataset,
-            batch_size=self.n_in_mem,
+            batch_size=self.batch_size,
             shuffle=False,
             num_workers=self.num_workers,
         )

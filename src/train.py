@@ -54,7 +54,7 @@ class gan_trainer:
             transfs += [
                 Rescale(
                     data_path=self.opts.data.path,
-                    n_in_mem=self.opts.data.n_in_mem,
+                    batch_size=self.opts.train.batch_size,
                     num_workers=self.opts.data.num_workers,
                     verbose=1,
                 )
@@ -63,7 +63,6 @@ class gan_trainer:
         self.trainset = EarthData(
             self.opts.data.path,
             preprocessed_data_path=self.opts.data.preprocessed_data_path,
-            n_in_mem=self.opts.data.n_in_mem or 50,
             load_limit=self.opts.data.load_limit or -1,
             transform=transforms.Compose(transfs),
         )
