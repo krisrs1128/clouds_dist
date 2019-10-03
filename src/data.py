@@ -3,10 +3,12 @@ import os.path
 import re
 from glob import glob
 import gc
+from pathlib import Path
 
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+from time import time
 
 
 class EarthData(Dataset):
@@ -47,12 +49,15 @@ class EarthData(Dataset):
             data_dir = preprocessed_data_path
 
         self.paths = {
-            "real_imgs": glob(os.path.join(data_dir, "imgs", "*.npz")),
-            "metos": glob(os.path.join(data_dir, "metos", "*.npz")),
+            "real_imgs": {
+                Path(g).stem.split("_")[1]: g for g in Path(data_dir).glob("imgs/*.npz")
+            },
+            "metos": {
+                Path(g).stem.split("_")[1]: g
+                for g in Path(data_dir).glob("metos/*.npz")
+            },
         }
-        self.ids = [re.search("[0-9]+", s).group() for s in self.paths["real_imgs"]][
-            :load_limit
-        ]
+        self.ids = list(self.paths["real_imgs"].keys())[:load_limit]
 
         print("Loading elements (n_in_mem): ", n_in_mem)
 
@@ -61,7 +66,7 @@ class EarthData(Dataset):
         # ------------------------------------
         data = {}
         for key in ["real_imgs", "metos"]:
-            path = [s for s in self.paths[key] if self.ids[0] in s][0]
+            path = self.paths[key][self.ids[0]]
             if self.preprocessed_data_path:
                 data[key] = np.load(path)[key]
             else:
@@ -75,32 +80,22 @@ class EarthData(Dataset):
         return len(self.ids)
 
     def __getitem__(self, i):
-        # if already available, return
-        if i in self.subsample.keys():
-            return self.subsample[i]
+        data = {}
+        id = self.ids[i]
+        path = 2
+        for key in ["real_imgs", "metos"]:
+            path = self.paths[key][id]
+            if self.preprocessed_data_path:
+                data[key] = np.load(path)[key]
+            else:
+                data[key] = dict(np.load(path).items())
 
-        # otherwise load next n_in_mem images
-        self.subsample = {}
-        gc.collect()
+        if self.preprocessed_data_path is None:
+            data = process_sample(data)
 
-        subsample_end = min(i + self.n_in_mem, self.__len__())
-        for j in range(i, subsample_end):
-            data = {}
-            for key in ["real_imgs", "metos"]:
-                path = [s for s in self.paths[key] if self.ids[j] in s][0]
-                if self.preprocessed_data_path:
-                    data[key] = np.load(path)[key]
-                else:
-                    data[key] = dict(np.load(path).items())
-
-            if self.preprocessed_data_path is None:
-                data = process_sample(data)
-
-            self.subsample[j] = data
-            if self.transform:
-                self.subsample[j] = self.transform(self.subsample[j])
-
-        return self.subsample[i]
+        if self.transform:
+            data = self.transform(data)
+        return data
 
 
 def process_sample(data):

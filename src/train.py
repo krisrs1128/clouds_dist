@@ -50,7 +50,7 @@ class gan_trainer:
         self.opts = opts
 
         transfs = []
-        if self.opts.data.preprocessed_data_path is None:
+        if self.opts.data.preprocessed_data_path is None and self.opts.data.with_stats:
             transfs += [
                 Rescale(
                     data_path=self.opts.data.path,
@@ -64,7 +64,7 @@ class gan_trainer:
             self.opts.data.path,
             preprocessed_data_path=self.opts.data.preprocessed_data_path,
             n_in_mem=self.opts.data.n_in_mem or 50,
-            load_limit=self.opts.train.load_limit or -1,
+            load_limit=self.opts.data.load_limit or -1,
             transform=transforms.Compose(transfs),
         )
 
@@ -116,8 +116,8 @@ class gan_trainer:
         self.trainloader = torch.utils.data.DataLoader(
             self.trainset,
             batch_size=self.opts.train.batch_size,
-            shuffle=False,
-            num_workers=self.opts.train.get("num_workers", 3),
+            shuffle=True,
+            num_workers=self.opts.data.get("num_workers", 3),
         )
 
         # calculate the bottleneck dimension
@@ -187,13 +187,12 @@ class gan_trainer:
 
     def should_save(self, steps):
         return not self.opts.train.save_every_steps or (
-            steps and self.opts.train.save_every_steps % steps == 0
+            steps and steps % self.opts.train.save_every_steps == 0
         )
 
     def should_infer(self, steps):
-
         return not self.opts.train.infer_every_steps or (
-            steps and self.opts.train.infer_every_steps % steps == 0
+            steps and steps % self.opts.train.infer_every_steps == 0
         )
 
     def train(
@@ -227,9 +226,10 @@ class gan_trainer:
             print("-----------------------------")
             print("----- Starting training -----")
             print("-----------------------------")
-        times = []
+        self.times = []
         start_time = time.time()
-        total_steps = 0
+        self.total_steps = 0
+        t = 0
         for epoch in range(n_epochs):
             # -------------------------
             # ----- Prepare Epoch -----
@@ -245,7 +245,8 @@ class gan_trainer:
                     break
                 self.batch = batch
                 stime = time.time()
-                if i == 0 and self.verbose > 0:
+
+                if i == 0 and self.verbose > -1:
                     print("\n\nLoading time: {:.3f}".format(stime - etime))
 
                 shape = batch["metos"].shape
@@ -308,23 +309,25 @@ class gan_trainer:
                         }
                     )
 
-                if self.should_infer(total_steps):
+                if self.should_infer(self.total_steps):
+                    print("\nINFERING\n")
                     self.infer(
                         batch,
-                        total_steps,
+                        self.total_steps,
                         self.opts.train.store_images,
                         self.imgdir,
                         self.exp,
                     )
 
-                if self.should_save(total_steps):
-                    self.save(total_steps)
+                if self.should_save(self.total_steps):
+                    print("\nSAVING\n")
+                    self.save(self.total_steps)
 
                 t = time.time()
-                times.append(t - stime)
-                times = times[-100:]
-                total_steps += 1
-                if self.verbose > 0:
+                self.times.append(t - stime)
+                self.times = self.times[-100:]
+                self.total_steps += 1
+                if self.verbose > 0 and self.total_steps % 10 == 0:
                     ep_str = "epoch:{}/{} step {}/{} d_loss:{:0.4f} l:{:0.4f} g_loss_total:{:0.4f} | "
                     ep_str += "t/step {:.1f} | t/ep {:.1f} | t {:.1f}"
                     print(
@@ -336,13 +339,13 @@ class gan_trainer:
                             d_loss.item(),
                             loss.item(),
                             g_loss_total.item(),
-                            np.mean(times),
+                            np.mean(self.times),
                             t - etime,
                             t - start_time,
                         ),
                         end="\r",
                     )
-
+            print("\nEnd of Epoch\n")
             # ------------------------
             # ----- END OF EPOCH -----
             # ------------------------
