@@ -7,7 +7,7 @@ import re
 import yaml
 
 
-def get_template(param, sbp, conf_path, run_dir, exp_dir, name):
+def get_template(param, sbp, conf_path, run_dir, name):
     if name == "victor_mila":
         return f"""#!/bin/bash
 #SBATCH --cpus-per-task={sbp.get("cpu", 8)}       # Ask for 6 CPUs
@@ -58,16 +58,17 @@ echo 'done'
 #SBATCH --cpus-per-task={sbp["cpus"]}       # Ask for 6 CPUs
 #SBATCH --gres=gpu:1                        # Ask for 1 GPU
 #SBATCH --mem={sbp["mem"]}G                 # Ask for 32 GB of RAM
-#SBATCH --time={sbp["runtime"]}             # Run for 12h
+#SBATCH --time=24:00:00            # Run for 12h
 #SBATCH -o {env_to_path(sbp["slurm_out"])}  # Write the log in $SCRATCH
 
 module load singularity
 
 echo "Starting job"
 
-singularity exec --nv --bind {param["config"]["data"]["path"]}{","+param["config"]["data"]["preprocessed_data_path"] if not param["config"]["data"]["preprocessed_data_path"] is None else "" }\\
+singularity exec --nv --bind {param["config"]["data"]["path"]},{str(run_dir)}\\
+        {","+param["config"]["data"]["preprocessed_data_path"] if param["config"]["data"]["preprocessed_data_path"] else "" } \\
         {sbp["singularity_path"]}\\
-        python3 src/train.py \\
+        python3 -m src.train \\
         -m "{sbp["message"]}" \\
         -c "{str(conf_path)}"\\
         -o "{str(run_dir)}" \\
@@ -315,7 +316,7 @@ if __name__ == "__main__":
         conf_path = write_conf(run_dir, param)  # returns Path() from pathlib
 
         template = get_template(
-            param, sbp, conf_path, run_dir, exp_dir, opts.template_name
+            param, sbp, conf_path, run_dir, opts.template_name
         )
 
         file = run_dir / f"run-{sbp['conf_name']}.sh"
