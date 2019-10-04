@@ -2,6 +2,7 @@ cloudenv/
 .vscode/
 config/
 .comet.config
+.idea/
 
 # -----------------------------------------
 # -----    Python-specific content    -----
