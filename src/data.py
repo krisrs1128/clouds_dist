@@ -77,7 +77,6 @@ class EarthData(Dataset):
     def __getitem__(self, i):
         data = {}
         id = self.ids[i]
-        path = 2
         for key in ["real_imgs", "metos"]:
             path = self.paths[key][id]
             if self.preprocessed_data_path:
