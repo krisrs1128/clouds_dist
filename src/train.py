@@ -6,7 +6,7 @@ import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
-
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn as nn
@@ -48,7 +48,7 @@ def weighted_mse_loss(input, target):
 class gan_trainer:
     def __init__(self, opts, comet_exp=None, output_dir=".", n_epochs=50, verbose=1):
         self.opts = opts
-
+        self.losses = {"gan_loss":[], "matching_loss": [], "g_loss_total":[], "d_loss": []}
         transfs = []
         if self.opts.data.preprocessed_data_path is None and self.opts.data.with_stats:
             transfs += [
@@ -99,9 +99,12 @@ class gan_trainer:
     def make_directories(self):
         self.ckptdir = self.output_dir / "checkpoints"
         self.imgdir = self.output_dir / "images"
+        self.offline_output_dir = self.output_dir / "output"
 
         self.ckptdir.mkdir(parents=True, exist_ok=True)
         self.imgdir.mkdir(exist_ok=True)
+        self.offline_output_dir.mkdir(exist_ok=True)
+
 
     def run_trail(self):
         if self.exp:
@@ -193,6 +196,17 @@ class gan_trainer:
         return not self.opts.train.infer_every_steps or (
             steps and steps % self.opts.train.infer_every_steps == 0
         )
+
+    def plot_losses(self,losses):
+        plt.figure()
+        for loss in losses:
+            plt.plot(np.arange(len(losses[loss])), losses[loss], label=loss)
+            plt.legend()
+            plt.xlabel("steps")
+            plt.ylabel("losses")
+            plt.savefig(str(self.offline_output_dir / "losses.png"))
+
+
 
     def train(
         self,
@@ -307,6 +321,11 @@ class gan_trainer:
                             "track_gen/std": generated_img.std(),
                         }
                     )
+                else:
+                    self.losses["gan_loss"].append(gan_loss.item())
+                    self.losses["matching_loss"].append(loss.item())
+                    self.losses["g_loss_total"].append(g_loss_total.item())
+                    self.losses["d_loss"].append(d_loss.item())
 
                 if self.should_infer(self.total_steps):
                     print("\nINFERING\n")
@@ -326,24 +345,30 @@ class gan_trainer:
                 self.times.append(t - stime)
                 self.times = self.times[-100:]
                 self.total_steps += 1
-                if self.verbose > 0 and self.total_steps % 10 == 0:
-                    ep_str = "epoch:{}/{} step {}/{} d_loss:{:0.4f} l:{:0.4f} g_loss_total:{:0.4f} | "
-                    ep_str += "t/step {:.1f} | t/ep {:.1f} | t {:.1f}"
-                    print(
-                        ep_str.format(
-                            epoch + 1,
-                            n_epochs,
-                            i + 1,
-                            len(self.trainloader),
-                            d_loss.item(),
-                            loss.item(),
-                            g_loss_total.item(),
-                            np.mean(self.times),
-                            t - etime,
-                            t - start_time,
-                        ),
-                        end="\r",
-                    )
+
+                if self.total_steps % 10 == 0:
+                    if self.exp is None:
+                        self.plot_losses(self.losses)
+
+                    if self.verbose > 0:
+                        ep_str = "epoch:{}/{} step {}/{} d_loss:{:0.4f} l:{:0.4f} gan_loss:{:0.4f} "
+                        ep_str += "g_loss_total:{:0.4f} | t/step {:.1f} | t/ep {:.1f} | t {:.1f}"
+                        print(
+                            ep_str.format(
+                                epoch + 1,
+                                n_epochs,
+                                i + 1,
+                                len(self.trainloader),
+                                d_loss.item(),
+                                loss.item(),
+                                gan_loss.item(),
+                                g_loss_total.item(),
+                                np.mean(self.times),
+                                t - etime,
+                                t - start_time,
+                            ),
+                            end="\r",
+                        )
             print("\nEnd of Epoch\n")
             # ------------------------
             # ----- END OF EPOCH -----
