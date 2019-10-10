@@ -85,11 +85,13 @@ class UNet(nn.Module):
             )
 
         self.conv_final = nn.Conv2d(input_sizes[0], Cout, 1)
+        self.down = nn.Sequential(*self.down)
+        self.up = nn.Sequential(*self.up)
         if device:
             self.pool = self.pool.to(device)
             self.upsample = self.upsample.to(device)
-            self.down = [d.to(device) for d in self.down]
-            self.up = [u.to(device) for u in self.up]
+            self.down = self.down.to(device)
+            self.up = self.up.to(device)
 
     def forward(self, x):
         # encoder pass

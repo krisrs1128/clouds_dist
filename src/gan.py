@@ -42,7 +42,3 @@ class GAN(nn.Module):
         if type(m) == nn.Linear:
             nn.init.xavier_uniform_(m.weight)
             nn.init.uniform_(m.bias, -0.1, 0.1)
-
-    def forward(self, x):
-        x = self.g(x)
-        return self.d(x)
