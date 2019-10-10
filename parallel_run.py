@@ -34,30 +34,6 @@ echo 'done'
 """
     elif name == "mustafa_beluga":
         return f"""#!/bin/bash
-#SBATCH --cpus-per-task=8       # Ask for 6 CPUs
-#SBATCH --gres=gpu:titanxp:1                        # Ask for 1 GPU
-#SBATCH --mem=32G                 # Ask for 32 GB of RAM
-#SBATCH --time=24:00:00             # Run for 12h
-#SBATCH -o {str(run_dir)}/slurm-%j.out  # Write the log in $SCRATCH
-
-cd /network/home/muhammem/clouds_dist
-
-echo "Starting job"
-
-source XXXXXXanaconda3/bin/activate
-
-conda activate XXXXXXenvname
-
-python -m src.train \\
-                -m "{sbp['message']}" \\
-                -c "{str(conf_path)}" \\
-                -o "{str(run_dir)}"\\
-                {"-n" if sbp["no_comet"] else "-f" if sbp["offline"] else ""}
-
-echo 'done'
-"""
-    else:
-        return f"""#!/bin/bash
 #SBATCH --account=rpp-bengioy               # Yoshua pays for your job
 #SBATCH --cpus-per-task={sbp["cpus"]}       # Ask for 6 CPUs
 #SBATCH --gres=gpu:1                        # Ask for 1 GPU
@@ -78,6 +54,8 @@ singularity exec --nv --bind {param["config"]["data"]["path"]},{str(run_dir)}\\
         -o "{str(run_dir)}" \\
         {"-n" if sbp["no_comet"] else "-f" if sbp["offline"] else ""}
 """
+    else:
+        raise ValueError("No template name provided ; try ... -t mustafa_beluga")
 
 
 def get_increasable_name(file_path):
