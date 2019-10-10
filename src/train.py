@@ -437,7 +437,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-r",
         "--resume",
-        type=str,
+        action="store_true",
         help="Resumes the model (and opts) that are stored as state_latest.pt in output_dir",
     )
     parser.add_argument("-n", "--no_exp", default=False, action="store_true")
