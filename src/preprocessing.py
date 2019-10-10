@@ -134,8 +134,8 @@ class Zoom:
 
         crop_result = {
             k: v[:, self.crop_size : -self.crop_size, self.crop_size : -self.crop_size]
-            for k, v in sample.items()
+            for k, v in sample.items() if k=="real_imgs"
         }
         zoom_result = {k: upsample(v.unsqueeze(0)).squeeze()
-                       for k, v in crop_result.items()}
+                       for k, v in crop_result.items() if k=="real_imgs" }
         return zoom_result
