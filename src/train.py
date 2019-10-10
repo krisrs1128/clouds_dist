@@ -76,6 +76,7 @@ class gan_trainer:
         self.n_epochs = n_epochs
         self.start_time = datetime.now()
         self.verbose = verbose
+        self.resumed = False
 
         timestamp = self.start_time.strftime("%Y_%m_%d_%H_%M_%S")
         self.timestamp = timestamp
@@ -113,6 +114,8 @@ class gan_trainer:
         self.gan.load_state_dict(state["state_dict"])
         self.g_optimizer.load_state_dict(state["g_optimizer"])
         self.d_optimizer.load_state_dict(state["d_optimizer"])
+        self.total_steps = state["step"]
+        self.resumed = True
         print("Loaded model from {}".format(str(file_path)))
 
     def save(self, step=0):
