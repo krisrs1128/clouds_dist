@@ -19,7 +19,7 @@ from src.data import EarthData
 from src.gan import GAN
 from src.preprocessing import Crop, Rescale
 from src.utils import merge_defaults, load_conf, sample_param
-from src.optim import Extragradient, extragrad_step
+from src.optim import ExtraSGD, extragrad_step
 
 
 def loss_hinge_dis(dis_fake, dis_real):
@@ -222,10 +222,8 @@ class gan_trainer:
         # -------------------------------
         # ----- Set Up Optimization -----
         # -------------------------------
-        d_optimizer = optim.Adam(
-            self.d.parameters(), lr=lr_d, betas=(0.0, 0.999), weight_decay=0, eps=1e-8
-        )
-        g_optimizer = optim.Adam(self.g.parameters(), lr=lr_g)
+        d_optimizer = ExtraSGD(self.d.parameters(), lr=lr_d)
+        g_optimizer = ExtraSGD(self.g.parameters(), lr=lr_g)
 
         matching_loss = (
             nn.L1Loss()
