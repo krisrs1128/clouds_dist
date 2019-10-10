@@ -27,7 +27,9 @@ conda activate cyclePT
 python -m src.train \\
                 -m "{sbp['message']}" \\
                 -c "{str(conf_path)}" \\
-                -o "{str(run_dir)}"
+                -o "{str(run_dir)}" \\
+                {"-n" if sbp["no_comet"] else "-f" if sbp["offline"] else ""}
+
 echo 'done'
 """
     elif name == "mustafa_beluga":
@@ -49,7 +51,9 @@ conda activate XXXXXXenvname
 python -m src.train \\
                 -m "{sbp['message']}" \\
                 -c "{str(conf_path)}" \\
-                -o "{str(run_dir)}"
+                -o "{str(run_dir)}"\\
+                {"-n" if sbp["no_comet"] else "-f" if sbp["offline"] else ""}
+
 echo 'done'
 """
     else:
@@ -72,7 +76,7 @@ singularity exec --nv --bind {param["config"]["data"]["path"]},{str(run_dir)}\\
         -m "{sbp["message"]}" \\
         -c "{str(conf_path)}"\\
         -o "{str(run_dir)}" \\
-        {"-f" if sbp["offline"] else ""}
+        {"-n" if sbp["no_comet"] else "-f" if sbp["offline"] else ""}
 """
 
 
@@ -214,6 +218,7 @@ default_sbatch = {
     "conf_name": "explore",
     "singularity_path": "/scratch/sankarak/images/clouds.img",
     "offline": True,
+    "no_comet": False
 }
 
 
