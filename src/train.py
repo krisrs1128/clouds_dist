@@ -17,7 +17,7 @@ from torchvision import transforms
 
 from src.data import EarthData
 from src.gan import GAN
-from src.preprocessing import Crop, Rescale
+from src.preprocessing import Zoom, Rescale
 from src.utils import merge_defaults, load_conf, sample_param
 
 
@@ -54,7 +54,7 @@ class gan_trainer:
             "g_loss_total": [],
             "d_loss": [],
         }
-        transfs = []
+        transfs = [Zoom()]
         if self.opts.data.preprocessed_data_path is None and self.opts.data.with_stats:
             transfs += [
                 Rescale(
