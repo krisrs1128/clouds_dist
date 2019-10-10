@@ -97,9 +97,33 @@ class gan_trainer:
         self.make_directories()
         self.debug = Dict()
 
-    def save(self, epoch=0):
-        torch.save(self.gan.state_dict(), str(self.ckptdir / f"gan_{epoch}.pt"))
-        torch.save(self.gan.state_dict(), str(self.ckptdir / f"gan_latest.pt"))
+    def resume(self, path=None, step_name="latest"):
+        if path is None:
+            file_path = self.ckptdir / f"state_{str(step_name)}.pt"
+        else:
+            file_path = Path(path) / f"state_{str(step_name)}.pt"
+
+        assert (
+            file_path.exists()
+        ), "File {} does not exist (path: {}, step_name: {})".format(
+            str(file_path), path, step_name
+        )
+
+        state = torch.load(str(file_path))
+        self.gan.load_state_dict(state["state_dict"])
+        self.g_optimizer.load_state_dict(state["g_optimizer"])
+        self.d_optimizer.load_state_dict(state["d_optimizer"])
+        print("Loaded model from {}".format(str(file_path)))
+
+    def save(self, step=0):
+        state = {
+            "step": step,
+            "state_dict": self.gan.state_dict(),
+            "d_optimizer": self.d_optimizer.state_dict(),
+            "g_optimizer": self.g_optimizer.state_dict(),
+        }
+        torch.save(state, str(self.ckptdir / f"state_{step}.pt"))
+        torch.save(state, str(self.ckptdir / f"state_latest.pt"))
 
     def make_directories(self):
         self.ckptdir = self.output_dir / "checkpoints"
@@ -110,7 +134,7 @@ class gan_trainer:
         self.imgdir.mkdir(exist_ok=True)
         self.offline_output_dir.mkdir(exist_ok=True)
 
-    def run_trail(self):
+    def setup(self):
         if self.exp:
             self.exp.log_parameters(self.opts.train)
             self.exp.log_parameters(self.opts.model)
@@ -139,12 +163,18 @@ class gan_trainer:
         )
         self.g = self.gan.g
         self.d = self.gan.d
+        self.d_optimizer = optim.Adam(
+            self.d.parameters(),
+            lr=self.opts.train.lr_d,
+            betas=(0.5, 0.999),
+            weight_decay=0,
+            eps=1e-8,
+        )
+        self.g_optimizer = optim.Adam(self.g.parameters(), lr=self.opts.train.lr_g)
 
-        # train using "regress then GAN" approach
+    def run_trial(self):
         self.train(
             self.opts.train.n_epochs,
-            self.opts.train.lr_d,
-            self.opts.train.lr_g,
             self.opts.train.lambda_gan,
             self.opts.train.lambda_L,
             self.opts.train.num_D_accumulations,
@@ -211,22 +241,11 @@ class gan_trainer:
             plt.savefig(str(self.offline_output_dir / "losses.png"))
 
     def train(
-        self,
-        n_epochs,
-        lr_d=1e-2,
-        lr_g=1e-2,
-        lambda_gan=0.01,
-        lambda_L=1,
-        num_D_accumulations=8,
-        loss="l1",
+        self, n_epochs, lambda_gan=0.01, lambda_L=1, num_D_accumulations=1, loss="l1"
     ):
-        # -------------------------------
-        # ----- Set Up Optimization -----
-        # -------------------------------
-        d_optimizer = optim.Adam(
-            self.d.parameters(), lr=lr_d, betas=(0.0, 0.999), weight_decay=0, eps=1e-8
-        )
-        g_optimizer = optim.Adam(self.g.parameters(), lr=lr_g)
+        # -----------------------------
+        # -----   Set Up Losses   -----
+        # -----------------------------
 
         matching_loss = (
             nn.L1Loss()
@@ -284,7 +303,7 @@ class gan_trainer:
                     real_target = torch.ones(real_prob.shape, device=device)
                     fake_target = torch.zeros(fake_prob.shape, device=device)
 
-                    d_optimizer.zero_grad()
+                    self.d_optimizer.zero_grad()
                     d_loss = loss_hinge_dis(fake_prob, real_prob) / float(
                         num_D_accumulations
                     )
@@ -292,19 +311,19 @@ class gan_trainer:
                 # ----------------------------------
                 # ----- Backprop Discriminator -----
                 # ----------------------------------
-                d_optimizer.step()
+                self.d_optimizer.step()
 
                 # ----------------------------
                 # ----- Generator Update -----
                 # ----------------------------
-                g_optimizer.zero_grad()
+                self.g_optimizer.zero_grad()
                 fake_prob = self.d(generated_img)
                 loss = matching_loss(real_img, generated_img)
                 gan_loss = loss_hinge_gen(fake_prob)
 
                 g_loss_total = lambda_gan * gan_loss + lambda_L * loss
                 g_loss_total.backward()
-                g_optimizer.step()
+                self.g_optimizer.step()
 
                 # -------------------
                 # ----- Logging -----
@@ -415,6 +434,12 @@ if __name__ == "__main__":
         type=str,
         help="where the run's data should be stored ; used to resume",
     )
+    parser.add_argument(
+        "-r",
+        "--resume",
+        type=str,
+        help="Resumes the model (and opts) that are stored as state_latest.pt in output_dir",
+    )
     parser.add_argument("-n", "--no_exp", default=False, action="store_true")
     parsed_opts = parser.parse_args()
 
@@ -475,12 +500,21 @@ if __name__ == "__main__":
         exp.log_parameter("__message", parsed_opts.message)
 
     # --------------------------
-    # ----- Start Training -----
+    # -----   Initialize   -----
     # --------------------------
 
     trainer = gan_trainer(opts, exp, output_path)
+    trainer.setup()
+    # ----------------------
+    # -----   Resume   -----
+    # ----------------------
+    if parsed_opts.resume:
+        trainer.resume()
 
-    trainer.run_trail()
+    # ---------------------
+    # -----   Train   -----
+    # ---------------------
+    trainer.run_trial()
 
     # --------------------------------
     # ----- End Comet Experiment -----
