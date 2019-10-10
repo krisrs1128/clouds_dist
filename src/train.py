@@ -321,11 +321,6 @@ class gan_trainer:
                             "track_gen/std": generated_img.std(),
                         }
                     )
-                else:
-                    self.losses["gan_loss"].append(gan_loss.item())
-                    self.losses["matching_loss"].append(loss.item())
-                    self.losses["g_loss_total"].append(g_loss_total.item())
-                    self.losses["d_loss"].append(d_loss.item())
 
                 if self.should_infer(self.total_steps):
                     print("\nINFERING\n")
@@ -346,29 +341,32 @@ class gan_trainer:
                 self.times = self.times[-100:]
                 self.total_steps += 1
 
-                if self.total_steps % 10 == 0:
-                    if self.exp is None:
-                        self.plot_losses(self.losses)
+                if self.total_steps % 50 == 0 and self.exp is None:
+                    self.losses["gan_loss"].append(gan_loss.item())
+                    self.losses["matching_loss"].append(loss.item())
+                    self.losses["g_loss_total"].append(g_loss_total.item())
+                    self.losses["d_loss"].append(d_loss.item())
+                    self.plot_losses(self.losses)
 
-                    if self.verbose > 0:
-                        ep_str = "epoch:{}/{} step {}/{} d_loss:{:0.4f} l:{:0.4f} gan_loss:{:0.4f} "
-                        ep_str += "g_loss_total:{:0.4f} | t/step {:.1f} | t/ep {:.1f} | t {:.1f}"
-                        print(
-                            ep_str.format(
-                                epoch + 1,
-                                n_epochs,
-                                i + 1,
-                                len(self.trainloader),
-                                d_loss.item(),
-                                loss.item(),
-                                gan_loss.item(),
-                                g_loss_total.item(),
-                                np.mean(self.times),
-                                t - etime,
-                                t - start_time,
-                            ),
-                            end="\r",
-                        )
+                if self.total_steps % 10 == 0 and self.verbose > 0:
+                    ep_str = "epoch:{}/{} step {}/{} d_loss:{:0.4f} l:{:0.4f} gan_loss:{:0.4f} "
+                    ep_str += "g_loss_total:{:0.4f} | t/step {:.1f} | t/ep {:.1f} | t {:.1f}"
+                    print(
+                        ep_str.format(
+                            epoch + 1,
+                            n_epochs,
+                            i + 1,
+                            len(self.trainloader),
+                            d_loss.item(),
+                            loss.item(),
+                            gan_loss.item(),
+                            g_loss_total.item(),
+                            np.mean(self.times),
+                            t - etime,
+                            t - start_time,
+                        ),
+                        end="\r",
+                    )
             print("\nEnd of Epoch\n")
             # ------------------------
             # ----- END OF EPOCH -----
