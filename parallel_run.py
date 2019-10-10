@@ -62,7 +62,7 @@ def get_increasable_name(file_path):
     f = Path(file_path)
     while f.exists():
         name = f.name
-        s = list(re.finditer("--\d+", name))
+        s = list(re.finditer(r"--\d+", name))
         if s:
             s = s[-1]
             d = int(s.group().replace("--", "").replace(".", ""))
@@ -196,7 +196,7 @@ default_sbatch = {
     "conf_name": "explore",
     "singularity_path": "/scratch/sankarak/images/clouds.img",
     "offline": True,
-    "no_comet": False
+    "no_comet": False,
 }
 
 
@@ -298,9 +298,7 @@ if __name__ == "__main__":
         sbp = param["sbatch"]
         conf_path = write_conf(run_dir, param)  # returns Path() from pathlib
 
-        template = get_template(
-            param, sbp, conf_path, run_dir, opts.template_name
-        )
+        template = get_template(param, sbp, conf_path, run_dir, opts.template_name)
 
         file = run_dir / f"run-{sbp['conf_name']}.sh"
         with file.open("w") as f:

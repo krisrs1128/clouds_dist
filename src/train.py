@@ -48,7 +48,12 @@ def weighted_mse_loss(input, target):
 class gan_trainer:
     def __init__(self, opts, comet_exp=None, output_dir=".", n_epochs=50, verbose=1):
         self.opts = opts
-        self.losses = {"gan_loss":[], "matching_loss": [], "g_loss_total":[], "d_loss": []}
+        self.losses = {
+            "gan_loss": [],
+            "matching_loss": [],
+            "g_loss_total": [],
+            "d_loss": [],
+        }
         transfs = []
         if self.opts.data.preprocessed_data_path is None and self.opts.data.with_stats:
             transfs += [
@@ -104,7 +109,6 @@ class gan_trainer:
         self.ckptdir.mkdir(parents=True, exist_ok=True)
         self.imgdir.mkdir(exist_ok=True)
         self.offline_output_dir.mkdir(exist_ok=True)
-
 
     def run_trail(self):
         if self.exp:
@@ -197,7 +201,7 @@ class gan_trainer:
             steps and steps % self.opts.train.infer_every_steps == 0
         )
 
-    def plot_losses(self,losses):
+    def plot_losses(self, losses):
         plt.figure()
         for loss in losses:
             plt.plot(np.arange(len(losses[loss])), losses[loss], label=loss)
@@ -205,8 +209,6 @@ class gan_trainer:
             plt.xlabel("steps")
             plt.ylabel("losses")
             plt.savefig(str(self.offline_output_dir / "losses.png"))
-
-
 
     def train(
         self,
