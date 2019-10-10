@@ -299,7 +299,7 @@ class gan_trainer:
                 gan_loss = loss_hinge_gen(fake_prob)
 
                 g_loss_total = lambda_gan * gan_loss + lambda_L * loss
-                extragrad_step(g_optimizer, seld.g, i)
+                extragrad_step(g_optimizer, self.g, i)
 
                 # -------------------
                 # ----- Logging -----
