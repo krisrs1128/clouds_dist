@@ -12,6 +12,12 @@ written by Hugo Berard (berard.hugo@gmail.com) while at Facebook.
 import torch
 from torch.optim import Optimizer, SGD
 
+def extragrad_step(optimizer, model, i):
+    if i % 2 == 0:
+        optimizer.extrapolate()
+    else:
+        optimizer.step()
+        model.zero_grad()
 
 class Extragradient(Optimizer):
     """Base class for optimizers with extrapolation step.
