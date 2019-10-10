@@ -133,9 +133,9 @@ class Zoom:
         upsample = torch.nn.UpsamplingNearest2d(scale_factor=dim / (dim - 2 * self.crop_size))
 
         crop_result = {
-            k: v[:, self.crop_size : -self.crop_size, self.crop_size : -self.crop_size]
-            for k, v in sample.items() if k=="real_imgs"
+            k: v[:, self.crop_size : -self.crop_size, self.crop_size : -self.crop_size] if k=="real_imgs" else v
+            for k, v in sample.items()
         }
-        zoom_result = {k: upsample(v.unsqueeze(0)).squeeze()
-                       for k, v in crop_result.items() if k=="real_imgs" }
+        zoom_result = {k: upsample(v.unsqueeze(0)).squeeze() if k=="real_imgs" else v 
+                       for k, v in crop_result.items()}
         return zoom_result
