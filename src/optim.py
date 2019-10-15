@@ -11,12 +11,14 @@ written by Hugo Berard (berard.hugo@gmail.com) while at Facebook.
 import torch
 from torch.optim import Optimizer, SGD
 
+
 def extragrad_step(optimizer, model, i):
     if i % 2 == 0:
         optimizer.extrapolate()
     else:
         optimizer.step()
         model.zero_grad()
+
 
 class Extragradient(Optimizer):
     """Base class for optimizers with extrapolation step.
@@ -26,6 +28,7 @@ class Extragradient(Optimizer):
         defaults: (dict): a dict containing default values of optimization
             options (used when a parameter group doesn"t specify them).
     """
+
     def __init__(self, params, defaults):
         super(Extragradient, self).__init__(params, defaults)
         self.params_copy = []
@@ -45,9 +48,9 @@ class Extragradient(Optimizer):
                     continue
                 u = self.update(param, group)
                 if is_empty:
-                    self.params_copy.append(param.data.clone()) # save w[t]
+                    self.params_copy.append(param.data.clone())  # save w[t]
 
-                param.data += u # w[t + .5] = w[t] - eta * F(w[t])
+                param.data += u  # w[t + .5] = w[t] - eta * F(w[t])
 
     def step(self):
         """Performs a single optimization step.
@@ -58,7 +61,9 @@ class Extragradient(Optimizer):
                 if not param.grad:
                     continue
                 u = self.update(param, group)
-                param.data = self.params_copy[i] + u # w[t + 1] = w[t] - eta * F(w[t + .5])
+                param.data = (
+                    self.params_copy[i] + u
+                )  # w[t + 1] = w[t] - eta * F(w[t + .5])
                 i += 1
 
         # Free the old parameters
@@ -69,11 +74,9 @@ class ExtraSGD(Extragradient):
     """Implements stochastic gradient descent with extrapolation step (optionally with momentum).
     Nesterov momentum is based on the formula from
     """
+
     def __init__(self, params, lr, weight_decay=0):
-        defaults = {
-            "lr": lr,
-            "weight_decay": weight_decay
-        }
+        defaults = {"lr": lr, "weight_decay": weight_decay}
         super(ExtraSGD, self).__init__(params, defaults)
 
     def update(self, param, group):
