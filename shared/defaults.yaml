@@ -13,7 +13,7 @@ model:
 # -----    Train Params    -----
 # ------------------------------
 train:
-    batch_size: 32
+    batch_size: 16
     early_break_epoch: 0 # Break an epoch loop after early_break_epoch steps in this epoch
     infer_every_steps: 5000 # How often to infer validation images
     lambda_gan: 0.01 # Gan loss scaling constant
