@@ -7,7 +7,8 @@ import re
 import yaml
 
 
-def get_template(param, sbp, conf_path, run_dir, name):
+def get_template(param, conf_path, run_dir, name):
+    sbp = param["sbatch"]
     if name == "victor_mila":
         return f"""#!/bin/bash
 #SBATCH --cpus-per-task={sbp.get("cpu", 8)}       # Ask for 6 CPUs
@@ -298,7 +299,7 @@ if __name__ == "__main__":
         sbp = param["sbatch"]
         conf_path = write_conf(run_dir, param)  # returns Path() from pathlib
 
-        template = get_template(param, sbp, conf_path, run_dir, opts.template_name)
+        template = get_template(param, conf_path, run_dir, opts.template_name)
 
         file = run_dir / f"run-{sbp['conf_name']}.sh"
         with file.open("w") as f:
