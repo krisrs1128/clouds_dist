@@ -8,6 +8,24 @@ import yaml
 
 
 def get_template(param, conf_path, run_dir, name):
+
+    zip_command = ""
+    dp = Path(param["config"]["data"]["original_path"]).resolve()
+    zip_name = str(dp) + ".zip"
+    if not Path(zip_name).exists():
+        zip_command = f"""
+zip -r {zip_name} {str(dp)} > /dev/null/
+"""
+
+    cp_command = f"""
+cp {zip_name} $SLURM_TMPDIR
+"""
+
+    unzip_command = f"""
+cd $SLURM_TMPDIR
+unzip {zip_name} > /dev/null
+"""
+
     sbp = param["sbatch"]
     if name == "victor_mila":
         return f"""#!/bin/bash
@@ -16,6 +34,12 @@ def get_template(param, conf_path, run_dir, name):
 #SBATCH --mem=32G                 # Ask for 32 GB of RAM
 #SBATCH --time={sbp.get("runtime", "24:00:00")}
 #SBATCH -o {str(run_dir)}/slurm-%j.out  # Write the log in $SCRATCH
+
+{zip_command}
+
+{cp_command}
+
+{unzip_command}
 
 cd /network/home/schmidtv/clouds_dist
 
@@ -41,6 +65,12 @@ echo 'done'
 #SBATCH --mem={sbp["mem"]}G                 # Ask for 32 GB of RAM
 #SBATCH --time={sbp.get("runtime", "24:00:00")}
 #SBATCH -o {env_to_path(sbp["slurm_out"])}  # Write the log in $SCRATCH
+
+{zip_command}
+
+{cp_command}
+
+{unzip_command}
 
 module load singularity
 
@@ -297,6 +327,13 @@ if __name__ == "__main__":
         run_dir = exp_dir / f"run_{i}"
         run_dir.mkdir()
         sbp = param["sbatch"]
+
+        original_data_path = param["config"]["data"]["path"]
+        assert original_data_path, 'no value in param["config"]["data"]["path"]'
+
+        param["config"]["data"]["path"] = "$SLURM_TMPDIR"
+        param["config"]["data"]["original_path"] = original_data_path
+
         conf_path = write_conf(run_dir, param)  # returns Path() from pathlib
 
         template = get_template(param, conf_path, run_dir, opts.template_name)
