@@ -7,6 +7,16 @@ import re
 import yaml
 
 
+def get_git_revision_hash():
+    return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
+
+
+def write_hash(run_dir):
+    run_dir = Path(run_dir)
+    with Path(run_dir / "hash.txt").open("w") as f:
+        f.write(get_git_revision_hash())
+
+
 def get_template(param, sbp, conf_path, run_dir, name):
     if name == "victor_mila":
         return f"""#!/bin/bash
@@ -297,6 +307,7 @@ if __name__ == "__main__":
         run_dir.mkdir()
         sbp = param["sbatch"]
         conf_path = write_conf(run_dir, param)  # returns Path() from pathlib
+        write_hash(run_dir)
 
         template = get_template(param, sbp, conf_path, run_dir, opts.template_name)
 
