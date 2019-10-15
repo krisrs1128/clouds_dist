@@ -2,6 +2,16 @@ from pathlib import Path
 import subprocess
 import argparse
 
+# -----------------------------------------------------------------------------
+# -----  This files's purpose is to re-run all the EXISTING sbatch files  -----
+# -----  with the config files that are in subdirectories (1 level),      -----
+# -----  along with EXISTING configuration files                          -----
+# -----  Modifications:                                                   -----
+# -----    - adds `--resume` flag at the begining of the command          -----
+# -----    - checks out the commit in `hash.txt`                          -----
+# -----------------------------------------------------------------------------
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
