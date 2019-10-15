@@ -13,7 +13,7 @@ def get_template(param, sbp, conf_path, run_dir, name):
 #SBATCH --cpus-per-task={sbp.get("cpu", 8)}       # Ask for 6 CPUs
 #SBATCH --gres={sbp.get("gpu", "gpu:titanxp:1")}                        # Ask for 1 GPU
 #SBATCH --mem=32G                 # Ask for 32 GB of RAM
-#SBATCH --time=24:00:00             # Run for 12h
+#SBATCH --time={sbp.get("runtime", "24:00:00")}
 #SBATCH -o {str(run_dir)}/slurm-%j.out  # Write the log in $SCRATCH
 
 cd /network/home/schmidtv/clouds_dist
@@ -38,7 +38,7 @@ echo 'done'
 #SBATCH --cpus-per-task={sbp["cpus"]}       # Ask for 6 CPUs
 #SBATCH --gres=gpu:1                        # Ask for 1 GPU
 #SBATCH --mem={sbp["mem"]}G                 # Ask for 32 GB of RAM
-#SBATCH --time=24:00:00            # Run for 12h
+#SBATCH --time={sbp.get("runtime", "24:00:00")}
 #SBATCH -o {env_to_path(sbp["slurm_out"])}  # Write the log in $SCRATCH
 
 module load singularity
