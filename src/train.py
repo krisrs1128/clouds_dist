@@ -19,6 +19,7 @@ from src.data import EarthData
 from src.gan import GAN
 from src.preprocessing import Crop, Rescale
 from src.utils import merge_defaults, load_conf, sample_param
+from src.optim import ExtraSGD, extragrad_step
 
 
 def loss_hinge_dis(dis_fake, dis_real):
@@ -223,10 +224,8 @@ class gan_trainer:
         # -------------------------------
         # ----- Set Up Optimization -----
         # -------------------------------
-        d_optimizer = optim.Adam(
-            self.d.parameters(), lr=lr_d, betas=(0.0, 0.999), weight_decay=0, eps=1e-8
-        )
-        g_optimizer = optim.Adam(self.g.parameters(), lr=lr_g)
+        d_optimizer = ExtraSGD(self.d.parameters(), lr=lr_d)
+        g_optimizer = ExtraSGD(self.g.parameters(), lr=lr_g)
 
         matching_loss = (
             nn.L1Loss()
@@ -284,15 +283,14 @@ class gan_trainer:
                     real_target = torch.ones(real_prob.shape, device=device)
                     fake_target = torch.zeros(fake_prob.shape, device=device)
 
+                    # ----------------------------------
+                    # ----- Backprop Discriminator -----
+                    # ----------------------------------
                     d_optimizer.zero_grad()
                     d_loss = loss_hinge_dis(fake_prob, real_prob) / float(
                         num_D_accumulations
                     )
-                    d_loss.backward()
-                # ----------------------------------
-                # ----- Backprop Discriminator -----
-                # ----------------------------------
-                d_optimizer.step()
+                    extragrad_step(d_optimizer, self.d, i)
 
                 # ----------------------------
                 # ----- Generator Update -----
@@ -303,8 +301,7 @@ class gan_trainer:
                 gan_loss = loss_hinge_gen(fake_prob)
 
                 g_loss_total = lambda_gan * gan_loss + lambda_L * loss
-                g_loss_total.backward()
-                g_optimizer.step()
+                extragrad_step(g_optimizer, self.g, i)
 
                 # -------------------
                 # ----- Logging -----
