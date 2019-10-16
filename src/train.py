@@ -359,7 +359,10 @@ class gan_trainer:
                 self.times = self.times[-100:]
                 self.total_steps += 1
 
-                if self.total_steps % opts.train.offline_losses_steps == 0 and self.exp is None:
+                if (
+                    self.total_steps % opts.train.offline_losses_steps == 0
+                    and self.exp is None
+                ):
                     self.losses["gan_loss"].append(gan_loss.item())
                     self.losses["matching_loss"].append(loss.item())
                     self.losses["g_loss_total"].append(g_loss_total.item())
@@ -368,7 +371,9 @@ class gan_trainer:
 
                 if self.total_steps % 10 == 0 and self.verbose > 0:
                     ep_str = "epoch:{}/{} step {}/{} d_loss:{:0.4f} l:{:0.4f} gan_loss:{:0.4f} "
-                    ep_str += "g_loss_total:{:0.4f} | t/step {:.1f} | t/ep {:.1f} | t {:.1f}"
+                    ep_str += (
+                        "g_loss_total:{:0.4f} | t/step {:.1f} | t/ep {:.1f} | t {:.1f}"
+                    )
                     print(
                         ep_str.format(
                             epoch + 1,

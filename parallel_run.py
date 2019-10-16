@@ -21,14 +21,15 @@ def get_template(param, conf_path, run_dir, name):
 
     zip_command = ""
     dp = Path(param["config"]["data"]["original_path"]).resolve()
-    zip_name = str(dp) + ".zip"
-    if not Path(zip_name).exists():
+    zip_name = dp.name + ".zip"
+    zip_path = str(dp) + ".zip"
+    if not Path(zip_path).exists():
         zip_command = f"""
-zip -r {zip_name} {str(dp)} > /dev/null/
+zip -r {zip_path} {str(dp)} > /dev/null/
 """
 
     cp_command = f"""
-cp {zip_name} $SLURM_TMPDIR
+cp {zip_path} $SLURM_TMPDIR
 """
 
     unzip_command = f"""
