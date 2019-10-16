@@ -25,7 +25,8 @@ def get_template(param, conf_path, run_dir, name):
     zip_path = str(dp) + ".zip"
     if not Path(zip_path).exists():
         zip_command = f"""
-zip -r {zip_path} {str(dp)} > /dev/null/
+cd {str(dp)}
+zip -r {zip_name} imgs metos > /dev/null/
 """
 
     cp_command = f"""
