@@ -341,7 +341,7 @@ class gan_trainer:
                 self.times = self.times[-100:]
                 self.total_steps += 1
 
-                if self.total_steps % 50 == 0 and self.exp is None:
+                if self.total_steps % opts.train.offline_losses_steps == 0 and self.exp is None:
                     self.losses["gan_loss"].append(gan_loss.item())
                     self.losses["matching_loss"].append(loss.item())
                     self.losses["g_loss_total"].append(g_loss_total.item())
