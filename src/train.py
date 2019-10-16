@@ -17,7 +17,7 @@ from torchvision import transforms
 
 from src.data import EarthData
 from src.gan import GAN
-from src.preprocessing import Crop, Rescale
+from src.preprocessing import Zoom, Rescale, RemoveNans
 from src.utils import merge_defaults, load_conf, sample_param
 from src.optim import ExtraSGD, extragrad_step
 
@@ -55,7 +55,8 @@ class gan_trainer:
             "g_loss_total": [],
             "d_loss": [],
         }
-        transfs = []
+        transfs = [Zoom()]
+
         if self.opts.data.preprocessed_data_path is None and self.opts.data.with_stats:
             transfs += [
                 Rescale(
@@ -65,7 +66,8 @@ class gan_trainer:
                     verbose=1,
                 )
             ]
-
+        transfs += [RemoveNans()]
+        
         self.trainset = EarthData(
             self.opts.data.path,
             preprocessed_data_path=self.opts.data.preprocessed_data_path,
@@ -293,7 +295,6 @@ class gan_trainer:
                     self.input_tensor = self.input_tensor.to(device)
 
                     real_img = batch["real_imgs"].to(device)
-
                     generated_img = self.g(self.input_tensor)
 
                     real_prob = self.d(real_img)
