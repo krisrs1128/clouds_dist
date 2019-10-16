@@ -25,6 +25,7 @@ train:
     num_D_accumulations: 8 # How many gradients to accumulate in current batch (different geenrator predictions) before doing one discriminator optimization step
     save_every_steps: 5000 # How often to save  the model's weights
     store_images: false # Do you want to write infered images to disk
+    offline_losses_steps: 50 # how often to log the losses with no comet logs
 # ---------------------------
 # -----    Data Conf    -----
 # ---------------------------
