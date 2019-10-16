@@ -7,6 +7,16 @@ import re
 import yaml
 
 
+def get_git_revision_hash():
+    return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
+
+
+def write_hash(run_dir):
+    run_dir = Path(run_dir)
+    with Path(run_dir / "hash.txt").open("w") as f:
+        f.write(get_git_revision_hash())
+
+
 def get_template(param, conf_path, run_dir, name):
 
     zip_command = ""
@@ -27,6 +37,7 @@ unzip {zip_name} > /dev/null
 """
 
     sbp = param["sbatch"]
+
     if name == "victor_mila":
         return f"""#!/bin/bash
 #SBATCH --cpus-per-task={sbp.get("cpu", 8)}       # Ask for 6 CPUs
@@ -335,6 +346,7 @@ if __name__ == "__main__":
         param["config"]["data"]["original_path"] = original_data_path
 
         conf_path = write_conf(run_dir, param)  # returns Path() from pathlib
+        write_hash(run_dir)
 
         template = get_template(param, conf_path, run_dir, opts.template_name)
 
