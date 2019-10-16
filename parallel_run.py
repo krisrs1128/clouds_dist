@@ -20,12 +20,12 @@ def write_hash(run_dir):
 def get_template(param, conf_path, run_dir, name):
 
     zip_command = ""
-    dp = Path(param["config"]["data"]["original_path"]).resolve()
-    zip_name = dp.name + ".zip"
-    zip_path = str(dp) + ".zip"
+    original_path = Path(param["config"]["data"]["original_path"]).resolve()
+    zip_name = original_path.name + ".zip"
+    zip_path = str(original_path / zip_name)
     if not Path(zip_path).exists():
         zip_command = f"""
-cd {str(dp)}
+cd {str(original_path)}
 zip -r {zip_name} imgs metos > /dev/null/
 """
 
