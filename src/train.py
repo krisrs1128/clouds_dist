@@ -17,7 +17,7 @@ from torchvision import transforms
 
 from src.data import EarthData
 from src.gan import GAN
-from src.preprocessing import Zoom, Rescale, RemoveNans
+from src.preprocessing import Zoom, Rescale, RemoveNans, SquashChannels
 from src.utils import merge_defaults, load_conf, sample_param
 from src.optim import ExtraSGD, extragrad_step
 
@@ -56,6 +56,15 @@ class gan_trainer:
             "d_loss": [],
         }
         transfs = [Zoom()]
+
+        if self.opts.data.squash_channels:
+            transfs += [SquashChannels()]
+            assert (
+                self.opts.model.Cin == 8
+            ), "using squash_channels, Cin should be 8 not {}".format(
+                self.opts.model.Cin
+            )
+
         if self.opts.data.preprocessed_data_path is None and self.opts.data.with_stats:
             transfs += [
                 Rescale(
@@ -66,7 +75,7 @@ class gan_trainer:
                 )
             ]
         transfs += [RemoveNans()]
-        
+
         self.trainset = EarthData(
             self.opts.data.path,
             preprocessed_data_path=self.opts.data.preprocessed_data_path,
