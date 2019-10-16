@@ -2,6 +2,7 @@ from src.data import EarthData
 import numpy as np
 import torch
 
+
 class Rescale:
     def __init__(self, data_path, batch_size, num_workers=3, verbose=1):
         self.data_path = data_path
@@ -19,6 +20,7 @@ class Rescale:
             num_workers=self.num_workers,
         )
         self.means, self.ranges = self.get_stats()
+
     def expand_as(self, a, b):
         """Repeat a vector b that gives 1 value per channel so that it
         can be used in elementwise computations with a. a.shape[1] should
