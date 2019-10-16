@@ -177,7 +177,6 @@ class Zoom:
         upsample = torch.nn.UpsamplingNearest2d(
             scale_factor=dim / (dim - 2 * self.crop_size)
         )
-
         crop_result = {
             k: v[:, self.crop_size : -self.crop_size, self.crop_size : -self.crop_size]
             if k == "real_imgs"
@@ -201,3 +200,4 @@ class RemoveNans:
         sample["metos"][torch.isnan(sample["metos"])] = 0.0
         sample["metos"][torch.isinf(sample["metos"])] = 0.0
         return sample
+
