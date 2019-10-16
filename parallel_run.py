@@ -20,12 +20,12 @@ def write_hash(run_dir):
 def get_template(param, conf_path, run_dir, name):
 
     zip_command = ""
-    dp = Path(param["config"]["data"]["original_path"]).resolve()
-    zip_name = dp.name + ".zip"
-    zip_path = str(dp) + ".zip"
+    original_path = Path(param["config"]["data"]["original_path"]).resolve()
+    zip_name = original_path.name + ".zip"
+    zip_path = str(original_path / zip_name)
     if not Path(zip_path).exists():
         zip_command = f"""
-cd {str(dp)}
+cd {str(original_path)}
 zip -r {zip_name} imgs metos > /dev/null/
 """
 
@@ -151,86 +151,6 @@ def env_to_path(path):
     return "/".join(new_path)
 
 
-""" default config as ref:
-# -----------------------
-# -----    Model    -----
-# -----------------------
-model:
-    n_blocks: 5
-    filter_factors: null
-    kernel_size: 3
-    dropout: 0.25
-    Cin: 44
-    Cout: 3
-    Cnoise: 0
-# ------------------------------
-# -----    Train Params    -----
-# ------------------------------
-train:
-    batch_size: 32
-    early_break_epoch: 0
-    infer_every_steps: 5000
-    lambda_gan: 0.01
-    lambda_L: 1
-    load_limit: -1
-    lr_d: 0.0002
-    lr_g: 0.00005
-    matching_loss: "l2"
-    n_epochs: 100
-    num_D_accumulations: 8
-    save_every_steps: 5000
-    store_images: false
-# ---------------------------
-# -----    Data Conf    -----
-# ---------------------------
-data:
-    path: "/scratch/sankarak/data/clouds/"
-    num_workers: 3
-    with_stats: true
-"""
-
-"""Possible explore-lr.yaml
-experiment:
-    name: explore-lr-experiment
-    exp_dir: $SCRATCH/clouds
-    repeat: 1
-
-runs:
-  - sbatch:
-      runtime: "24:00:00"
-      message: learning rate exploration
-      conf_name: explore-lr
-    config:
-      model: {} # empty dictionnary, don't change anything
-      data: {}
-      train:
-          lr_d: 0.001 # overwrite config.train.lr_d
-
-  - sbatch:
-      runtime: "24:00:00"
-      message: learning rate exploration
-      conf_name: explore-lr
-      config:
-        model: {}
-        data: {}
-        train:
-          lr_d:
-            sample: uniform
-            from: [0.00001, 0.01]
-
-  - sbatch:
-      runtime: "24:00:00"
-      message: "learning rate exploration"
-      conf_name: "explore-lr"
-    config:
-      model: {}
-      data: {}
-      train:
-        lr_g:
-          sample: range
-          from: [0.00001, 0.01, 0.001]
-"""
-
 default_sbatch = {
     "cpus": 8,
     "mem": 32,
@@ -266,11 +186,6 @@ if __name__ == "__main__":
         type=str,
         default="default",
         help="what template to use to write the sbatch files",
-    )
-    parser.add_argument(
-        "--test_mode",
-        action="store_true",
-        help="don't actually run the sbatch files, just create everything",
     )
 
     opts = parser.parse_args()
@@ -360,6 +275,5 @@ if __name__ == "__main__":
         file = run_dir / f"run-{sbp['conf_name']}.sh"
         with file.open("w") as f:
             f.write(template)
-        if not opts.test_mode:
-            print(subprocess.check_output(f"sbatch {str(file)}", shell=True))
+        print(subprocess.check_output(f"sbatch {str(file)}", shell=True))
         print("In", str(run_dir), "\n")
