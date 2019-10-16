@@ -109,6 +109,7 @@ def process_sample(data):
             coords.reshape(2, 256, 256),
         ]
     )
-    metos[np.isnan(metos)] = 0.0
+
     metos[np.isinf(metos)] = 0.0
+    imgs[np.isinf(imgs)] = 0.0
     return {"real_imgs": torch.Tensor(imgs), "metos": torch.Tensor(metos)}
