@@ -226,7 +226,7 @@ class gan_trainer:
                 np.save(str(imgdir / f"imgs_{step}_{i}.npy"), imgs_cpu)
             if exp:
                 try:
-                    exp.log_image(imgs_cpu, name=f"imgs_{step}_{i}")
+                    exp.log_image(imgs_cpu, name=f"imgs_{step}_{i}", step=step)
                 except Exception as e:
                     print(f"\n{e}\n")
 
@@ -331,6 +331,8 @@ class gan_trainer:
                 g_loss_total = lambda_gan * gan_loss + lambda_L * loss
                 extragrad_step(self.g_optimizer, self.g, i)
 
+                self.total_steps += 1
+
                 # -------------------
                 # ----- Logging -----
                 # -------------------
@@ -346,7 +348,8 @@ class gan_trainer:
                             "track_gen/max": generated_img.max(),
                             "track_gen/mean": generated_img.mean(),
                             "track_gen/std": generated_img.std(),
-                        }
+                        },
+                        step=self.total_steps,
                     )
 
                 if self.should_infer(self.total_steps):
@@ -366,7 +369,6 @@ class gan_trainer:
                 t = time.time()
                 self.times.append(t - stime)
                 self.times = self.times[-100:]
-                self.total_steps += 1
 
                 if (
                     self.total_steps % opts.train.offline_losses_steps == 0
@@ -379,7 +381,8 @@ class gan_trainer:
                     self.plot_losses(self.losses)
 
                 if self.total_steps % 10 == 0 and self.verbose > 0:
-                    ep_str = "epoch:{}/{} step {}/{} d_loss:{:0.4f} l:{:0.4f} gan_loss:{:0.4f} "
+                    ep_str = "epoch:{}/{} step {}/{} ({})"
+                    ep_str += " d_loss:{:0.4f} l:{:0.4f} gan_loss:{:0.4f} "
                     ep_str += (
                         "g_loss_total:{:0.4f} | t/step {:.1f} | t/ep {:.1f} | t {:.1f}"
                     )
@@ -389,6 +392,7 @@ class gan_trainer:
                             n_epochs,
                             i + 1,
                             len(self.trainloader),
+                            self.total_steps,
                             d_loss.item(),
                             loss.item(),
                             gan_loss.item(),
