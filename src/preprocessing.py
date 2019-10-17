@@ -190,7 +190,7 @@ class Zoom:
         return zoom_result
 
 
-class RemoveNans:
+class ReplaceNans:
     def __init__(self):
         return
 
