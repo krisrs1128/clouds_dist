@@ -17,7 +17,7 @@ from torchvision import transforms
 
 from src.data import EarthData
 from src.gan import GAN
-from src.preprocessing import Zoom, Rescale, RemoveNans, SquashChannels, get_stats_per_channel, Quantize
+from src.preprocessing import Zoom, Rescale, RemoveNans, SquashChannels, get_stats_per_channel
 from src.utils import merge_defaults, load_conf, sample_param
 from src.optim import ExtraSGD, extragrad_step
 
@@ -66,19 +66,20 @@ class gan_trainer:
             )
 
         if self.opts.data.preprocessed_data_path is None and self.opts.data.with_stats:
-            stats = get_stats_per_channel(
+            self.stats = get_stats_per_channel(
                     data_path=self.opts.data.path,
                     batch_size=self.opts.train.batch_size,
+                    trsfs=transfs,
                     num_workers=self.opts.data.num_workers,
                     verbose=1,
                 )
             transfs += [
-                Rescale(stats)
+                Rescale(self.stats)
             ]
-            if self.opts.train.no_of_quantiles:
-                transfs += [
-                    Quantize(stats, self.opts.train.no_of_quantiles)
-                ]
+            # if self.opts.train.no_of_quantiles:
+            #     transfs += [
+            #         Quantize(self.stats, self.opts.train.no_of_quantiles)
+            #     ]
         transfs += [RemoveNans()]
 
         self.trainset = EarthData(
