@@ -1,5 +1,6 @@
 from src.data import EarthData
 import torch
+from torchvision import transforms
 
 
 def expand_as(a, b):
@@ -46,13 +47,14 @@ class Rescale:
 
 
 
-def get_stats_per_channel(data_path, batch_size, num_workers=3, verbose=1):
+def get_stats_per_channel(data_path, batch_size, trsfs, num_workers=3, verbose=1):
     dataset = EarthData(data_dir=data_path)
     data_loader = torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
+        transform=transforms.Compose(trsfs)
     )
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -216,15 +218,15 @@ class SquashChannels:
         )
         return sample
 
-class Quantize:
-    def __init__(self, stats, no_of_quantiles=10):
-        self.means, self.ranges = stats
-        self.no_of_quantiles = no_of_quantiles
-
-    def __call__(self, sample):
-        for k in sample:
-            step = self.ranges[k]/self.no_of_quantiles
-            expanded_step = expand_as(sample[k], step)
-            sample[k] = expanded_step * (sample[k]/expanded_step + 0.5).floor()
-
-        return sample
+# class Quantize:
+#     def __init__(self, stats, no_of_quantiles=10):
+#         self.means, self.ranges = stats
+#         self.no_of_quantiles = no_of_quantiles
+#
+#     def __call__(self, sample):
+#         for k in sample:
+#             step = self.ranges[k]/self.no_of_quantiles
+#             expanded_step = expand_as(sample[k], step)
+#             sample[k] = expanded_step * (sample[k]/expanded_step + 0.5).floor()
+#
+#         return sample
