@@ -187,6 +187,11 @@ if __name__ == "__main__":
         default="default",
         help="what template to use to write the sbatch files",
     )
+    parser.add_argument(
+        "--test_mode",
+        action="store_true",
+        help="create files but not run sbatch to test",
+    )
 
     opts = parser.parse_args()
 
@@ -275,5 +280,6 @@ if __name__ == "__main__":
         file = run_dir / f"run-{sbp['conf_name']}.sh"
         with file.open("w") as f:
             f.write(template)
-        print(subprocess.check_output(f"sbatch {str(file)}", shell=True))
+        if not opts.test_mode:
+            print(subprocess.check_output(f"sbatch {str(file)}", shell=True))
         print("In", str(run_dir), "\n")
