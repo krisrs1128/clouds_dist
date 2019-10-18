@@ -1,5 +1,5 @@
-# -----    Model    -----
 # -----------------------
+# -----    Model    -----
 # -----------------------
 model:
     n_blocks: 5 # Number of Unet Blocks (total nb of blocks is therefore 2 * n_blocks)
@@ -9,6 +9,7 @@ model:
     Cin: 44 # Number of channels in the input matrix
     Cout: 3 # Number of channels in the output image
     Cnoise: 0 # Number of channels dedicated to the noise - total input to Generator is Cnoise + Cin
+    bottleneck_dim: 44 # number of feature maps in the thinnest layer of the Unet
 # ------------------------------
 # -----    Train Params    -----
 # ------------------------------

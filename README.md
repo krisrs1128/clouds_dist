@@ -83,43 +83,46 @@ $ proxychains4 ping google.com # should work now
 
 shared/defaults.yaml:
 
-```
+```yaml
 # -----------------------
 # -----    Model    -----
 # -----------------------
 model:
-    n_blocks: 5
-    filter_factors: null
-    kernel_size: 3
-    dropout: 0.25
-    Cin: 44
-    Cout: 3
-    Cnoise: 0
+    n_blocks: 5 # Number of Unet Blocks (total nb of blocks is therefore 2 * n_blocks)
+    filter_factors: null # list, scale factors ; default is 2 ** np.arange(n_blocks)
+    kernel_size: 3 # For the UNet Module
+    dropout: 0.25 # Pbty of setting a weight to 0
+    Cin: 44 # Number of channels in the input matrix
+    Cout: 3 # Number of channels in the output image
+    Cnoise: 0 # Number of channels dedicated to the noise - total input to Generator is Cnoise + Cin
+    bottleneck_dim: 44 # number of feature maps in the thinnest layer of the Unet
 # ------------------------------
 # -----    Train Params    -----
 # ------------------------------
 train:
-    batch_size: 32
-    early_break_epoch: 0
-    infer_every_steps: 5000
-    lambda_gan: 0.01
-    lambda_L: 1
-    load_limit: -1
-    lr_d: 0.0002
-    lr_g: 0.00005
-    matching_loss: "l2"
-    n_epochs: 100
-    num_D_accumulations: 8
-    save_every_steps: 5000
-    store_images: false
+    batch_size: 16
+    early_break_epoch: 0 # Break an epoch loop after early_break_epoch steps in this epoch
+    infer_every_steps: 5000 # How often to infer validation images
+    lambda_gan: 0.01 # Gan loss scaling constant
+    lambda_L: 1 # Matching loss scaling constant
+    lr_d: 0.0002 # Discriminator's learning rate
+    lr_g: 0.00005 # Generator's learning rate
+    matching_loss: l2 # Which matching loss to use: l2 | l1 | weighted
+    n_epochs: 100 # How many training epochs
+    num_D_accumulations: 8 # How many gradients to accumulate in current batch (different geenrator predictions) before doing one discriminator optimization step
+    save_every_steps: 5000 # How often to save  the model's weights
+    store_images: false # Do you want to write infered images to disk
+    offline_losses_steps: 50 # how often to log the losses with no comet logs
 # ---------------------------
 # -----    Data Conf    -----
 # ---------------------------
 data:
-    path: "/scratch/sankarak/data/clouds/"
-    num_workers: 3
-    with_stats: true
-
+    path: "/scratch/sankarak/data/clouds/" # Where's the data?
+    preprocessed_data_path: null # If you set this path to something != null, it will override the "data" path
+    num_workers: 3 # How many workers for the dataloader
+    with_stats: true # Normalize with stats? Computed before the training loop if no using preprocessed data
+    load_limit: -1 # Limit the number of samples per epoch | -1 to disable
+    squash_channels: false # If set to True, don't forgetto change model.Cin from 44 to 8
 ```
 
 ## Running several jobs
@@ -133,7 +136,7 @@ python parallel_run.py -e explore-lr.yaml
 This script will execute a `sbatch` job for each element listed in explor-lr.yaml with default arguments:
 
 * `sbatch` params: 
-    ```
+    ```python
     {
         "cpus": 8,
         "mem": 32,
@@ -165,7 +168,7 @@ The dictionnary in `explore.yaml` contains 2 main fields:
   * Has to have keys `"sbatch"` and `"config"` mapping to `dict`s
     * `"config"` Has to have keys `"model"` and  `"train"` mapping to potentially empty dicts
     * Minimal (=default model and training procedure) `run` configuration:
-      ```
+      ```python
         {
             "sbatch": {},
             "config": {
@@ -176,7 +179,7 @@ The dictionnary in `explore.yaml` contains 2 main fields:
       ```
  the script will override the above parameters with the ones mentionned in the file. Such a file may look like:
 
-```
+```python
 {
     "experiment":{
         "name": "explore-lr-experiment",
@@ -239,7 +242,7 @@ This will run 3 sbatch jobs meaning "keep the default sbatch params, but extend 
 
 In `train.py`, the `sample_param` function allows for sampling a parameter from a configuration file: **any** value in the "config" file / field (basically = sub-values of "train" and "model") can be sampled from a `range`, a `list` or a `uniform` interval:
 
-```
+```python
 ...
 "train":{
     ...
@@ -259,6 +262,6 @@ In `train.py`, the `sample_param` function allows for sampling a parameter from 
 }
 ```
 
-Note: if you select to sample from "range", as np.arange is used, "from" MUST be a list, and may contain
+**Note**: if you select to sample from "range", as np.arange is used, "from" MUST be a list, and may contain
     only 1 (=min) 2 (min and max) or 3 (min, max, step) values
 
