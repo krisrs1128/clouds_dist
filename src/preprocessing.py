@@ -1,4 +1,4 @@
-from src.data import EarthData
+import src.data as data
 import numpy as np
 import torch
 
@@ -11,7 +11,7 @@ class Rescale:
         self.verbose = verbose
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.dataset = EarthData(data_dir=self.data_path)
+        self.dataset = data.EarthData(data_dir=self.data_path)
 
         self.data_loader = torch.utils.data.DataLoader(
             self.dataset,
