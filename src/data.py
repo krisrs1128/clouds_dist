@@ -3,6 +3,7 @@ import re
 from glob import glob
 import gc
 from pathlib import Path
+from torchvision import transforms
 
 import numpy as np
 import torch
@@ -106,7 +107,7 @@ def process_sample(data):
     return {"real_imgs": torch.Tensor(imgs), "metos": torch.Tensor(metos)}
 
 
-def get_loader(opts):
+def get_loader(opts, stats):
     transfs = []
 
     if opts.data.crop_to_inner_square:
@@ -125,6 +126,7 @@ def get_loader(opts):
             Rescale(
                 data_path=opts.data.path,
                 batch_size=opts.train.batch_size,
+                stats=stats,
                 num_workers=opts.data.num_workers,
                 verbose=1,
             )

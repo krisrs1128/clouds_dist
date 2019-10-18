@@ -13,7 +13,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from addict import Dict
 from torch import optim
-from torchvision import transforms
 
 from src.data import get_loader
 from src.gan import GAN
@@ -26,6 +25,7 @@ from src.utils import (
     env_to_path,
     get_opts,
 )
+from src.stats import get_stats
 from src.optim import ExtraSGD, extragrad_step
 
 
@@ -38,20 +38,18 @@ class gan_trainer:
             "g_loss_total": [],
             "d_loss": [],
         }
-
         self.trial_number = 0
         self.n_epochs = n_epochs
         self.start_time = datetime.now()
         self.verbose = verbose
         self.resumed = False
-
-        timestamp = self.start_time.strftime("%Y_%m_%d_%H_%M_%S")
-        self.timestamp = timestamp
-
+        self.timestamp = self.start_time.strftime("%Y_%m_%d_%H_%M_%S")
         self.results = []
-
         self.exp = comet_exp
         self.output_dir = Path(output_dir)
+        self.debug = Dict()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.stats = None
 
         if self.verbose > 0:
             print("-------------------------")
@@ -62,8 +60,6 @@ class gan_trainer:
                 for k, v in d.items():
                     print("{:<30}: {:<30}".format(str(k), str(v)))
             print()
-        self.make_directories()
-        self.debug = Dict()
 
     def resume(self, path=None, step_name="latest"):
         if path is None:
@@ -105,13 +101,15 @@ class gan_trainer:
         self.offline_output_dir.mkdir(exist_ok=True)
 
     def setup(self):
+        # initialize objects
+        self.make_directories()
+
         if self.exp:
             self.exp.log_parameters(self.opts.train)
             self.exp.log_parameters(self.opts.model)
 
-        # initialize objects
-        self.make_directories()
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if self.opts.data.preprocessed_data_path is None and self.opts.data.with_stats:
+            self.stats = get_stats(self.opts, self.device)
 
         self.trainloader = get_loader(opts)
         self.trainset = self.trainloader.dataset
