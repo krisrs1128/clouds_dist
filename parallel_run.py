@@ -5,6 +5,7 @@ import os
 import argparse
 import re
 import yaml
+import sys
 
 
 def get_git_revision_hash():
@@ -166,6 +167,17 @@ default_sbatch = {
 
 
 if __name__ == "__main__":
+
+    # -----------------------------------------
+
+    if not os.environ.get("SLURM_TMPDIR"):
+        s = "No $SLURM_TMPDIR env variable. You should probably set it. "
+        s += "Continue (c) or abort (default)?"
+        res = input(s)
+        if res != "c":
+            sys.exit()
+
+    # -----------------------------------------
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
