@@ -105,8 +105,9 @@ def env_to_path(path):
 def get_opts(conf_path):
     if not Path(conf_path).exists():
         conf_name = conf_path
-    if not conf_name.endswith(".yaml"):
-        conf_name += ".yaml"
-    conf_path = Path(__file__).parent.parent / "shared" / conf_name
-    assert conf_path.exists()
+        if not conf_name.endswith(".yaml"):
+            conf_name += ".yaml"
+        conf_path = Path(__file__).parent.parent / "shared" / conf_name
+        assert conf_path.exists()
+
     return merge_defaults({"model": {}, "train": {}, "data": {}}, conf_path)
