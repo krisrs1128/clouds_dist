@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 from time import time
-from src.preprocessing import *
+from src.preprocessing import Zoom, Rescale, RemoveNans, SquashChannels, CropInnerSquare
 
 
 class EarthData(Dataset):
