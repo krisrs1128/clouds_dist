@@ -171,13 +171,12 @@ class gan_trainer:
                     self.trainset.metos_shape[-1], self.opts.model.n_blocks
                 )
             )
-        btdim = (
-            self.opts.model.bottleneck_dim
-            or self.trainset.metos_shape[-1] // 2 ** self.opts.model.n_blocks
-        )
-        self.gan = GAN(**self.opts.model, bottleneck_dim=btdim, device=self.device).to(
-            self.device
-        )
+        if not self.opts.model.bottleneck_dim:
+            self.opts.model.bottleneck_dim = (
+                self.trainset.metos_shape[-1] // 2 ** self.opts.model.n_blocks
+            )
+
+        self.gan = GAN(**self.opts.model, device=self.device).to(self.device)
         self.g = self.gan.g
         self.d = self.gan.d
 
