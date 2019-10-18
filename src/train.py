@@ -1,32 +1,33 @@
 #!/usr/bin/env python
 from comet_ml import Experiment, OfflineExperiment
+
 import argparse
 import os
 import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from addict import Dict
 from torch import optim
 
 from src.data import get_loader
 from src.gan import GAN
+from src.optim import ExtraSGD, extragrad_step
+from src.stats import get_stats
 from src.utils import (
-    load_conf,
-    sample_param,
-    loss_hinge_dis,
-    loss_hinge_gen,
-    weighted_mse_loss,
     env_to_path,
     get_opts,
+    load_conf,
+    loss_hinge_dis,
+    loss_hinge_gen,
+    sample_param,
+    weighted_mse_loss,
 )
-from src.stats import get_stats
-from src.optim import ExtraSGD, extragrad_step
 
 
 class gan_trainer:

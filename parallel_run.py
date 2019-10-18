@@ -5,6 +5,7 @@ import os
 import argparse
 import re
 import yaml
+from src.utils import env_to_path
 
 
 def get_git_revision_hash():

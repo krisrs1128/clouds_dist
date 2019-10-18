@@ -1,15 +1,13 @@
 #!/usr/bin/env python
-import re
-from glob import glob
-import gc
 from pathlib import Path
-from torchvision import transforms
+from time import time
 
 import numpy as np
 import torch
 from torch.utils.data import Dataset
-from time import time
-from src.preprocessing import Zoom, Rescale, RemoveNans, SquashChannels, CropInnerSquare
+from torchvision import transforms
+
+from src.preprocessing import CropInnerSquare, RemoveNans, Rescale, SquashChannels, Zoom
 
 
 class EarthData(Dataset):
