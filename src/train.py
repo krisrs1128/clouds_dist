@@ -15,35 +15,19 @@ from addict import Dict
 from torch import optim
 from torchvision import transforms
 
-from src.data import EarthData
+from src.data import get_loader
 from src.gan import GAN
 from src.preprocessing import Zoom, Rescale, RemoveNans, SquashChannels, CropInnerSquare
-from src.utils import merge_defaults, load_conf, sample_param
+from src.utils import (
+    load_conf,
+    sample_param,
+    loss_hinge_dis,
+    loss_hinge_gen,
+    weighted_mse_loss,
+    env_to_path,
+    get_opts,
+)
 from src.optim import ExtraSGD, extragrad_step
-
-
-def loss_hinge_dis(dis_fake, dis_real):
-    # This version returns a single loss
-    # from https://github.com/ajbrock/BigGAN-PyTorch/blob/master/losses.py
-    loss = torch.mean(F.relu(1.0 - dis_real))
-    loss += torch.mean(F.relu(1.0 + dis_fake))
-    return loss
-
-
-def loss_hinge_gen(dis_fake):
-    # from https://github.com/ajbrock/BigGAN-PyTorch/blob/master/losses.py
-    loss = -torch.mean(dis_fake)
-    return loss
-
-
-def weighted_mse_loss(input, target):
-    # from https://discuss.pytorch.org/t/pixelwise-weights-for-mseloss/1254/2
-    out = (input - target) ** 2
-    weights = (input.sum(1) != 0).to(torch.float32)
-    weights = weights.unsqueeze(1).expand_as(out) / weights.sum()
-    out = out * weights
-    loss = out.sum()
-    return loss
 
 
 class gan_trainer:
@@ -55,38 +39,6 @@ class gan_trainer:
             "g_loss_total": [],
             "d_loss": [],
         }
-        transfs = []
-
-        if self.opts.data.crop_to_inner_square:
-            transfs += [CropInnerSquare()]
-
-        transfs += [Zoom()]
-
-        if self.opts.data.squash_channels:
-            transfs += [SquashChannels()]
-            assert (
-                self.opts.model.Cin == 8
-            ), "using squash_channels, Cin should be 8 not {}".format(
-                self.opts.model.Cin
-            )
-
-        if self.opts.data.preprocessed_data_path is None and self.opts.data.with_stats:
-            transfs += [
-                Rescale(
-                    data_path=self.opts.data.path,
-                    batch_size=self.opts.train.batch_size,
-                    num_workers=self.opts.data.num_workers,
-                    verbose=1,
-                )
-            ]
-        transfs += [RemoveNans()]
-
-        self.trainset = EarthData(
-            self.opts.data.path,
-            preprocessed_data_path=self.opts.data.preprocessed_data_path,
-            load_limit=self.opts.data.load_limit or -1,
-            transform=transforms.Compose(transfs),
-        )
 
         self.trial_number = 0
         self.n_epochs = n_epochs
@@ -162,12 +114,8 @@ class gan_trainer:
         self.make_directories()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.trainloader = torch.utils.data.DataLoader(
-            self.trainset,
-            batch_size=self.opts.train.batch_size,
-            shuffle=True,
-            num_workers=self.opts.data.get("num_workers", 3),
-        )
+        self.trainloader = get_loader(opts)
+        self.trainset = self.trainloader.dataset
 
         # calculate the bottleneck dimension
         if self.trainset.metos_shape[-1] % 2 ** self.opts.model.n_blocks != 0:
@@ -470,29 +418,13 @@ if __name__ == "__main__":
     if not output_path.exists():
         output_path.mkdir()
 
-    # ----------------------------------
-    # ----- Get Configuration File -----
-    # ----------------------------------
-
-    conf_path = parsed_opts.conf_name
-    if not Path(conf_path).exists():
-        conf_name = conf_path
-        if not conf_name.endswith(".yaml"):
-            conf_name += ".yaml"
-        conf_path = Path(__file__).parent.parent / "shared" / conf_name
-        assert conf_path.exists()
-
     # --------------------
     # ----- Get Opts -----
     # --------------------
 
-    opts = merge_defaults({"model": {}, "train": {}, "data": {}}, conf_path)
-
-    data_path = opts.data.path.split("/")
-    for i, d in enumerate(data_path):
-        if "$" in d:
-            data_path[i] = os.environ.get(d.replace("$", ""))
-    opts.data.path = "/".join(data_path)
+    opts = get_opts(parsed_opts.conf_name)
+    opts.data.path = env_to_path(opts.data.path)
+    opts.data.preprocessed_data_path = env_to_path(opts.data.preprocessed_data_path)
 
     # ----------------------------------
     # ----- Check Data Directories -----
@@ -502,7 +434,6 @@ if __name__ == "__main__":
     assert Path(opts.data.path).exists()
     assert (Path(opts.data.path) / "imgs").exists()
     assert (Path(opts.data.path) / "metos").exists()
-    # print("Make sure you are using proxychains so that comet has internet access")
 
     # ------------------------------
     # ----- Configure comet.ml -----
@@ -523,15 +454,18 @@ if __name__ == "__main__":
 
     trainer = gan_trainer(opts, exp, output_path)
     trainer.setup()
+
     # ----------------------
     # -----   Resume   -----
     # ----------------------
+
     if parsed_opts.resume:
         trainer.resume()
 
     # ---------------------
     # -----   Train   -----
     # ---------------------
+
     trainer.run_trial()
 
     # --------------------------------

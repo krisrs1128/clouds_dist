@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import os.path
 import re
 from glob import glob
 import gc
@@ -9,6 +8,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 from time import time
+from src.preprocessing import *
 
 
 class EarthData(Dataset):
@@ -31,11 +31,7 @@ class EarthData(Dataset):
     """
 
     def __init__(
-        self,
-        data_dir,
-        preprocessed_data_path=None,
-        load_limit=-1,
-        transform=None,
+        self, data_dir, preprocessed_data_path=None, load_limit=-1, transform=None
     ):
         super(EarthData).__init__()
         self.subsample = {}
@@ -108,3 +104,43 @@ def process_sample(data):
         ]
     )
     return {"real_imgs": torch.Tensor(imgs), "metos": torch.Tensor(metos)}
+
+
+def get_loader(opts):
+    transfs = []
+
+    if opts.data.crop_to_inner_square:
+        transfs += [CropInnerSquare()]
+
+    transfs += [Zoom()]
+
+    if opts.data.squash_channels:
+        transfs += [SquashChannels()]
+        assert (
+            opts.model.Cin == 8
+        ), "using squash_channels, Cin should be 8 not {}".format(opts.model.Cin)
+
+    if opts.data.preprocessed_data_path is None and opts.data.with_stats:
+        transfs += [
+            Rescale(
+                data_path=opts.data.path,
+                batch_size=opts.train.batch_size,
+                num_workers=opts.data.num_workers,
+                verbose=1,
+            )
+        ]
+    transfs += [RemoveNans()]
+
+    trainset = EarthData(
+        opts.data.path,
+        preprocessed_data_path=opts.data.preprocessed_data_path,
+        load_limit=opts.data.load_limit or -1,
+        transform=transforms.Compose(transfs),
+    )
+
+    return torch.utils.data.DataLoader(
+        trainset,
+        batch_size=opts.train.batch_size,
+        shuffle=True,
+        num_workers=opts.data.get("num_workers", 3),
+    )
