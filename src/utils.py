@@ -3,7 +3,6 @@ from addict import Dict
 import yaml
 import numpy as np
 import torch
-from src.utils import env_to_path
 
 
 def load_conf(path):
