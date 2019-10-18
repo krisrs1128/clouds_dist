@@ -17,23 +17,24 @@ def write_hash(run_dir):
         f.write(get_git_revision_hash())
 
 
-def get_template(param, conf_path, run_dir, name):
+def get_template(param, conf_path, run_dir, name, use_slurm):
 
-    zip_command = ""
-    original_path = Path(param["config"]["data"]["original_path"]).resolve()
-    zip_name = original_path.name + ".zip"
-    zip_path = str(original_path / zip_name)
-    if not Path(zip_path).exists():
-        zip_command = f"""
+    zip_command = cp_command = unzip_command = ""
+    if use_slurm:
+        original_path = Path(param["config"]["data"]["original_path"]).resolve()
+        zip_name = original_path.name + ".zip"
+        zip_path = str(original_path / zip_name)
+        if not Path(zip_path).exists():
+            zip_command = f"""
 cd {str(original_path)}
 zip -r {zip_name} imgs metos > /dev/null/
 """
 
-    cp_command = f"""
+        cp_command = f"""
 cp {zip_path} $SLURM_TMPDIR
 """
 
-    unzip_command = f"""
+        unzip_command = f"""
 cd $SLURM_TMPDIR
 unzip {zip_name} > /dev/null
 """
@@ -269,7 +270,8 @@ if __name__ == "__main__":
         original_data_path = param["config"]["data"]["path"]
         assert original_data_path, 'no value in param["config"]["data"]["path"]'
 
-        param["config"]["data"]["path"] = "$SLURM_TMPDIR"
+        if os.environ.get("SLURM_TMPDIR"):
+            param["config"]["data"]["path"] = "$SLURM_TMPDIR"
         param["config"]["data"]["original_path"] = original_data_path
 
         conf_path = write_conf(run_dir, param)  # returns Path() from pathlib
