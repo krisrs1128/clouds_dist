@@ -57,3 +57,19 @@ def merge_defaults(extra_opts, conf_path):
             result[group][k] = v
 
     return Dict(result)
+
+
+def to_0_1(arr_or_tensor):
+    """scales a tensor/array to [0, 1] values:
+    (x - min(x)) / (max(x) - min(x))
+
+    Args:
+        arr_or_tensor (torch.Tensor or np.array): input tensor to scale
+
+    Returns:
+        torch.Tensor or np.array: scaled tensor
+    """
+
+    return (arr_or_tensor - arr_or_tensor.min()) / (
+        arr_or_tensor.max() - arr_or_tensor.min()
+    )

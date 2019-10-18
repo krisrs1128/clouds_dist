@@ -18,7 +18,7 @@ from torchvision import transforms
 from src.data import EarthData
 from src.gan import GAN
 from src.preprocessing import Zoom, Rescale, RemoveNans, SquashChannels
-from src.utils import merge_defaults, load_conf, sample_param
+from src.utils import merge_defaults, load_conf, sample_param, to_0_1
 from src.optim import ExtraSGD, extragrad_step
 
 
@@ -216,14 +216,18 @@ class gan_trainer:
         for i in range(input_tensor.shape[0]):
             # concatenate verticaly:
             # [3 metos, generated clouds, ground truth clouds]
-            tmp_tensor = input_tensor[i, 22:25].clone().detach()
-            tmp_tensor -= tmp_tensor.min()
-            tmp_tensor /= tmp_tensor.max()
-            imgs = torch.cat((tmp_tensor, generated_img[i], real_img[i]), 1)
-            imgs_cpu = imgs.cpu().detach().numpy()
+            imgs = torch.cat(
+                (
+                    to_0_1(input_tensor[i, 22:25]),
+                    to_0_1(generated_img[i]),
+                    to_0_1(real_img[i]),
+                ),
+                1,
+            )
+            imgs_cpu = imgs.cpu().clone().detach().numpy()
             imgs_cpu = np.swapaxes(imgs_cpu, 0, 2)
             if store_images:
-                np.save(str(imgdir / f"imgs_{step}_{i}.npy"), imgs_cpu)
+                plt.imsave(str(imgdir / f"imgs_{step}_{i}.png"), imgs_cpu)
             if exp:
                 try:
                     exp.log_image(imgs_cpu, name=f"imgs_{step}_{i}", step=step)
