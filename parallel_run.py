@@ -18,10 +18,10 @@ def write_hash(run_dir):
         f.write(get_git_revision_hash())
 
 
-def get_template(param, conf_path, run_dir, name, use_slurm):
+def get_template(param, conf_path, run_dir, name, use_slurm_tmpdir):
 
     zip_command = cp_command = unzip_command = ""
-    if use_slurm:
+    if use_slurm_tmpdir:
         original_path = Path(param["config"]["data"]["original_path"]).resolve()
         zip_name = original_path.name + ".zip"
         zip_path = str(original_path / zip_name)
@@ -169,8 +169,9 @@ default_sbatch = {
 if __name__ == "__main__":
 
     # -----------------------------------------
-
+    use_slurm_tmpdir = True
     if not os.environ.get("SLURM_TMPDIR"):
+        use_slurm_tmpdir = False
         s = "No $SLURM_TMPDIR env variable. You should probably set it. "
         s += "Continue (c) or abort (default)?"
         res = input(s)
@@ -282,14 +283,16 @@ if __name__ == "__main__":
         original_data_path = param["config"]["data"]["path"]
         assert original_data_path, 'no value in param["config"]["data"]["path"]'
 
-        if os.environ.get("SLURM_TMPDIR"):
+        if use_slurm_tmpdir:
             param["config"]["data"]["path"] = "$SLURM_TMPDIR"
         param["config"]["data"]["original_path"] = original_data_path
 
         conf_path = write_conf(run_dir, param)  # returns Path() from pathlib
         write_hash(run_dir)
 
-        template = get_template(param, conf_path, run_dir, opts.template_name)
+        template = get_template(
+            param, conf_path, run_dir, opts.template_name, use_slurm_tmpdir
+        )
 
         file = run_dir / f"run-{sbp['conf_name']}.sh"
         with file.open("w") as f:
