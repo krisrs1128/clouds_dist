@@ -59,6 +59,7 @@ class Extragradient(Optimizer):
         for group in self.param_groups:
             for param in group["params"]:
                 if not param.grad:
+                    i += 1
                     continue
                 u = self.update(param, group)
                 param.data = (
