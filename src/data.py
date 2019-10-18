@@ -96,8 +96,6 @@ def process_sample(data):
     # rearrange into numpy arrays
     coords = np.stack([data["real_imgs"]["Lat"], data["real_imgs"]["Lon"]])
     imgs = np.stack([v for k, v in data["real_imgs"].items() if "Reflect" in k])
-    imgs[np.isnan(imgs)] = 0.0
-    imgs[np.isinf(imgs)] = 0.0
     metos = np.concatenate(
         [
             data["metos"]["U"],
@@ -109,7 +107,4 @@ def process_sample(data):
             coords.reshape(2, 256, 256),
         ]
     )
-
-    metos[np.isinf(metos)] = 0.0
-    imgs[np.isinf(imgs)] = 0.0
     return {"real_imgs": torch.Tensor(imgs), "metos": torch.Tensor(metos)}

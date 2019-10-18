@@ -220,3 +220,30 @@ class SquashChannels:
             dim=1,
         )
         return sample
+
+
+class CropInnerSquare:
+    def __init__(self):
+        self.i = None
+        return
+
+    def get_crop_index(self, img):
+        assert (
+            img.shape[0] == 3
+        ), "Expected channels as first dim but got shape {}".format(img.shape)
+        if self.i is not None:
+            return self.i
+        self.i = 0
+        while any(torch.isnan(img[:, self.i, self.i])):
+            self.i += 1
+        assert self.i > 0, "Error in CropInnerSquare: i is 0"
+        assert self.i <= img.shape[-1] // 2, "Error in CropInnerSquare: i is {}".format(
+            self.i
+        )
+        return self.i
+
+    def __call__(self, sample):
+        i = self.get_crop_index(sample["real_imgs"])
+        for name, tensor in sample.items():
+            sample[name] = tensor[:, i:-i, i:-i]
+        return sample
