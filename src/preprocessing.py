@@ -197,8 +197,8 @@ class RemoveNans:
         return
 
     def __call__(self, sample):
-        sample["real_imgs"][torch.isnan(sample["real_imgs"])] = 0.0
-        sample["real_imgs"][torch.isinf(sample["real_imgs"])] = 0.0
+        sample["real_imgs"][torch.isnan(sample["real_imgs"])] = -1
+        sample["real_imgs"][torch.isinf(sample["real_imgs"])] = 1
         sample["metos"][torch.isnan(sample["metos"])] = 0.0
         sample["metos"][torch.isinf(sample["metos"])] = 0.0
         return sample
