@@ -111,7 +111,7 @@ class gan_trainer:
         if self.opts.data.preprocessed_data_path is None and self.opts.data.with_stats:
             self.stats = get_stats(self.opts, self.device)
 
-        self.trainloader = get_loader(opts)
+        self.trainloader = get_loader(opts, self.stats)
         self.trainset = self.trainloader.dataset
 
         # calculate the bottleneck dimension

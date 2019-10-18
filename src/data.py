@@ -107,7 +107,7 @@ def process_sample(data):
     return {"real_imgs": torch.Tensor(imgs), "metos": torch.Tensor(metos)}
 
 
-def get_loader(opts, stats):
+def get_loader(opts, stats=None):
     transfs = []
 
     if opts.data.crop_to_inner_square:
@@ -121,7 +121,7 @@ def get_loader(opts, stats):
             opts.model.Cin == 8
         ), "using squash_channels, Cin should be 8 not {}".format(opts.model.Cin)
 
-    if opts.data.preprocessed_data_path is None and opts.data.with_stats:
+    if stats is not None:
         transfs += [
             Rescale(
                 data_path=opts.data.path,
