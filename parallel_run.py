@@ -1,3 +1,4 @@
+# from typing import *
 import copy
 from pathlib import Path
 import subprocess
@@ -7,7 +8,7 @@ import re
 import yaml
 import sys
 from textwrap import dedent
-from src.utils import get_increasable_name
+from src.utils import env_to_path, get_increasable_name
 
 
 def get_git_revision_hash():
@@ -131,24 +132,6 @@ def write_conf(run_dir, param):
     return run_dir / cname
 
 
-def env_to_path(path):
-    """Transorms an environment variable mention in a conf file
-    into its actual value. E.g. $HOME/clouds -> /home/vsch/clouds
-
-    Args:
-        path (str): path potentially containing the env variable
-
-    """
-    path_elements = path.split("/")
-    new_path = []
-    for el in path_elements:
-        if "$" in el:
-            new_path.append(os.environ[el.replace("$", "")])
-        else:
-            new_path.append(el)
-    return "/".join(new_path)
-
-
 default_sbatch = {
     "cpus": 8,
     "mem": 32,
@@ -234,6 +217,7 @@ if __name__ == "__main__":
 
     # -----------------------------------------
 
+    # params: List[Dict[tr, Any]] = []
     params = []
     exp_runs = exploration_params["runs"]
     if "repeat" in exploration_params["experiment"]:

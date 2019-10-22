@@ -9,11 +9,12 @@ model:
     Cin: 44 # Number of channels in the input matrix
     Cout: 3 # Number of channels in the output image
     Cnoise: 0 # Number of channels dedicated to the noise - total input to Generator is Cnoise + Cin
+    bottleneck_dim: 44 # number of feature maps in the thinnest layer of the Unet
 # ------------------------------
 # -----    Train Params    -----
 # ------------------------------
 train:
-    batch_size: 16
+    batch_size: 8
     early_break_epoch: 0 # Break an epoch loop after early_break_epoch steps in this epoch
     infer_every_steps: 5000 # How often to infer validation images
     lambda_gan: 0.01 # Gan loss scaling constant
@@ -36,3 +37,5 @@ data:
     with_stats: true # Normalize with stats? Computed before the training loop if no using preprocessed data
     load_limit: -1 # Limit the number of samples per epoch | -1 to disable
     squash_channels: false # If set to True, don't forgetto change model.Cin from 44 to 8
+    crop_to_inner_square: false # crop metos and imgs to the size of the real_img's inner square
+    no_of_quantiles: 10 # if it's not None quantize the data to no_of_quantiles
