@@ -1,3 +1,4 @@
+import numpy as np
 from src.data import EarthData
 import torch
 from torchvision import transforms
@@ -44,8 +45,6 @@ class Rescale:
             range_expand = expand_as(sample[k], self.ranges[k])
             sample[k] = (sample[k] - mean_expand) / range_expand
         return sample
-
-
 
 def get_stats_per_channel(data_path, batch_size, trsfs, num_workers=3, verbose=1):
     dataset = EarthData(data_dir=data_path)
@@ -152,8 +151,6 @@ def get_stats_per_channel(data_path, batch_size, trsfs, num_workers=3, verbose=1
     return stats
 
 
-
-
 class Crop:
     def __init__(self, crop_size=20):
         self.crop_size = crop_size
@@ -219,15 +216,28 @@ class SquashChannels:
         )
         return sample
 
-# class Quantize:
-#     def __init__(self, stats, no_of_quantiles=10):
-#         self.means, self.ranges = stats
-#         self.no_of_quantiles = no_of_quantiles
-#
-#     def __call__(self, sample):
-#         for k in sample:
-#             step = self.ranges[k]/self.no_of_quantiles
-#             expanded_step = expand_as(sample[k], step)
-#             sample[k] = expanded_step * (sample[k]/expanded_step + 0.5).floor()
-#
-#         return sample
+class CropInnerSquare:
+    def __init__(self):
+        self.i = None
+        return
+
+    def get_crop_index(self, img):
+        assert (
+            img.shape[0] == 3
+        ), "Expected channels as first dim but got shape {}".format(img.shape)
+        if self.i is not None:
+            return self.i
+        self.i = 0
+        while any(torch.isnan(img[:, self.i, self.i])):
+            self.i += 1
+        assert self.i > 0, "Error in CropInnerSquare: i is 0"
+        assert self.i <= img.shape[-1] // 2, "Error in CropInnerSquare: i is {}".format(
+            self.i
+        )
+        return self.i
+
+    def __call__(self, sample):
+        i = self.get_crop_index(sample["real_imgs"])
+        for name, tensor in sample.items():
+            sample[name] = tensor[:, i:-i, i:-i]
+        return sample

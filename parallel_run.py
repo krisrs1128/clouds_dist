@@ -5,6 +5,7 @@ import os
 import argparse
 import re
 import yaml
+from src.utils import env_to_path
 
 
 def get_git_revision_hash():
@@ -131,24 +132,6 @@ def write_conf(run_dir, param):
     with open(run_dir / cname, "w") as f:
         yaml.dump(param["config"], f, default_flow_style=False)
     return run_dir / cname
-
-
-def env_to_path(path):
-    """Transorms an environment variable mention in a conf file
-    into its actual value. E.g. $HOME/clouds -> /home/vsch/clouds
-
-    Args:
-        path (str): path potentially containing the env variable
-
-    """
-    path_elements = path.split("/")
-    new_path = []
-    for el in path_elements:
-        if "$" in el:
-            new_path.append(os.environ[el.replace("$", "")])
-        else:
-            new_path.append(el)
-    return "/".join(new_path)
 
 
 default_sbatch = {
