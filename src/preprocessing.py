@@ -195,9 +195,10 @@ class ReplaceNans:
         return
 
     def __call__(self, sample):
-        for k in sample:
-            sample[k][torch.isnan(sample[k])] = 0.0
-            sample[k][torch.isinf(sample[k])] = 0.0
+        sample["real_imgs"][torch.isnan(sample["real_imgs"])] = -1
+        sample["real_imgs"][torch.isinf(sample["real_imgs"])] = 1
+        sample["metos"][torch.isnan(sample["metos"])] = 0.0
+        sample["metos"][torch.isinf(sample["metos"])] = 0.0
         return sample
 
 
