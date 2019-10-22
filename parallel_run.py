@@ -1,3 +1,4 @@
+# from typing import *
 import copy
 from pathlib import Path
 import subprocess
@@ -234,7 +235,7 @@ if __name__ == "__main__":
 
     # -----------------------------------------
 
-    params = []
+    # params: List[Dict[tr, Any]] = []
     exp_runs = exploration_params["runs"]
     if "repeat" in exploration_params["experiment"]:
         exp_runs *= int(exploration_params["experiment"]["repeat"]) or 1
