@@ -6,6 +6,8 @@ import argparse
 import re
 import yaml
 import sys
+from textwrap import dedent
+from src.utils import get_increasable_name
 
 
 def get_git_revision_hash():
@@ -18,107 +20,101 @@ def write_hash(run_dir):
         f.write(get_git_revision_hash())
 
 
-def get_template(param, conf_path, run_dir, name, use_slurm_tmpdir):
+def get_template(param, conf_path, run_dir, name):
 
     zip_command = cp_command = unzip_command = ""
-    if use_slurm_tmpdir:
-        original_path = Path(param["config"]["data"]["original_path"]).resolve()
-        zip_name = original_path.name + ".zip"
-        zip_path = str(original_path / zip_name)
-        if not Path(zip_path).exists():
-            zip_command = f"""
-cd {str(original_path)}
-zip -r {zip_name} imgs metos > /dev/null/
-"""
 
-        cp_command = f"""
-cp {zip_path} $SLURM_TMPDIR
-"""
+    original_path = Path(param["config"]["data"]["original_path"]).resolve()
+    zip_name = original_path.name + ".zip"
+    zip_path = str(original_path / zip_name)
+    if not Path(zip_path).exists():
+        zip_command = dedent(
+            f"""\
+            cd {str(original_path)}
+            zip -r {zip_name} imgs metos > /dev/null/
+            """
+        )
 
-        unzip_command = f"""
-cd $SLURM_TMPDIR
-unzip {zip_name} > /dev/null
-"""
+        cp_command = f"cp {zip_path} $SLURM_TMPDIR"
+
+        unzip_command = dedent(
+            f"""\
+            cd $SLURM_TMPDIR
+            unzip {zip_name} > /dev/null
+            """
+        )
 
     sbp = param["sbatch"]
 
     if name == "victor_mila":
-        return f"""#!/bin/bash
-#SBATCH --cpus-per-task={sbp.get("cpu", 8)}       # Ask for 6 CPUs
-#SBATCH --gres={sbp.get("gpu", "gpu:titanxp:1")}                        # Ask for 1 GPU
-#SBATCH --mem=32G                 # Ask for 32 GB of RAM
-#SBATCH --time={sbp.get("runtime", "24:00:00")}
-#SBATCH -o {str(run_dir)}/slurm-%j.out  # Write the log in $SCRATCH
+        return dedent(
+            f"""\
+            #!/bin/bash
+            #SBATCH --cpus-per-task={sbp.get("cpu", 8)}       # Ask for 6 CPUs
+            #SBATCH --gres={sbp.get("gpu", "gpu:titanxp:1")}  # Ask for 1 GPU
+            #SBATCH --mem=32G                 # Ask for 32 GB of RAM
+            #SBATCH --time={sbp.get("runtime", "24:00:00")}
+            #SBATCH -o {str(run_dir)}/slurm-%j.out  # Write the log in $SCRATCH
 
-{zip_command}
+            if [ -d "$SLURM_TMPDIR" ]; then
+            # Control will enter here if $SLURM_TMPDIR exists.
+                {zip_command}
 
-{cp_command}
+                {cp_command}
 
-{unzip_command}
+                {unzip_command}
+            fi
 
-cd /network/home/schmidtv/clouds_dist
+            cd /network/home/schmidtv/clouds_dist
 
-echo "Starting job"
+            echo "Starting job"
 
-source /network/home/schmidtv/anaconda3/bin/activate
+            source /network/home/schmidtv/anaconda3/bin/activate
 
-conda activate cyclePT
+            conda activate cyclePT
 
-python -m src.train \\
-                -m "{sbp['message']}" \\
-                -c "{str(conf_path)}" \\
-                -o "{str(run_dir)}" \\
-                {"-n" if sbp["no_comet"] else "-f" if sbp["offline"] else ""}
+            python -m src.train \\
+                            -m "{sbp['message']}" \\
+                            -c "{str(conf_path)}" \\
+                            -o "{str(run_dir)}" \\
+                            {"-n" if sbp["no_comet"] else "-f" if sbp["offline"] else ""}
 
-echo 'done'
-"""
+            echo 'done'
+            """
+        )
     elif name == "mustafa_beluga":
-        return f"""#!/bin/bash
-#SBATCH --account=rpp-bengioy               # Yoshua pays for your job
-#SBATCH --cpus-per-task={sbp["cpus"]}       # Ask for 6 CPUs
-#SBATCH --gres=gpu:1                        # Ask for 1 GPU
-#SBATCH --mem={sbp["mem"]}G                 # Ask for 32 GB of RAM
-#SBATCH --time={sbp.get("runtime", "24:00:00")}
-#SBATCH -o {env_to_path(sbp["slurm_out"])}  # Write the log in $SCRATCH
+        return dedent(
+            f"""\
+            #!/bin/bash
+            #SBATCH --account=rpp-bengioy               # Yoshua pays for your job
+            #SBATCH --cpus-per-task={sbp["cpus"]}       # Ask for 6 CPUs
+            #SBATCH --gres=gpu:1                        # Ask for 1 GPU
+            #SBATCH --mem={sbp["mem"]}G                 # Ask for 32 GB of RAM
+            #SBATCH --time={sbp.get("runtime", "24:00:00")}
+            #SBATCH -o {env_to_path(sbp["slurm_out"])}  # Write the log in $SCRATCH
 
-{zip_command}
+            {zip_command}
 
-{cp_command}
+            {cp_command}
 
-{unzip_command}
+            {unzip_command}
 
-module load singularity
+            module load singularity
 
-echo "Starting job"
+            echo "Starting job"
 
-singularity exec --nv --bind {param["config"]["data"]["path"]},{str(run_dir)}\\
-        {","+param["config"]["data"]["preprocessed_data_path"] if param["config"]["data"]["preprocessed_data_path"] else "" } \\
-        {sbp["singularity_path"]}\\
-        python3 -m src.train \\
-        -m "{sbp["message"]}" \\
-        -c "{str(conf_path)}"\\
-        -o "{str(run_dir)}" \\
-        {"-n" if sbp["no_comet"] else "-f" if sbp["offline"] else ""}
-"""
+            singularity exec --nv --bind {param["config"]["data"]["path"]},{str(run_dir)}\\
+                    {","+param["config"]["data"]["preprocessed_data_path"] if param["config"]["data"]["preprocessed_data_path"] else "" } \\
+                    {sbp["singularity_path"]}\\
+                    python3 -m src.train \\
+                    -m "{sbp["message"]}" \\
+                    -c "{str(conf_path)}"\\
+                    -o "{str(run_dir)}" \\
+                    {"-n" if sbp["no_comet"] else "-f" if sbp["offline"] else ""}
+            """
+        )
     else:
         raise ValueError("No template name provided ; try ... -t mustafa_beluga")
-
-
-def get_increasable_name(file_path):
-    f = Path(file_path)
-    while f.exists():
-        name = f.name
-        s = list(re.finditer(r"--\d+", name))
-        if s:
-            s = s[-1]
-            d = int(s.group().replace("--", "").replace(".", ""))
-            d += 1
-            i, j = s.span()
-            name = name[:i] + f"--{d}" + name[j:]
-        else:
-            name = f.stem + "--1" + f.suffix
-        f = f.parent / name
-    return f
 
 
 def write_conf(run_dir, param):
@@ -167,16 +163,6 @@ default_sbatch = {
 
 
 if __name__ == "__main__":
-
-    # -----------------------------------------
-    use_slurm_tmpdir = True
-    if not os.environ.get("SLURM_TMPDIR"):
-        use_slurm_tmpdir = False
-        s = "No $SLURM_TMPDIR env variable. You should probably set it. "
-        s += "Continue (c) or abort (default)?"
-        res = input(s)
-        if res != "c":
-            sys.exit()
 
     # -----------------------------------------
 
@@ -283,16 +269,13 @@ if __name__ == "__main__":
         original_data_path = param["config"]["data"]["path"]
         assert original_data_path, 'no value in param["config"]["data"]["path"]'
 
-        if use_slurm_tmpdir:
-            param["config"]["data"]["path"] = "$SLURM_TMPDIR"
+        param["config"]["data"]["path"] = "$SLURM_TMPDIR"
         param["config"]["data"]["original_path"] = original_data_path
 
         conf_path = write_conf(run_dir, param)  # returns Path() from pathlib
         write_hash(run_dir)
 
-        template = get_template(
-            param, conf_path, run_dir, opts.template_name, use_slurm_tmpdir
-        )
+        template = get_template(param, conf_path, run_dir, opts.template_name)
 
         file = run_dir / f"run-{sbp['conf_name']}.sh"
         with file.open("w") as f:

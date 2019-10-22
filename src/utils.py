@@ -73,3 +73,20 @@ def to_0_1(arr_or_tensor):
     return (arr_or_tensor - arr_or_tensor.min()) / (
         arr_or_tensor.max() - arr_or_tensor.min()
     )
+
+
+def get_increasable_name(file_path):
+    f = Path(file_path)
+    while f.exists():
+        name = f.name
+        s = list(re.finditer(r"--\d+", name))
+        if s:
+            s = s[-1]
+            d = int(s.group().replace("--", "").replace(".", ""))
+            d += 1
+            i, j = s.span()
+            name = name[:i] + f"--{d}" + name[j:]
+        else:
+            name = f.stem + "--1" + f.suffix
+        f = f.parent / name
+    return f
