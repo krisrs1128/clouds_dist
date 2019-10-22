@@ -7,7 +7,13 @@ import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-from src.preprocessing import CropInnerSquare, RemoveNans, Rescale, SquashChannels, Zoom
+from src.preprocessing import (
+    CropInnerSquare,
+    ReplaceNans,
+    Rescale,
+    SquashChannels,
+    Zoom,
+)
 
 
 class EarthData(Dataset):
@@ -120,16 +126,8 @@ def get_loader(opts, stats=None):
         ), "using squash_channels, Cin should be 8 not {}".format(opts.model.Cin)
 
     if stats is not None:
-        transfs += [
-            Rescale(
-                data_path=opts.data.path,
-                batch_size=opts.train.batch_size,
-                stats=stats,
-                num_workers=opts.data.num_workers,
-                verbose=1,
-            )
-        ]
-    transfs += [RemoveNans()]
+        transfs += [Rescale(stats=stats)]
+    transfs += [ReplaceNans()]
 
     trainset = EarthData(
         opts.data.path,

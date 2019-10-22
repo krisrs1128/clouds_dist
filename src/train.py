@@ -17,7 +17,7 @@ from torch import optim
 
 from src.data import get_loader
 from src.gan import GAN
-from src.preprocessing import Zoom, Rescale, ReplaceNans, SquashChannels, get_stats_per_channel
+from src.preprocessing import Zoom, Rescale, ReplaceNans, SquashChannels
 from src.utils import merge_defaults, load_conf, sample_param
 
 from src.optim import ExtraSGD, extragrad_step
