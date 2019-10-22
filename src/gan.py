@@ -22,7 +22,7 @@ class GAN(nn.Module):
         device=None,
     ):
         super(GAN, self).__init__()
-
+        self.bottleneck_dim = bottleneck_dim
         self.g = UNet(
             Cin + Cnoise,
             Cout,

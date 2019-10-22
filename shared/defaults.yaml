@@ -9,11 +9,12 @@ model:
     Cin: 44 # Number of channels in the input matrix
     Cout: 3 # Number of channels in the output image
     Cnoise: 0 # Number of channels dedicated to the noise - total input to Generator is Cnoise + Cin
+    bottleneck_dim: 44 # number of feature maps in the thinnest layer of the Unet
 # ------------------------------
 # -----    Train Params    -----
 # ------------------------------
 train:
-    batch_size: 16
+    batch_size: 8
     early_break_epoch: 0 # Break an epoch loop after early_break_epoch steps in this epoch
     infer_every_steps: 5000 # How often to infer validation images
     lambda_gan: 0.01 # Gan loss scaling constant
