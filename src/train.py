@@ -19,6 +19,7 @@ from src.gan import GAN
 from src.optim import ExtraSGD, extragrad_step
 from src.stats import get_stats
 from src.utils import (
+    check_data_dirs,
     env_to_path,
     get_opts,
     loss_hinge_dis,
@@ -426,16 +427,12 @@ if __name__ == "__main__":
 
     opts = get_opts(parsed_opts.conf_name)
     opts.data.path = env_to_path(opts.data.path)
-    opts.data.preprocessed_data_path = env_to_path(opts.data.preprocessed_data_path)
 
     # ----------------------------------
     # ----- Check Data Directories -----
     # ----------------------------------
 
-    print("Loading data from ", str(opts.data.path))
-    assert Path(opts.data.path).exists()
-    assert (Path(opts.data.path) / "imgs").exists()
-    assert (Path(opts.data.path) / "metos").exists()
+    opts = check_data_dirs(opts)
 
     # ------------------------------
     # ----- Configure comet.ml -----

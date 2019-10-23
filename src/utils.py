@@ -136,6 +136,8 @@ def env_to_path(path):
     for i, d in enumerate(path_elements):
         if "$" in d:
             path_elements[i] = os.environ.get(d.replace("$", ""))
+    if any(d is None for d in path_elements):
+        return ""
     return "/".join(path_elements)
 
 
@@ -148,3 +150,22 @@ def get_opts(conf_path):
         assert conf_path.exists()
 
     return merge_defaults({"model": {}, "train": {}, "data": {}}, conf_path)
+
+
+def check_data_dirs(opts):
+    opts.data.preprocessed_data_path = env_to_path(opts.data.preprocessed_data_path)
+    opts.data.original_path = env_to_path(opts.data.original_path)
+    if not opts.data.path:
+        opts.data.path = opts.data.original_path
+        print(
+            "check_dirs():\n",
+            "No opts.data.path, fallback to opts.data.original_path: {}".format(
+                opts.data.original_path
+            ),
+        )
+
+    print("Loading data from ", str(opts.data.path))
+    assert Path(opts.data.path).exists()
+    assert (Path(opts.data.path) / "imgs").exists()
+    assert (Path(opts.data.path) / "metos").exists()
+    return opts
