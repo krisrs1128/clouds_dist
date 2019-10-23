@@ -23,25 +23,24 @@ def write_hash(run_dir):
 
 def get_template(param, conf_path, run_dir, name):
 
-    zip_command = cp_command = unzip_command = ""
+    zip_command = ""
 
     original_path = Path(param["config"]["data"]["original_path"]).resolve()
     zip_name = original_path.name + ".zip"
     zip_path = str(original_path / zip_name)
-    if not Path(zip_path).exists():
+    no_zip = not Path(zip_path).exists()
+    if not no_zip:
         zip_command = dedent(
             f"""\
-            cd {str(original_path)}
-            zip -r {zip_name} imgs metos > /dev/null/
-            """
-        )
+            if [ -d "$SLURM_TMPDIR" ]; then
+                # if $SLURM_TMPDIR exists.
 
-        cp_command = f"cp {zip_path} $SLURM_TMPDIR"
-
-        unzip_command = dedent(
-            f"""\
-            cd $SLURM_TMPDIR
-            unzip {zip_name} > /dev/null
+                cd {str(original_path)}
+                zip -r {zip_name} imgs metos > /dev/null/
+                cp {zip_path} $SLURM_TMPDIR
+                cd $SLURM_TMPDIR
+                unzip {zip_name} > /dev/null
+            fi
             """
         )
 
@@ -57,14 +56,7 @@ def get_template(param, conf_path, run_dir, name):
             #SBATCH --time={sbp.get("runtime", "24:00:00")}
             #SBATCH -o {str(run_dir)}/slurm-%j.out  # Write the log in $SCRATCH
 
-            if [ -d "$SLURM_TMPDIR" ]; then
-            # Control will enter here if $SLURM_TMPDIR exists.
-                {zip_command}
-
-                {cp_command}
-
-                {unzip_command}
-            fi
+            {zip_command}
 
             cd /network/home/schmidtv/clouds_dist
 
