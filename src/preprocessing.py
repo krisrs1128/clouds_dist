@@ -1,5 +1,4 @@
 import numpy as np
-from src.data import EarthData
 import torch
 from torchvision import transforms
 
