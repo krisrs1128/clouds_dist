@@ -47,6 +47,8 @@ def get_template(param, conf_path, run_dir, name):
     sbp = param["sbatch"]
     indented = "\n            "
     base = "\n"
+    zip_command = indented.join(zip_command.split(base))
+
     if name == "victor_mila":
         return dedent(
             f"""\
@@ -57,7 +59,7 @@ def get_template(param, conf_path, run_dir, name):
             #SBATCH --time={sbp.get("runtime", "24:00:00")}
             #SBATCH -o {str(run_dir)}/slurm-%j.out  # Write the log in $SCRATCH
 
-            {indented.join(zip_command.split(base))}
+            {zip_command}
 
             cd /network/home/schmidtv/clouds_dist
 
@@ -87,7 +89,7 @@ def get_template(param, conf_path, run_dir, name):
             #SBATCH --time={sbp.get("runtime", "24:00:00")}
             #SBATCH -o {env_to_path(sbp["slurm_out"])}  # Write the log in $SCRATCH
 
-            {indented.join(zip_command.split(base))}
+            {zip_command}
 
             module load singularity
 
