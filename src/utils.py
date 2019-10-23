@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 
 import numpy as np
@@ -63,6 +64,39 @@ def merge_defaults(extra_opts, conf_path):
     return Dict(result)
 
 
+def to_0_1(arr_or_tensor):
+    """scales a tensor/array to [0, 1] values:
+    (x - min(x)) / (max(x) - min(x))
+
+    Args:
+        arr_or_tensor (torch.Tensor or np.array): input tensor to scale
+
+    Returns:
+        torch.Tensor or np.array: scaled tensor
+    """
+
+    return (arr_or_tensor - arr_or_tensor.min()) / (
+        arr_or_tensor.max() - arr_or_tensor.min()
+    )
+
+
+def get_increasable_name(file_path):
+    f = Path(file_path)
+    while f.exists():
+        name = f.name
+        s = list(re.finditer(r"--\d+", name))
+        if s:
+            s = s[-1]
+            d = int(s.group().replace("--", "").replace(".", ""))
+            d += 1
+            i, j = s.span()
+            name = name[:i] + f"--{d}" + name[j:]
+        else:
+            name = f.stem + "--1" + f.suffix
+        f = f.parent / name
+    return f
+
+
 def loss_hinge_dis(dis_fake, dis_real):
     # This version returns a single loss
     # from https://github.com/ajbrock/BigGAN-PyTorch/blob/master/losses.py
@@ -102,6 +136,8 @@ def env_to_path(path):
     for i, d in enumerate(path_elements):
         if "$" in d:
             path_elements[i] = os.environ.get(d.replace("$", ""))
+    if any(d is None for d in path_elements):
+        return ""
     return "/".join(path_elements)
 
 
@@ -114,3 +150,22 @@ def get_opts(conf_path):
         assert conf_path.exists()
 
     return merge_defaults({"model": {}, "train": {}, "data": {}}, conf_path)
+
+
+def check_data_dirs(opts):
+    opts.data.preprocessed_data_path = env_to_path(opts.data.preprocessed_data_path)
+    opts.data.original_path = env_to_path(opts.data.original_path)
+    if not opts.data.path:
+        opts.data.path = opts.data.original_path
+        print(
+            "check_dirs():\n",
+            "No opts.data.path, fallback to opts.data.original_path: {}".format(
+                opts.data.original_path
+            ),
+        )
+
+    print("Loading data from ", str(opts.data.path))
+    assert Path(opts.data.path).exists()
+    assert (Path(opts.data.path) / "imgs").exists()
+    assert (Path(opts.data.path) / "metos").exists()
+    return opts

@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-from comet_ml import Experiment, OfflineExperiment
-
 import argparse
 import os
 import subprocess
@@ -13,22 +11,20 @@ import numpy as np
 import torch
 import torch.nn as nn
 from addict import Dict
+from comet_ml import Experiment, OfflineExperiment
 from torch import optim
 
 from src.data import get_loader
 from src.gan import GAN
-from src.preprocessing import Zoom, Rescale, ReplaceNans, SquashChannels
-from src.utils import merge_defaults, load_conf, sample_param
-
 from src.optim import ExtraSGD, extragrad_step
 from src.stats import get_stats
 from src.utils import (
+    check_data_dirs,
     env_to_path,
     get_opts,
-    load_conf,
     loss_hinge_dis,
     loss_hinge_gen,
-    sample_param,
+    to_0_1,
     weighted_mse_loss,
 )
 
@@ -172,14 +168,18 @@ class gan_trainer:
         for i in range(input_tensor.shape[0]):
             # concatenate verticaly:
             # [3 metos, generated clouds, ground truth clouds]
-            tmp_tensor = input_tensor[i, 22:25].clone().detach()
-            tmp_tensor -= tmp_tensor.min()
-            tmp_tensor /= tmp_tensor.max()
-            imgs = torch.cat((tmp_tensor, generated_img[i], real_img[i]), 1)
-            imgs_cpu = imgs.cpu().detach().numpy()
+            imgs = torch.cat(
+                (
+                    to_0_1(input_tensor[i, 22:25]),
+                    to_0_1(generated_img[i]),
+                    to_0_1(real_img[i]),
+                ),
+                1,
+            )
+            imgs_cpu = imgs.cpu().clone().detach().numpy()
             imgs_cpu = np.swapaxes(imgs_cpu, 0, 2)
             if store_images:
-                np.save(str(imgdir / f"imgs_{step}_{i}.npy"), imgs_cpu)
+                plt.imsave(str(imgdir / f"imgs_{step}_{i}.png"), imgs_cpu)
             if exp:
                 try:
                     exp.log_image(imgs_cpu, name=f"imgs_{step}_{i}", step=step)
@@ -427,16 +427,12 @@ if __name__ == "__main__":
 
     opts = get_opts(parsed_opts.conf_name)
     opts.data.path = env_to_path(opts.data.path)
-    opts.data.preprocessed_data_path = env_to_path(opts.data.preprocessed_data_path)
 
     # ----------------------------------
     # ----- Check Data Directories -----
     # ----------------------------------
 
-    print("Loading data from ", str(opts.data.path))
-    assert Path(opts.data.path).exists()
-    assert (Path(opts.data.path) / "imgs").exists()
-    assert (Path(opts.data.path) / "metos").exists()
+    opts = check_data_dirs(opts)
 
     # ------------------------------
     # ----- Configure comet.ml -----
