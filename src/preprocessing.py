@@ -101,11 +101,11 @@ class SquashChannels:
     def __call__(self, sample):
         sample["metos"] = torch.cat(
             [
-                sample["metos"][:, :10, :, :].mean(dim=1).unsqueeze(1),
-                sample["metos"][:, 10:20, :, :].mean(dim=1).unsqueeze(1),
-                sample["metos"][:, 20:30, :, :].mean(dim=1).unsqueeze(1),
-                sample["metos"][:, 30:40, :, :].mean(dim=1).unsqueeze(1),
-                sample["metos"][:, 40:44, :, :],
+                sample["metos"][:10, :, :].mean(dim=1).unsqueeze(1),
+                sample["metos"][10:20, :, :].mean(dim=1).unsqueeze(1),
+                sample["metos"][20:30, :, :].mean(dim=1).unsqueeze(1),
+                sample["metos"][30:40, :, :].mean(dim=1).unsqueeze(1),
+                sample["metos"][40:44, :, :],
             ],
             dim=1,
         )
