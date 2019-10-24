@@ -34,7 +34,7 @@ def expand_as(a, b):
     )
 
 
-class Rescale:
+class Standardize:
     def __init__(self, stats):
         self.means, self.ranges = stats
 
@@ -46,46 +46,36 @@ class Rescale:
         return sample
 
 
-class Crop:
-    def __init__(self, crop_size=20):
-        self.crop_size = crop_size
-        return
+class CropBackground:
+    def get_first_non_nan_index(self, array, axis):
+        return torch.where((~torch.isnan(array)).sum(axis=0).sum(axis=axis - 1) > 0)[0][
+            0
+        ]
 
     def __call__(self, sample):
-        result = {
-            k: v[:, self.crop_size : -self.crop_size, self.crop_size : -self.crop_size]
-            for k, v in sample.items()
-        }
+
+        metos = sample["metos"]
+        crop_x = self.get_first_non_nan_index(metos, 1)
+        crop_y = self.get_first_non_nan_index(metos, 2)
+        result = {k: v[:, crop_y:-crop_y, crop_x:-crop_x] for k, v in sample.items()}
         return result
 
 
-class Zoom:
-    def __init__(self, crop_size=20):
-        self.crop_size = crop_size
+class Rescale:
+    def __init__(self, resolution):
+        self.res = resolution
         return
 
     def __call__(self, sample):
-        dim = list(sample.items())[0][1].size()[-1]
-        upsample = torch.nn.UpsamplingNearest2d(
-            scale_factor=dim / (dim - 2 * self.crop_size)
-        )
-        crop_result = {
-            k: v[:, self.crop_size : -self.crop_size, self.crop_size : -self.crop_size]
-            if k == "real_imgs"
-            else v
-            for k, v in sample.items()
+        dim = list(sample.items())[0].size()[0, :, :]
+        upsample = torch.nn.UpsamplingNearest2d(size=self.res)
+        rescaled_sample = {
+            k: upsample(v.unsqueeze(0)).squeeze(0) for k, v in sample.items()
         }
-        zoom_result = {
-            k: upsample(v.unsqueeze(0)).squeeze() if k == "real_imgs" else v
-            for k, v in crop_result.items()
-        }
-        return zoom_result
+        return rescaled_sample
 
 
 class ReplaceNans:
-    def __init__(self):
-        return
-
     def __call__(self, sample):
         sample["real_imgs"][torch.isnan(sample["real_imgs"])] = -1
         sample["real_imgs"][torch.isinf(sample["real_imgs"])] = 1
@@ -95,9 +85,6 @@ class ReplaceNans:
 
 
 class SquashChannels:
-    def __init__(self):
-        return
-
     def __call__(self, sample):
         sample["metos"] = torch.cat(
             [
@@ -113,24 +100,16 @@ class SquashChannels:
 
 
 class CropInnerSquare:
-    def __init__(self):
-        self.i = None
-        return
-
     def get_crop_index(self, img):
         assert (
             img.shape[0] == 3
         ), "Expected channels as first dim but got shape {}".format(img.shape)
-        if self.i is not None:
-            return self.i
-        self.i = 0
-        while any(torch.isnan(img[:, self.i, self.i])):
-            self.i += 1
-        assert self.i > 0, "Error in CropInnerSquare: i is 0"
-        assert self.i <= img.shape[-1] // 2, "Error in CropInnerSquare: i is {}".format(
-            self.i
-        )
-        return self.i
+        i = 0
+        while any(torch.isnan(img[:, i, i])):
+            i += 1
+        assert i > 0, "Error in CropInnerSquare: i is 0"
+        assert i <= img.shape[-1] // 2, "Error in CropInnerSquare: i is {}".format(i)
+        return i
 
     def __call__(self, sample):
         i = self.get_crop_index(sample["real_imgs"])

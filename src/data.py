@@ -10,9 +10,9 @@ from torchvision import transforms
 from src.preprocessing import (
     CropInnerSquare,
     ReplaceNans,
-    Rescale,
+    Standardize,
     SquashChannels,
-    Zoom,
+    Rescale,
 )
 
 
@@ -117,7 +117,7 @@ def get_loader(opts, stats=None):
     if opts.data.crop_to_inner_square:
         transfs += [CropInnerSquare()]
 
-    transfs += [Zoom()]
+    transfs += [Rescale(256)]
 
     if opts.data.squash_channels:
         transfs += [SquashChannels()]
@@ -126,7 +126,7 @@ def get_loader(opts, stats=None):
         ), "using squash_channels, Cin should be 8 not {}".format(opts.model.Cin)
 
     if stats is not None:
-        transfs += [Rescale(stats=stats)]
+        transfs += [Standardize(stats=stats)]
     transfs += [ReplaceNans()]
 
     trainset = EarthData(
@@ -136,9 +136,14 @@ def get_loader(opts, stats=None):
         transform=transforms.Compose(transfs),
     )
 
-    return torch.utils.data.DataLoader(
-        trainset,
-        batch_size=opts.train.batch_size,
-        shuffle=True,
-        num_workers=opts.data.get("num_workers", 3),
+    transforms_string = " -> ".join([t.__class__.__name__ for t in transfs])
+
+    return (
+        torch.utils.data.DataLoader(
+            trainset,
+            batch_size=opts.train.batch_size,
+            shuffle=True,
+            num_workers=opts.data.get("num_workers", 3),
+        ),
+        transforms_string,
     )
