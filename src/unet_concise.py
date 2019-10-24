@@ -3,7 +3,7 @@ import torch
 from pathlib import Path
 import torch.nn as nn
 import numpy as np
-
+import pdb
 
 class UNetModule(nn.Module):
     """
@@ -103,6 +103,7 @@ class UNet(nn.Module):
         # decoder pass
         out = down_features[-1]
         for i, up in enumerate(reversed(self.up)):
+            pdb.set_trace()
             f = torch.cat([self.upsample(out), down_features[-(i + 2)]], 1)
             out = up(f)
 
