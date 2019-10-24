@@ -91,7 +91,7 @@ def get_template(param, conf_path, run_dir, name):
 
             {zip_command}
 
-            module load singularity
+            module load singularity/3.2
 
             echo "Starting job"
 
