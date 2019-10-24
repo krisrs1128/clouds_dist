@@ -34,7 +34,7 @@ def expand_as(a, b):
     )
 
 
-class Rescale:
+class Standardize:
     def __init__(self, stats):
         self.means, self.ranges = stats
 

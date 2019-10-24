@@ -10,7 +10,7 @@ from torchvision import transforms
 from src.preprocessing import (
     CropInnerSquare,
     ReplaceNans,
-    Rescale,
+    Standardize,
     SquashChannels,
     Zoom,
 )
@@ -126,7 +126,7 @@ def get_loader(opts, stats=None):
         ), "using squash_channels, Cin should be 8 not {}".format(opts.model.Cin)
 
     if stats is not None:
-        transfs += [Rescale(stats=stats)]
+        transfs += [Standardize(stats=stats)]
     transfs += [ReplaceNans()]
 
     trainset = EarthData(
