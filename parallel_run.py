@@ -63,11 +63,12 @@ def get_template(param, conf_path, run_dir, name):
 
             cd /network/home/schmidtv/clouds_dist
 
+            module load anaconda/3
+            source $CONDA_ACTIVATE
+            conda deactivate
+            conda activate clouds
+
             echo "Starting job"
-
-            source /network/home/schmidtv/anaconda3/bin/activate
-
-            conda activate cyclePT
 
             python -m src.train \\
                             -m "{sbp['message']}" \\
