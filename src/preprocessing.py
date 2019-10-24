@@ -67,7 +67,6 @@ class Rescale:
         return
 
     def __call__(self, sample):
-        dim = list(sample.items())[0][1].size()[1:]
         upsample = torch.nn.UpsamplingNearest2d(size=self.res)
         rescaled_sample = {
             k: upsample(v.unsqueeze(0)).squeeze(0) for k, v in sample.items()
