@@ -104,15 +104,17 @@ class gan_trainer:
         # initialize objects
         self.make_directories()
 
-        if self.exp:
-            self.exp.log_parameters(self.opts.train)
-            self.exp.log_parameters(self.opts.model)
-
         if self.opts.data.preprocessed_data_path is None and self.opts.data.with_stats:
             self.stats = get_stats(self.opts, self.device)
 
-        self.trainloader = get_loader(opts, self.stats)
+        self.trainloader, transforms_string = get_loader(opts, self.stats)
         self.trainset = self.trainloader.dataset
+
+        if self.exp:
+            self.exp.log_parameters(self.opts.train)
+            self.exp.log_parameters(self.opts.model)
+            self.exp.log_parameters(self.opts.data)
+            self.exp.log_parameter("transforms", transforms_string)
 
         # calculate the bottleneck dimension
         if self.trainset.metos_shape[-1] % 2 ** self.opts.model.n_blocks != 0:
