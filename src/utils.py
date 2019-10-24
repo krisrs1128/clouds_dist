@@ -1,5 +1,3 @@
-import os
-import re
 from pathlib import Path
 
 import numpy as np
@@ -80,23 +78,6 @@ def to_0_1(arr_or_tensor):
     )
 
 
-def get_increasable_name(file_path):
-    f = Path(file_path)
-    while f.exists():
-        name = f.name
-        s = list(re.finditer(r"--\d+", name))
-        if s:
-            s = s[-1]
-            d = int(s.group().replace("--", "").replace(".", ""))
-            d += 1
-            i, j = s.span()
-            name = name[:i] + f"--{d}" + name[j:]
-        else:
-            name = f.stem + "--1" + f.suffix
-        f = f.parent / name
-    return f
-
-
 def loss_hinge_dis(dis_fake, dis_real):
     # This version returns a single loss
     # from https://github.com/ajbrock/BigGAN-PyTorch/blob/master/losses.py
@@ -119,26 +100,6 @@ def weighted_mse_loss(input, target):
     out = out * weights
     loss = out.sum()
     return loss
-
-
-def env_to_path(path):
-    """Transorms an environment variable mention in a conf file
-    into its actual value. E.g. $HOME/clouds -> /home/vsch/clouds
-
-    Args:
-        path (str): path potentially containing the env variable
-
-    """
-    if not isinstance(path, str):
-        return path
-
-    path_elements = path.split("/")
-    for i, d in enumerate(path_elements):
-        if "$" in d:
-            path_elements[i] = os.environ.get(d.replace("$", ""))
-    if any(d is None for d in path_elements):
-        return ""
-    return "/".join(path_elements)
 
 
 def get_opts(conf_path):
