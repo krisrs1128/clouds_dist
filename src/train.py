@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from comet_ml import Experiment, OfflineExperiment
 import argparse
 import os
 import subprocess
@@ -11,7 +12,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 from addict import Dict
-from comet_ml import Experiment, OfflineExperiment
 from torch import optim
 
 from src.data import get_loader
