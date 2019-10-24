@@ -20,13 +20,13 @@ from src.optim import ExtraSGD, extragrad_step
 from src.stats import get_stats
 from src.utils import (
     check_data_dirs,
-    env_to_path,
     get_opts,
     loss_hinge_dis,
     loss_hinge_gen,
     to_0_1,
     weighted_mse_loss,
 )
+from src.cluster_utils import env_to_path
 
 
 class gan_trainer:
