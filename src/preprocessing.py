@@ -22,10 +22,14 @@ def expand_as(a, b):
     """
     assert len(b.shape) == 1
     if len(a.shape) == 3:
-        assert a.shape[0] == b.shape[0], "a.shape[0] does not match b.shape[0]"
+        assert a.shape[0] == b.shape[0], "a.shape[0] != b.shape[0] ({} vs {})".format(
+            a.shape[0], b.shape[0]
+        )
         return b.view((b.shape[0], 1, 1)).expand(*a.shape)
     elif len(a.shape) == 4:
-        assert a.shape[1] == b.shape[0], "a.shape[1] does not match b.shape[0]"
+        assert a.shape[1] == b.shape[0], "a.shape[1] != b.shape[0] ({} vs {})".format(
+            a.shape[1], b.shape[0]
+        )
         return b.view((1, b.shape[0], 1, 1)).expand(*a.shape)
     raise ValueError(
         "First argument should have 3 or 4 dimensions, not {} ({})".format(

@@ -1,11 +1,22 @@
 import torch
+from torchvision import transforms
 
 from src.data import EarthData
 
 
-def get_stats(opts, device, verbose=0):
+def get_stats(opts, device, trsfs, verbose=0):
 
-    dataset = EarthData(data_dir=opts.data.path)
+    transforms_before_rescale = []
+    for t in trsfs:
+        if t.__class__.__name__ == "Rescale":
+            break
+        transforms_before_rescale.append(t)
+
+    dataset = EarthData(
+        data_dir=opts.data.path,
+        load_limit=opts.data.load_limit or -1,
+        transform=transforms.Compose(transforms_before_rescale),
+    )
 
     data_loader = torch.utils.data.DataLoader(
         dataset,
