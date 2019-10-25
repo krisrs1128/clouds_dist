@@ -207,6 +207,11 @@ class gan_trainer:
             plt.ylabel("losses")
             plt.savefig(str(self.offline_output_dir / "losses.png"))
 
+    def set_input_tensor(self, batch):
+        self.input_tensor = self.get_noise_tensor(self.shape)
+        self.input_tensor[:, : self.opts.model.Cin, :, :] = batch["metos"]
+        self.input_tensor = self.input_tensor.to(self.device)
+
     def train(
         self, n_epochs, lambda_gan=0.01, lambda_L=1, num_D_accumulations=1, loss="l1"
     ):
@@ -250,16 +255,16 @@ class gan_trainer:
                 if i == 0 and self.verbose > -1:
                     print("\n\nLoading time: {:.3f}".format(stime - etime))
 
-                shape = batch["metos"].shape
+                if self.shape is None:
+                    self.shape = batch["metos"].shape
+
+                generated_img = None
 
                 for acc in range(num_D_accumulations):
                     # ---------------------------------------------
                     # ----- Accumulate Discriminator Gradient -----
                     # ---------------------------------------------
-                    self.input_tensor = self.get_noise_tensor(shape)
-                    self.input_tensor[:, : self.opts.model.Cin, :, :] = batch["metos"]
-                    self.input_tensor = self.input_tensor.to(device)
-
+                    self.set_input_tensor(batch)
                     real_img = batch["real_imgs"].to(device)
                     generated_img = self.g(self.input_tensor)
 
@@ -282,6 +287,9 @@ class gan_trainer:
                 # ----- Generator Update -----
                 # ----------------------------
                 self.g_optimizer.zero_grad()
+                if generated_img is None:
+                    self.set_input_tensor(batch)
+                    generated_img = self.g(self.input_tensor)
                 loss = matching_loss(real_img, generated_img)
 
                 if num_D_accumulations > 0:
