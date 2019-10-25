@@ -50,6 +50,7 @@ class gan_trainer:
         self.debug = Dict()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.stats = None
+        self.shape = None
 
         if self.verbose > 0:
             print("-------------------------")
@@ -147,9 +148,9 @@ class gan_trainer:
     def get_noise_tensor(self, shape):
         b, h, w = shape[0], shape[2], shape[3]
         Ctot = self.opts.model.Cin + self.opts.model.Cnoise
-        input_tensor = torch.FloatTensor(b, Ctot, h, w)
-        input_tensor.uniform_(-1, 1)
-        return input_tensor
+        noise_tensor = torch.FloatTensor(b, Ctot, h, w)
+        noise_tensor.uniform_(-1, 1)  # TODO is that legit?
+        return noise_tensor
 
     def log_debug(self, var, name):
         self.debug[name].prev = self.debug[name].curr
@@ -161,9 +162,7 @@ class gan_trainer:
 
         real_img = batch["real_imgs"].to(self.device)
 
-        input_tensor = self.get_noise_tensor(shape)
-        input_tensor[:, : self.opts.model.Cin, :, :] = batch["metos"]
-        input_tensor = input_tensor.to(self.device)
+        input_tensor = self.get_input_tensor(batch)
 
         generated_img = self.g(input_tensor)
 
@@ -199,6 +198,7 @@ class gan_trainer:
         )
 
     def plot_losses(self, losses):
+        # TODO move out to utils
         plt.figure()
         for loss in losses:
             plt.plot(np.arange(len(losses[loss])), losses[loss], label=loss)
@@ -207,10 +207,10 @@ class gan_trainer:
             plt.ylabel("losses")
             plt.savefig(str(self.offline_output_dir / "losses.png"))
 
-    def set_input_tensor(self, batch):
-        self.input_tensor = self.get_noise_tensor(self.shape)
-        self.input_tensor[:, : self.opts.model.Cin, :, :] = batch["metos"]
-        self.input_tensor = self.input_tensor.to(self.device)
+    def get_input_tensor(self, batch):
+        input_tensor = self.get_noise_tensor(self.shape)
+        input_tensor[:, : self.opts.model.Cin, :, :] = batch["metos"]
+        return input_tensor.to(self.device)
 
     def train(
         self, n_epochs, lambda_gan=0.01, lambda_L=1, num_D_accumulations=1, loss="l1"
@@ -264,7 +264,7 @@ class gan_trainer:
                     # ---------------------------------------------
                     # ----- Accumulate Discriminator Gradient -----
                     # ---------------------------------------------
-                    self.set_input_tensor(batch)
+                    self.input_tensor = self.get_input_tensor(batch)
                     real_img = batch["real_imgs"].to(device)
                     generated_img = self.g(self.input_tensor)
 
@@ -288,7 +288,7 @@ class gan_trainer:
                 # ----------------------------
                 self.g_optimizer.zero_grad()
                 if generated_img is None:
-                    self.set_input_tensor(batch)
+                    self.input_tensor = self.get_input_tensor(batch)
                     generated_img = self.g(self.input_tensor)
                 loss = matching_loss(real_img, generated_img)
 
@@ -314,10 +314,10 @@ class gan_trainer:
                             "g/loss/disc": gan_loss.item(),
                             "g/loss/matching": loss.item(),
                             "d/loss": d_loss.item(),
-                            "track_gen/min": generated_img.min().item(),
-                            "track_gen/max": generated_img.max().item(),
-                            "track_gen/mean": generated_img.mean().item(),
-                            "track_gen/std": generated_img.std().item(),
+                            # "track_gen/min": generated_img.min().item(),
+                            # "track_gen/max": generated_img.max().item(),
+                            # "track_gen/mean": generated_img.mean().item(),
+                            # "track_gen/std": generated_img.std().item(),
                         },
                         step=self.total_steps,
                     )
@@ -343,7 +343,7 @@ class gan_trainer:
                 if (
                     self.total_steps % opts.train.offline_losses_steps == 0
                     and self.exp is None
-                ):
+                ):  # TODO create self.should_plot_losses()
                     self.losses["gan_loss"].append(gan_loss.item())
                     self.losses["matching_loss"].append(loss.item())
                     self.losses["g_loss_total"].append(g_loss_total.item())
@@ -380,11 +380,6 @@ class gan_trainer:
 
 
 if __name__ == "__main__":
-
-    scratch = os.environ.get("SCRATCH") or os.path.join(
-        os.environ.get("HOME"), "scratch"
-    )
-
     # -------------------------
     # ----- Set Up Parser -----
     # -------------------------
@@ -440,7 +435,6 @@ if __name__ == "__main__":
     # --------------------
 
     opts = get_opts(parsed_opts.conf_name)
-    opts.data.path = env_to_path(opts.data.path)
 
     # ----------------------------------
     # ----- Check Data Directories -----

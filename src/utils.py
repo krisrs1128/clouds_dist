@@ -115,6 +115,7 @@ def get_opts(conf_path):
 
 
 def check_data_dirs(opts):
+    opts.data.path = env_to_path(opts.data.path)
     opts.data.preprocessed_data_path = env_to_path(opts.data.preprocessed_data_path)
     opts.data.original_path = env_to_path(opts.data.original_path)
     if not opts.data.path:
