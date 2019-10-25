@@ -39,7 +39,7 @@ def expand_as(a, b):
 
 
 class Standardize:
-    def __init__(self, stats):
+    def set_stats(self, stats):
         self.means, self.ranges = stats
 
     def __call__(self, sample):

@@ -107,8 +107,7 @@ class gan_trainer:
 
         self.transforms = get_transforms(self.opts)
         self.stats = get_stats(self.opts, self.device, self.transforms)
-
-        self.trainloader, transforms_string = get_loader(opts)
+        self.trainloader, transforms_string = get_loader(opts, self.transforms, stats)
         self.trainset = self.trainloader.dataset
 
         if self.exp:

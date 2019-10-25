@@ -130,6 +130,11 @@ def get_transforms(opts):
 
 def get_loader(opts, transfs=None, stats=None):
 
+    if stats is not None:
+        for t in transfs:
+            if "Standardize" in str(t.__class__):
+                t.set_stats(stats)
+
     trainset = EarthData(
         opts.data.path,
         preprocessed_data_path=opts.data.preprocessed_data_path,
