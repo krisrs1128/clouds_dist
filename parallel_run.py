@@ -36,7 +36,7 @@ def get_template(param, conf_path, run_dir, name):
                 # if $SLURM_TMPDIR exists.
 
                 cd {str(original_path)}
-                zip -r {zip_name} imgs metos > /dev/null/
+                zip -r {zip_name} imgs metos > /dev/null
                 cp {zip_path} $SLURM_TMPDIR
                 cd $SLURM_TMPDIR
                 unzip {zip_name} > /dev/null
