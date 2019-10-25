@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 from comet_ml import Experiment, OfflineExperiment
 import argparse
-import os
 import subprocess
 import time
 from datetime import datetime
@@ -12,7 +11,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 from addict import Dict
-from torch import optim
+
+# from torch import optim
 
 from src.data import get_loader, get_transforms
 from src.gan import GAN
@@ -26,7 +26,6 @@ from src.utils import (
     to_0_1,
     weighted_mse_loss,
 )
-from src.cluster_utils import env_to_path
 
 
 class gan_trainer:
@@ -107,7 +106,9 @@ class gan_trainer:
 
         self.transforms = get_transforms(self.opts)
         self.stats = get_stats(self.opts, self.device, self.transforms)
-        self.trainloader, transforms_string = get_loader(opts, self.transforms, stats)
+        self.trainloader, transforms_string = get_loader(
+            opts, self.transforms, self.stats
+        )
         self.trainset = self.trainloader.dataset
 
         if self.exp:
@@ -156,9 +157,6 @@ class gan_trainer:
         self.debug[name].curr = var
 
     def infer(self, batch, step, store_images, imgdir, exp):
-        # output sample images
-        shape = batch["metos"].shape
-
         real_img = batch["real_imgs"].to(self.device)
 
         input_tensor = self.get_noisy_input_tensor(batch)
@@ -225,7 +223,6 @@ class gan_trainer:
             if loss == "weighted"
             else nn.MSELoss()
         )
-        MSE = nn.MSELoss()
         device = self.device
         if self.verbose > 0:
             print("-----------------------------")
@@ -269,9 +266,6 @@ class gan_trainer:
 
                     real_prob = self.d(real_img)
                     fake_prob = self.d(generated_img.detach())
-
-                    real_target = torch.ones(real_prob.shape, device=device)
-                    fake_target = torch.zeros(fake_prob.shape, device=device)
 
                     # ----------------------------------
                     # ----- Backprop Discriminator -----
@@ -416,7 +410,7 @@ if __name__ == "__main__":
         "-r",
         "--resume",
         action="store_true",
-        help="Resumes the model (and opts) that are stored as state_latest.pt in output_dir",
+        help="Resumes the model and opts (state_latest.pt in output_dir)",
     )
     parser.add_argument("-n", "--no_exp", default=False, action="store_true")
     parsed_opts = parser.parse_args()
