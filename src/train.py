@@ -162,7 +162,7 @@ class gan_trainer:
 
         real_img = batch["real_imgs"].to(self.device)
 
-        input_tensor = self.get_input_tensor(batch)
+        input_tensor = self.get_noisy_input_tensor(batch)
 
         generated_img = self.g(input_tensor)
 
@@ -207,7 +207,7 @@ class gan_trainer:
             plt.ylabel("losses")
             plt.savefig(str(self.offline_output_dir / "losses.png"))
 
-    def get_input_tensor(self, batch):
+    def get_noisy_input_tensor(self, batch):
         input_tensor = self.get_noise_tensor(self.shape)
         input_tensor[:, : self.opts.model.Cin, :, :] = batch["metos"]
         return input_tensor.to(self.device)
@@ -259,13 +259,13 @@ class gan_trainer:
                     self.shape = batch["metos"].shape
 
                 generated_img = None
+                real_img = batch["real_imgs"].to(device)
 
                 for acc in range(num_D_accumulations):
                     # ---------------------------------------------
                     # ----- Accumulate Discriminator Gradient -----
                     # ---------------------------------------------
-                    self.input_tensor = self.get_input_tensor(batch)
-                    real_img = batch["real_imgs"].to(device)
+                    self.input_tensor = self.get_noisy_input_tensor(batch)
                     generated_img = self.g(self.input_tensor)
 
                     real_prob = self.d(real_img)
@@ -288,7 +288,7 @@ class gan_trainer:
                 # ----------------------------
                 self.g_optimizer.zero_grad()
                 if generated_img is None:
-                    self.input_tensor = self.get_input_tensor(batch)
+                    self.input_tensor = self.get_noisy_input_tensor(batch)
                     generated_img = self.g(self.input_tensor)
                 loss = matching_loss(real_img, generated_img)
 
