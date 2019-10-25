@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from comet_ml import Experiment, OfflineExperiment
+from comet_ml import Experiment, OfflineExperiment, ExistingExperiment
 import argparse
 import subprocess
 import time
@@ -412,6 +412,12 @@ if __name__ == "__main__":
         action="store_true",
         help="Resumes the model and opts (state_latest.pt in output_dir)",
     )
+    parser.add_argument(
+        "-x",
+        "--existing_comet",
+        type=str,
+        help="if resuming, the existing comet exp to continue",
+    )
     parser.add_argument("-n", "--no_exp", default=False, action="store_true")
     parsed_opts = parser.parse_args()
 
@@ -446,9 +452,14 @@ if __name__ == "__main__":
         if parsed_opts.offline:
             exp = OfflineExperiment(offline_directory=str(output_path))
         else:
-            exp = Experiment()
+            if parsed_opts.resume and parsed_opts.existing_comet:
+                exp = ExistingExperiment(previous_experiment=parsed_opts.existing_comet)
+            else:
+                exp = Experiment()
         exp.log_parameter("__message", parsed_opts.message)
-
+        if hasattr(exp, "get_key"):
+            with open(output_path / "comet_exp_key.txt", "w") as f:
+                f.write(exp.get_key())
     # --------------------------
     # -----   Initialize   -----
     # --------------------------
