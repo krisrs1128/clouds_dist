@@ -3,7 +3,9 @@ cloudenv/
 config/
 .comet.config
 .idea/
-
+output/
+images/
+checkpoints/
 # -----------------------------------------
 # -----    Python-specific content    -----
 # -----------------------------------------
