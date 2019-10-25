@@ -296,7 +296,8 @@ class gan_trainer:
                     fake_prob = self.d(generated_img)
                     gan_loss = loss_hinge_gen(fake_prob)
                 else:
-                    gan_loss = torch.Tensor([0])
+                    gan_loss = torch.Tensor([-1])
+                    d_loss = torch.Tensor([-1])
 
                 g_loss_total = lambda_gan * gan_loss + lambda_L * loss
                 extragrad_step(self.g_optimizer, self.g, i)
