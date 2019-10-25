@@ -21,6 +21,8 @@ def infer(model, loader, out_dir=None, M=10):
       predictions.
     :param samples: A torch dataloader object.
     :param M: The maximum number of batches to go through.
+    :return y_hat: A 4D torch tensor, with dimensions corresponding to, sample
+      x channel x width x height.
     """
     result = []
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -29,7 +31,7 @@ def infer(model, loader, out_dir=None, M=10):
 
     for m, batch in enumerate(loader):
         if m > M: break
-        print(f"{m}/{M}")
+        print(f"Inferring batch {m}/{M}")
         y_hat = model.g(batch["metos"].to(device))
         result.append(y_hat.detach().cpu())
     return torch.cat(result)
@@ -38,6 +40,12 @@ def infer(model, loader, out_dir=None, M=10):
 def histogram(x, sample_frac=0.3, out_path=None):
     """
     Values from Random Tensor Indices
+
+    :param x: A torch tensor or arbitrary dimension
+    :param sample_frac: A float specifying what fraction of indices to include
+      in the histogram
+    :out_path: The directory to save the figure.
+    :return None, but saves figure.png in `out_path`
     """
     if not out_path:
         out_path = pathlib.Path.cwd()
@@ -54,9 +62,10 @@ def loader_from_run(opts_path):
     opts = get_opts(opts_path)
     opts["data"]["path"] = opts["data"]["original_path"]
 
-    # get transforms, stats, and return the loader
+    print("getting transforms")
     transfs = get_transforms(opts)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("getting stats")
     stats = get_stats(opts, device, transfs)
     loader, _ = get_loader(opts, transfs, stats)
     return loader
