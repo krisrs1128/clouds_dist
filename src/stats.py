@@ -6,11 +6,16 @@ from src.data import EarthData
 
 def get_stats(opts, device, trsfs, verbose=0):
 
+    should_computs_stats = False
     transforms_before_rescale = []
     for t in trsfs:
-        if t.__class__.__name__ == "Rescale":
+        if t.__class__.__name__ == "Standardize":
+            should_computs_stats = True
             break
         transforms_before_rescale.append(t)
+
+    if not should_computs_stats:
+        return None
 
     dataset = EarthData(
         data_dir=opts.data.path,

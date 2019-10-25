@@ -14,7 +14,7 @@ import torch.nn as nn
 from addict import Dict
 from torch import optim
 
-from src.data import get_loader
+from src.data import get_loader, get_transforms
 from src.gan import GAN
 from src.optim import ExtraSGD, extragrad_step
 from src.stats import get_stats
@@ -105,10 +105,10 @@ class gan_trainer:
         # initialize objects
         self.make_directories()
 
-        if self.opts.data.preprocessed_data_path is None and self.opts.data.with_stats:
-            self.stats = get_stats(self.opts, self.device)
+        self.transforms = get_transforms(self.opts)
+        self.stats = get_stats(self.opts, self.device, self.transforms)
 
-        self.trainloader, transforms_string = get_loader(opts, self.stats)
+        self.trainloader, transforms_string = get_loader(opts)
         self.trainset = self.trainloader.dataset
 
         if self.exp:

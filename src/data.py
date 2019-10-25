@@ -111,23 +111,24 @@ def process_sample(data):
     return {"real_imgs": torch.Tensor(imgs), "metos": torch.Tensor(metos)}
 
 
-def get_loader(opts, stats=None):
+def get_transforms(opts):
     transfs = []
-
     if opts.data.crop_to_inner_square:
         transfs += [CropInnerSquare()]
-
     transfs += [Rescale(256)]
-
     if opts.data.squash_channels:
         transfs += [SquashChannels()]
         assert (
             opts.model.Cin == 8
         ), "using squash_channels, Cin should be 8 not {}".format(opts.model.Cin)
-
-    if stats is not None:
-        transfs += [Standardize(stats=stats)]
+    if opts.data.preprocessed_data_path is None and opts.data.with_stats:
+        transfs += [Standardize()]
     transfs += [ReplaceNans()]
+
+    return transfs
+
+
+def get_loader(opts, transfs=None, stats=None):
 
     trainset = EarthData(
         opts.data.path,
