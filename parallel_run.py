@@ -29,7 +29,7 @@ def get_template(param, conf_path, run_dir, name):
     zip_name = original_path.name + ".zip"
     zip_path = str(original_path / zip_name)
     no_zip = not Path(zip_path).exists()
-    if not no_zip:
+    if no_zip:
         zip_command = dedent(
             f"""\
             if [ -d "$SLURM_TMPDIR" ]; then
@@ -93,6 +93,7 @@ def get_template(param, conf_path, run_dir, name):
             {zip_command}
 
             module load singularity/3.4
+            cd $HOME/clouds_dist/
 
             echo "Starting job"
 
