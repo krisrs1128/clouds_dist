@@ -51,6 +51,7 @@ def get_template(param, conf_path, run_dir, name):
     indented = "\n            "
     base = "\n"
     zip_command = indented.join(zip_command.split(base))
+    cp_unzip_command = indented.join(cp_unzip_command.split(base))
 
     if name == "victor_mila":
         return dedent(
