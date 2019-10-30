@@ -27,6 +27,7 @@ train:
     save_every_steps: 5000 # How often to save  the model's weights
     store_images: false # Do you want to write infered images to disk
     offline_losses_steps: 50 # how often to log the losses with no comet logs
+    use_extragradient_optimizer: true # use ExtragradientSGD or Adam(betas=(0.5, 0.999))
 # ---------------------------
 # -----    Data Conf    -----
 # ---------------------------

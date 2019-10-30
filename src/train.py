@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.optim as optim
 from addict import Dict
 
 # from torch import optim
@@ -133,8 +134,20 @@ class gan_trainer:
         self.g = self.gan.g
         self.d = self.gan.d
 
-        self.d_optimizer = ExtraSGD(self.d.parameters(), lr=self.opts.train.lr_d)
-        self.g_optimizer = ExtraSGD(self.g.parameters(), lr=self.opts.train.lr_g)
+        self.d_optimizer = (
+            ExtraSGD(self.d.parameters(), lr=self.opts.train.lr_d)
+            if self.opts.train.use_extragradient_optimizer
+            else optim.Adam(
+                self.d.parameters(), lr=self.opts.train.lr_d, betas=(0.5, 0.999)
+            )
+        )
+        self.g_optimizer = (
+            ExtraSGD(self.g.parameters(), lr=self.opts.train.lr_g)
+            if self.opts.train.use_extragradient_optimizer
+            else optim.Adam(
+                self.g.parameters(), lr=self.opts.train.lr_g, betas=(0.5, 0.999)
+            )
+        )
 
     def run_trial(self):
         self.train(
@@ -274,7 +287,10 @@ class gan_trainer:
                     d_loss = loss_hinge_dis(fake_prob, real_prob) / float(
                         num_D_accumulations
                     )
-                    extragrad_step(self.d_optimizer, self.d, i)
+                    if self.opts.train.use_extragradient_optimizer:
+                        extragrad_step(self.d_optimizer, self.d, i)
+                    else:
+                        self.d_optimizer.step()
 
                 # ----------------------------
                 # ----- Generator Update -----
@@ -293,7 +309,10 @@ class gan_trainer:
                     d_loss = torch.Tensor([-1])
 
                 g_loss_total = lambda_gan * gan_loss + lambda_L * loss
-                extragrad_step(self.g_optimizer, self.g, i)
+                if self.opts.train.use_extragradient_optimizer:
+                    extragrad_step(self.g_optimizer, self.g, i)
+                else:
+                    self.g_optimizer.step()
 
                 self.total_steps += 1
 
