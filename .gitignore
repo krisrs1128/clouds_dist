@@ -6,6 +6,8 @@ config/
 output/
 images/
 checkpoints/
+wandb/
+.DS_Store
 # -----------------------------------------
 # -----    Python-specific content    -----
 # -----------------------------------------
