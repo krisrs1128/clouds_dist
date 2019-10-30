@@ -37,13 +37,16 @@ def get_template(param, conf_path, run_dir, name):
 
                 cd {str(original_path)}
                 zip -r {zip_name} imgs metos > /dev/null
-                cp {zip_path} $SLURM_TMPDIR
-                cd $SLURM_TMPDIR
-                unzip {zip_name} > /dev/null
             fi
             """
         )
-
+    cp_unzip_command = dedent(
+        f"""\
+        cp {zip_path} $SLURM_TMPDIR
+        cd $SLURM_TMPDIR
+        unzip {zip_name} > /dev/null
+        """
+    )
     sbp = param["sbatch"]
     indented = "\n            "
     base = "\n"
@@ -60,6 +63,8 @@ def get_template(param, conf_path, run_dir, name):
             #SBATCH -o {str(run_dir)}/slurm-%j.out  # Write the log in $SCRATCH
 
             {zip_command}
+
+            {cp_unzip_command}
 
             cd /network/home/schmidtv/clouds_dist
 
