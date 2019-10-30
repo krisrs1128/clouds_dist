@@ -128,7 +128,13 @@ def check_data_dirs(opts):
         )
 
     print("Loading data from ", str(opts.data.path))
-    assert Path(opts.data.path).exists()
-    assert (Path(opts.data.path) / "imgs").exists()
-    assert (Path(opts.data.path) / "metos").exists()
+    assert Path(opts.data.path).exists(), "{} does not exist".format(
+        str(Path(opts.data.path))
+    )
+    assert (Path(opts.data.path) / "imgs").exists(), "{} does not exist".format(
+        str(Path(opts.data.path) / "imgs")
+    )
+    assert (Path(opts.data.path) / "metos").exists(), "{} does not exist".format(
+        str(Path(opts.data.path) / "metos")
+    )
     return opts
