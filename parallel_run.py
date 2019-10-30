@@ -173,7 +173,7 @@ if __name__ == "__main__":
 
     # -----------------------------------------
 
-    default_yaml_file = str(Path(__file__) / "shared/defaults.yaml")
+    default_yaml_file = str(Path(__file__).parent / "shared/defaults.yaml")
     with open(default_yaml_file, "r") as f:
         default_yaml = yaml.safe_load(f)
 
