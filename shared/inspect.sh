@@ -2,7 +2,7 @@
 #SBATCH --account=rpp-bengioy
 #SBATCH --cpus-per-task=1
 #SBATCH --gres=gpu:1
-#SBATCH --mem=32
+#SBATCH --mem=32G
 #SBATCH --time=01:20:00
 #SBATCH -o /home/sankarak/logs/inspect-%j.out
 #SBATCH -e /home/sankarak/logs/inspect-%j.err
