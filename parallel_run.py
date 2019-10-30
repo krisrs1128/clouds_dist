@@ -63,8 +63,8 @@ def get_template(param, conf_path, run_dir, name):
 
             cd /network/home/schmidtv/clouds_dist
 
-            module load anaconda/3
-            source $CONDA_ACTIVATE
+            module load anaconda/3 >/dev/null 2>&1
+            . "$CONDA_ACTIVATE"
             conda deactivate
             conda activate clouds
 
