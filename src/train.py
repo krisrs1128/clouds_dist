@@ -313,7 +313,11 @@ class gan_trainer:
                 loss = matching_loss(real_img, generated_img)
 
                 if num_D_accumulations > 0:
-                    gan_loss = self.d.compute_loss(generated_img, 1)
+                    if not self.opts.model.multi_disc:
+                        fake_prob = self.d(generated_img)
+                        gan_loss = loss_hinge_gen(fake_prob)
+                    else:
+                        gan_loss = self.d.compute_loss(generated_img, 1)
                 else:
                     gan_loss = torch.Tensor([-1])
                     d_loss = torch.Tensor([-1])
