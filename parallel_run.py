@@ -97,6 +97,7 @@ def get_template(param, conf_path, run_dir, name):
             #SBATCH -o {env_to_path(sbp["slurm_out"])}  # Write the log in $SCRATCH
 
             {zip_command}
+            {cp_unzip_command}
 
             module load singularity/3.4
             cd $HOME/clouds_dist/
