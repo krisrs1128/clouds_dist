@@ -4,18 +4,20 @@ from torchvision import transforms
 from src.data import EarthData
 
 
-def get_stats(opts, device, trsfs, verbose=0):
+def get_stats(opts, device, trsfs, verbose=1):
 
-    should_computs_stats = False
+    should_compute_stats = False
     transforms_before_rescale = []
     for t in trsfs:
         if t.__class__.__name__ == "Standardize":
-            should_computs_stats = True
+            should_compute_stats = True
             break
         transforms_before_rescale.append(t)
 
-    if not should_computs_stats:
+    if not should_compute_stats:
         return None
+
+    print("Computing stats")
 
     dataset = EarthData(
         data_dir=opts.data.path,
