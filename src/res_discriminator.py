@@ -103,6 +103,11 @@ class Discriminator(nn.Module):
     def forward(self, x):
         return self.fc(self.model(x).view(-1, self.disc_size))
 
+    def compute_loss(self, x, gt):
+        """Computes the MSE between model output and scalar gt"""
+        loss = sum([torch.mean((out - gt) ** 2) for out in self.forward(x)])
+        return loss
+
 
 # from https://github.com/christiancosgrove/pytorch-spectral-normalization-gan
 # /blob/master/spectral_normalization.py
