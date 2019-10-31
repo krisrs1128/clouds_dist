@@ -44,8 +44,6 @@ class Extragradient(Optimizer):
         is_empty = len(self.params_copy) == 0
         for group in self.param_groups:
             for param in group["params"]:
-                if not param.grad:
-                    continue
                 u = self.update(param, group)
                 if is_empty:
                     self.params_copy.append(param.data.clone())  # save w[t]
@@ -58,9 +56,6 @@ class Extragradient(Optimizer):
         i = 0
         for group in self.param_groups:
             for param in group["params"]:
-                if not param.grad:
-                    i += 1
-                    continue
                 u = self.update(param, group)
                 param.data = (
                     self.params_copy[i] + u
