@@ -4,7 +4,7 @@ from torchvision import transforms
 from src.data import EarthData
 
 
-def get_stats(opts, device, trsfs, verbose=1):
+def get_stats(opts, device, trsfs, verbose=0):
 
     should_compute_stats = False
     transforms_before_rescale = []
@@ -16,8 +16,6 @@ def get_stats(opts, device, trsfs, verbose=1):
 
     if not should_compute_stats:
         return None
-
-    print("Computing stats")
 
     dataset = EarthData(
         data_dir=opts.data.path,
