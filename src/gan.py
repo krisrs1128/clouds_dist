@@ -4,7 +4,7 @@ import torch.nn as nn
 from src.unet_concise import UNet
 
 # from src.cloud_unet import Discriminator
-from src.res_discriminator import Discriminator
+from src.res_discriminator import Discriminator, MultiDiscriminator
 
 
 class GAN(nn.Module):
@@ -20,6 +20,7 @@ class GAN(nn.Module):
         disc_size=64,
         bottleneck_dim=27,
         device=None,
+        multi_disc=False,
     ):
         super(GAN, self).__init__()
         self.bottleneck_dim = bottleneck_dim
@@ -33,7 +34,11 @@ class GAN(nn.Module):
             bottleneck_dim,
             device,
         )
-        self.d = Discriminator(Cout, disc_size, device=device)
+        self.d = (
+            Discriminator(Cout, disc_size, device=device)
+            if not multi_disc
+            else MultiDiscriminator(Cout, device=device)
+        )
 
         self.g.apply(self.init_weights)
         # self.d.apply(self.init_weights) # d has own init

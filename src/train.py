@@ -269,28 +269,35 @@ class gan_trainer:
 
                 generated_img = None
                 real_img = batch["real_imgs"].to(device)
-
+                d_loss = 0
                 for acc in range(num_D_accumulations):
                     # ---------------------------------------------
                     # ----- Accumulate Discriminator Gradient -----
                     # ---------------------------------------------
                     self.input_tensor = self.get_noisy_input_tensor(batch)
                     generated_img = self.g(self.input_tensor)
+                    if not self.opts.model.multi_disc:
+                        real_prob = self.d(real_img)
+                        fake_prob = self.d(generated_img.detach())
 
-                    real_prob = self.d(real_img)
-                    fake_prob = self.d(generated_img.detach())
-
-                    # ----------------------------------
-                    # ----- Backprop Discriminator -----
-                    # ----------------------------------
-                    self.d_optimizer.zero_grad()
-                    d_loss = loss_hinge_dis(fake_prob, real_prob) / float(
-                        num_D_accumulations
-                    )
-                    if self.opts.train.use_extragradient_optimizer:
-                        extragrad_step(self.d_optimizer, self.d, i)
+                        # ----------------------------------
+                        # ----- Backprop Discriminator -----
+                        # ----------------------------------
+                        self.d_optimizer.zero_grad()
+                        d_loss += loss_hinge_dis(fake_prob, real_prob) / float(
+                            num_D_accumulations
+                        )
                     else:
-                        self.d_optimizer.step()
+                        d_loss += (
+                            self.d.compute_loss(real_img, 1)
+                            + self.d.compute_loss(generated_img.detach(), 0)
+                        ) / float(num_D_accumulations)
+
+                d_loss.backward()
+                if self.opts.train.use_extragradient_optimizer:
+                    extragrad_step(self.d_optimizer, self.d, i)
+                else:
+                    self.d_optimizer.step()
 
                 # ----------------------------
                 # ----- Generator Update -----
@@ -302,13 +309,13 @@ class gan_trainer:
                 loss = matching_loss(real_img, generated_img)
 
                 if num_D_accumulations > 0:
-                    fake_prob = self.d(generated_img)
-                    gan_loss = loss_hinge_gen(fake_prob)
+                    gan_loss = self.d.compute_loss(generated_img, 1)
                 else:
                     gan_loss = torch.Tensor([-1])
                     d_loss = torch.Tensor([-1])
 
                 g_loss_total = lambda_gan * gan_loss + lambda_L * loss
+                g_loss_total.backward()
                 if self.opts.train.use_extragradient_optimizer:
                     extragrad_step(self.g_optimizer, self.g, i)
                 else:
