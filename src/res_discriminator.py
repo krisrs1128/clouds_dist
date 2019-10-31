@@ -167,6 +167,7 @@ class SpectralNorm(nn.Module):
         return self.module.forward(*args)
 
 
+# https://github.com/eriklindernoren/PyTorch-GAN/blob/a163b82beff3d01688d8315a3fd39080400e7c01/implementations/munit/models.py
 class MultiDiscriminator(nn.Module):
     def __init__(self, in_channels=3, device=None):
         super(MultiDiscriminator, self).__init__()

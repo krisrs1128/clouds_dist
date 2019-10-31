@@ -10,6 +10,7 @@ model:
     Cout: 3 # Number of channels in the output image
     Cnoise: 0 # Number of channels dedicated to the noise - total input to Generator is Cnoise + Cin
     bottleneck_dim: 44 # number of feature maps in the thinnest layer of the Unet
+    multi_disc: false # use resnet  generator or MultiDisc from MUNIT
 # ------------------------------
 # -----    Train Params    -----
 # ------------------------------
