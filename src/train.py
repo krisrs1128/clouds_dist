@@ -218,7 +218,7 @@ class gan_trainer:
             plt.savefig(str(self.offline_output_dir / "losses.png"))
 
     def get_noisy_input_tensor(self, batch):
-        input_tensor = self.get_noise_tensor(self.shape)
+        input_tensor = self.get_noise_tensor(batch["metos"].shape)
         input_tensor[:, : self.opts.model.Cin, :, :] = batch["metos"]
         return input_tensor.to(self.device)
 
@@ -258,8 +258,8 @@ class gan_trainer:
                 # --------------------------------
                 if i > (self.opts.train.early_break_epoch or 1e9):
                     break
-                self.batch = batch
                 stime = time.time()
+                self.batch = batch
 
                 if i == 0 and self.verbose > -1:
                     print("\n\nLoading time: {:.3f}".format(stime - etime))
