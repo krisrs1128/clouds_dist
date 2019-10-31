@@ -114,7 +114,17 @@ class gan_trainer:
         self.trainset = self.trainloader.dataset
 
         if self.exp:
-            wandb.config.update({"transforms": transforms_string})
+            wandb.config.update(
+                {
+                    "transforms": transforms_string,
+                    "d_num_trainable_params": sum(
+                        p.numel() for p in self.d.parameters() if p.requires_grad
+                    ),
+                    "g_num_trainable_params": sum(
+                        p.numel() for p in self.g.parameters() if p.requires_grad
+                    ),
+                }
+            )
 
         # calculate the bottleneck dimension
         if self.trainset.metos_shape[-1] % 2 ** self.opts.model.n_blocks != 0:
