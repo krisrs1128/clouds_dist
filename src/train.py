@@ -113,19 +113,6 @@ class gan_trainer:
         )
         self.trainset = self.trainloader.dataset
 
-        if self.exp:
-            wandb.config.update(
-                {
-                    "transforms": transforms_string,
-                    "d_num_trainable_params": sum(
-                        p.numel() for p in self.d.parameters() if p.requires_grad
-                    ),
-                    "g_num_trainable_params": sum(
-                        p.numel() for p in self.g.parameters() if p.requires_grad
-                    ),
-                }
-            )
-
         # calculate the bottleneck dimension
         if self.trainset.metos_shape[-1] % 2 ** self.opts.model.n_blocks != 0:
             raise ValueError(
@@ -158,6 +145,19 @@ class gan_trainer:
                 self.g.parameters(), lr=self.opts.train.lr_g, betas=(0.5, 0.999)
             )
         )
+
+        if self.exp:
+            wandb.config.update(
+                {
+                    "transforms": transforms_string,
+                    "d_num_trainable_params": sum(
+                        p.numel() for p in self.d.parameters() if p.requires_grad
+                    ),
+                    "g_num_trainable_params": sum(
+                        p.numel() for p in self.g.parameters() if p.requires_grad
+                    ),
+                }
+            )
 
     def run_trial(self):
         self.train(
@@ -493,14 +493,13 @@ if __name__ == "__main__":
     if parsed_opts.no_exp:
         exp = None
     else:
-        exp = True
+        exp, init_opts = True, {}
         if parsed_opts.offline:
-            raise NotImplementedError("Todo")
+            os.environ['WANDB_MODE'] = 'dryrun'
         else:
             if parsed_opts.resume and parsed_opts.existing_exp_id:
-                wandb.init(resume=parsed_opts.existing_exp_id)
-            else:
-                wandb.init()
+                init_opts["resume"] = parsed_opts.existing_exp_id
+        wandb.init(**init_opts)
         wandb.config.update(opts.to_dict())
         wandb.config.update({"__message": parsed_opts.message})
         if "WANDB_RUN_ID" in os.environ:
@@ -527,7 +526,7 @@ if __name__ == "__main__":
     trainer.run_trial()
 
     if parsed_opts.offline and not parsed_opts.no_exp:
-        raise NotImplementedError("ToDo2")
+        pass
         # subprocess.check_output(
         #     [
         #         "bash",
