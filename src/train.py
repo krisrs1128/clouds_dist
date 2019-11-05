@@ -526,13 +526,10 @@ if __name__ == "__main__":
     trainer.run_trial()
 
     if parsed_opts.offline and not parsed_opts.no_exp:
-        pass
-        # subprocess.check_output(
-        #     [
-        #         "bash",
-        #         "-c",
-        #         "python -m comet_ml.scripts.upload {}".format(
-        #             str(Path(output_path).resolve() / (trainer.exp.id + ".zip"))
-        #         ),
-        #     ]
-        # )
+        subprocess.check_output(
+            [
+                "bash",
+                "-c",
+                f"wandb sync {output_path}/wandb"
+            ]
+        )
