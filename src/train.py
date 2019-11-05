@@ -493,7 +493,7 @@ if __name__ == "__main__":
     if parsed_opts.no_exp:
         exp = None
     else:
-        exp, init_opts = True, {}
+        exp, init_opts = True, {"dir": str(output_path)}
         if parsed_opts.offline:
             os.environ['WANDB_MODE'] = 'dryrun'
         else:
@@ -528,8 +528,9 @@ if __name__ == "__main__":
     if parsed_opts.offline and not parsed_opts.no_exp:
         subprocess.check_output(
             [
-                "bash",
-                "-c",
-                f"wandb sync {output_path}/wandb"
+                "wandb",
+                "sync",
+                "--project=clouds_dist",
+                f"{output_path}/wandb"
             ]
         )
