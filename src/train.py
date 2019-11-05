@@ -113,19 +113,6 @@ class gan_trainer:
         )
         self.trainset = self.trainloader.dataset
 
-        if self.exp:
-            wandb.config.update(
-                {
-                    "transforms": transforms_string,
-                    "d_num_trainable_params": sum(
-                        p.numel() for p in self.d.parameters() if p.requires_grad
-                    ),
-                    "g_num_trainable_params": sum(
-                        p.numel() for p in self.g.parameters() if p.requires_grad
-                    ),
-                }
-            )
-
         # calculate the bottleneck dimension
         if self.trainset.metos_shape[-1] % 2 ** self.opts.model.n_blocks != 0:
             raise ValueError(
@@ -141,8 +128,20 @@ class gan_trainer:
         self.gan = GAN(**self.opts.model, device=self.device).to(self.device)
         self.g = self.gan.g
         self.d = self.gan.d
+
         if self.exp:
             wandb.watch((self.g, self.d))
+            wandb.config.update(
+                {
+                    "transforms": transforms_string,
+                    "d_num_trainable_params": sum(
+                        p.numel() for p in self.d.parameters() if p.requires_grad
+                    ),
+                    "g_num_trainable_params": sum(
+                        p.numel() for p in self.g.parameters() if p.requires_grad
+                    ),
+                }
+            )
 
         self.d_optimizer = (
             ExtraSGD(self.d.parameters(), lr=self.opts.train.lr_d)
