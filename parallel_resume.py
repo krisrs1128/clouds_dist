@@ -18,7 +18,7 @@ def process_to_resume(l, git_hash, exp_id):
 
     new_l = l[:-1].replace("\\", "")
     new_l += " --resume"
-    new_l += " --existing_comet={}".format(exp_id)
+    new_l += " --existing_exp_id={}".format(exp_id)
     new_l += " \\\n"
     new_l = "git checkout {} && ".format(git_hash) + new_l
 
@@ -94,7 +94,7 @@ if __name__ == "__main__":
                 lines = f.readlines()
 
             git_hash = get_text(run / "hash.txt")
-            comet_id = get_text(run / "comet_exp_key.txt")
+            comet_id = get_text(run / "run_id.txt")
 
             new_lines = [
                 l

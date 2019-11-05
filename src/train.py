@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-from comet_ml import Experiment, OfflineExperiment, ExistingExperiment
+import wandb
+import os
 import argparse
 import subprocess
 import time
@@ -30,7 +31,7 @@ from src.utils import (
 
 
 class gan_trainer:
-    def __init__(self, opts, comet_exp=None, output_dir=".", n_epochs=50, verbose=1):
+    def __init__(self, opts, exp=None, output_dir=".", n_epochs=50, verbose=1):
         self.opts = opts
         self.losses = {
             "gan_loss": [],
@@ -45,7 +46,7 @@ class gan_trainer:
         self.resumed = False
         self.timestamp = self.start_time.strftime("%Y_%m_%d_%H_%M_%S")
         self.results = []
-        self.exp = comet_exp
+        self.exp = exp
         self.output_dir = Path(output_dir)
         self.debug = Dict()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -113,10 +114,17 @@ class gan_trainer:
         self.trainset = self.trainloader.dataset
 
         if self.exp:
-            self.exp.log_parameters(self.opts.train)
-            self.exp.log_parameters(self.opts.model)
-            self.exp.log_parameters(self.opts.data)
-            self.exp.log_parameter("transforms", transforms_string)
+            wandb.config.update(
+                {
+                    "transforms": transforms_string,
+                    "d_num_trainable_params": sum(
+                        p.numel() for p in self.d.parameters() if p.requires_grad
+                    ),
+                    "g_num_trainable_params": sum(
+                        p.numel() for p in self.g.parameters() if p.requires_grad
+                    ),
+                }
+            )
 
         # calculate the bottleneck dimension
         if self.trainset.metos_shape[-1] % 2 ** self.opts.model.n_blocks != 0:
@@ -133,6 +141,8 @@ class gan_trainer:
         self.gan = GAN(**self.opts.model, device=self.device).to(self.device)
         self.g = self.gan.g
         self.d = self.gan.d
+        if self.exp:
+            wandb.watch((self.g, self.d))
 
         self.d_optimizer = (
             ExtraSGD(self.d.parameters(), lr=self.opts.train.lr_d)
@@ -176,6 +186,8 @@ class gan_trainer:
 
         generated_img = self.g(input_tensor)
 
+        wandb_images = []
+
         for i in range(input_tensor.shape[0]):
             # concatenate verticaly:
             # [3 metos, generated clouds, ground truth clouds]
@@ -192,10 +204,12 @@ class gan_trainer:
             if store_images:
                 plt.imsave(str(imgdir / f"imgs_{step}_{i}.png"), imgs_cpu)
             if exp:
-                try:
-                    exp.log_image(imgs_cpu, name=f"imgs_{step}_{i}", step=step)
-                except Exception as e:
-                    print(f"\n{e}\n")
+                wandb_images.append(wandb.Image(imgs_cpu, caption=f"imgs_{step}_{i}"))
+        if exp:
+            try:
+                wandb.log({"inference_images": wandb_images}, step=step)
+            except Exception as e:
+                print(f"\n{e}\n")
 
     def should_save(self, steps):
         return not self.opts.train.save_every_steps or (
@@ -309,7 +323,11 @@ class gan_trainer:
                 loss = matching_loss(real_img, generated_img)
 
                 if num_D_accumulations > 0:
-                    gan_loss = self.d.compute_loss(generated_img, 1)
+                    if not self.opts.model.multi_disc:
+                        fake_prob = self.d(generated_img)
+                        gan_loss = loss_hinge_gen(fake_prob)
+                    else:
+                        gan_loss = self.d.compute_loss(generated_img, 1)
                 else:
                     gan_loss = torch.Tensor([-1])
                     d_loss = torch.Tensor([-1])
@@ -328,7 +346,7 @@ class gan_trainer:
                 # -------------------
 
                 if self.exp:
-                    self.exp.log_metrics(
+                    wandb.log(
                         {
                             "g/losss/total": g_loss_total.item(),
                             "g/loss/disc": gan_loss.item(),
@@ -440,9 +458,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-x",
-        "--existing_comet",
+        "--existing_exp_id",
         type=str,
-        help="if resuming, the existing comet exp to continue",
+        help="if resuming, the existing exp id to continue",
     )
     parser.add_argument("-n", "--no_exp", default=False, action="store_true")
     parsed_opts = parser.parse_args()
@@ -468,24 +486,26 @@ if __name__ == "__main__":
 
     opts = check_data_dirs(opts)
 
-    # ------------------------------
-    # ----- Configure comet.ml -----
-    # ------------------------------
+    # -----------------------------
+    # -----  Configure wandb  -----
+    # -----------------------------
 
     if parsed_opts.no_exp:
         exp = None
     else:
+        exp = True
         if parsed_opts.offline:
-            exp = OfflineExperiment(offline_directory=str(output_path))
+            raise NotImplementedError("Todo")
         else:
-            if parsed_opts.resume and parsed_opts.existing_comet:
-                exp = ExistingExperiment(previous_experiment=parsed_opts.existing_comet)
+            if parsed_opts.resume and parsed_opts.existing_exp_id:
+                wandb.init(resume=parsed_opts.existing_exp_id)
             else:
-                exp = Experiment()
-        exp.log_parameter("__message", parsed_opts.message)
-        if hasattr(exp, "get_key"):
-            with open(output_path / "comet_exp_key.txt", "w") as f:
-                f.write(exp.get_key())
+                wandb.init()
+        wandb.config.update(opts.to_dict())
+        wandb.config.update({"__message": parsed_opts.message})
+        if "WANDB_RUN_ID" in os.environ:
+            with open(output_path / "run_id.txt", "w") as f:
+                f.write(os.environ["WANDB_RUN_ID"])
     # --------------------------
     # -----   Initialize   -----
     # --------------------------
@@ -506,20 +526,14 @@ if __name__ == "__main__":
 
     trainer.run_trial()
 
-    # --------------------------------
-    # ----- End Comet Experiment -----
-    # --------------------------------
-
-    if not parsed_opts.no_exp:
-        trainer.exp.end()
-
     if parsed_opts.offline and not parsed_opts.no_exp:
-        subprocess.check_output(
-            [
-                "bash",
-                "-c",
-                "python -m comet_ml.scripts.upload {}".format(
-                    str(Path(output_path).resolve() / (trainer.exp.id + ".zip"))
-                ),
-            ]
-        )
+        raise NotImplementedError("ToDo2")
+        # subprocess.check_output(
+        #     [
+        #         "bash",
+        #         "-c",
+        #         "python -m comet_ml.scripts.upload {}".format(
+        #             str(Path(output_path).resolve() / (trainer.exp.id + ".zip"))
+        #         ),
+        #     ]
+        # )
