@@ -1,6 +1,6 @@
---- # -----------------------
 # -----------------------
 # -----    Model    -----
+# -----------------------
 model:
     n_blocks: 5 # Number of Unet Blocks (total nb of blocks is therefore 2 * n_blocks)
     filter_factors: null # list, scale factors ; default is 2 ** np.arange(n_blocks)
