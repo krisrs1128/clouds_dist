@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import torch
-from pathlib import Path
 import torch.nn as nn
 import numpy as np
 
