@@ -524,13 +524,3 @@ if __name__ == "__main__":
     # ---------------------
 
     trainer.run_trial()
-
-    if parsed_opts.offline and not parsed_opts.no_exp:
-        subprocess.check_output(
-            [
-                "wandb",
-                "sync",
-                "--project=clouds_dist",
-                f"{str(output_path)}/wandb"
-            ]
-        )
