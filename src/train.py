@@ -158,6 +158,19 @@ class gan_trainer:
             )
         )
 
+        if self.exp:
+            wandb.config.update(
+                {
+                    "transforms": transforms_string,
+                    "d_num_trainable_params": sum(
+                        p.numel() for p in self.d.parameters() if p.requires_grad
+                    ),
+                    "g_num_trainable_params": sum(
+                        p.numel() for p in self.g.parameters() if p.requires_grad
+                    ),
+                }
+            )
+
     def run_trial(self):
         self.train(
             self.opts.train.n_epochs,
@@ -492,14 +505,13 @@ if __name__ == "__main__":
     if parsed_opts.no_exp:
         exp = None
     else:
-        exp = True
+        exp, init_opts = True, {"dir": str(output_path)}
         if parsed_opts.offline:
-            raise NotImplementedError("Todo")
+            os.environ['WANDB_MODE'] = 'dryrun'
         else:
             if parsed_opts.resume and parsed_opts.existing_exp_id:
-                wandb.init(resume=parsed_opts.existing_exp_id)
-            else:
-                wandb.init()
+                init_opts["resume"] = parsed_opts.existing_exp_id
+        wandb.init(**init_opts)
         wandb.config.update(opts.to_dict())
         wandb.config.update({"__message": parsed_opts.message})
         if "WANDB_RUN_ID" in os.environ:
@@ -524,15 +536,3 @@ if __name__ == "__main__":
     # ---------------------
 
     trainer.run_trial()
-
-    if parsed_opts.offline and not parsed_opts.no_exp:
-        raise NotImplementedError("ToDo2")
-        # subprocess.check_output(
-        #     [
-        #         "bash",
-        #         "-c",
-        #         "python -m comet_ml.scripts.upload {}".format(
-        #             str(Path(output_path).resolve() / (trainer.exp.id + ".zip"))
-        #         ),
-        #     ]
-        # )
