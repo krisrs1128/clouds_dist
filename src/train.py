@@ -531,6 +531,6 @@ if __name__ == "__main__":
                 "wandb",
                 "sync",
                 "--project=clouds_dist",
-                f"{output_path}/wandb"
+                f"{str(output_path)}/wandb"
             ]
         )
