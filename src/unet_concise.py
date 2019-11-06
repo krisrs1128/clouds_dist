@@ -69,11 +69,13 @@ class UNet(nn.Module):
         input_sizes = [bottleneck_dim * s for s in self.filter_factors]
 
         # link up all the encoder and decoder components
-        self.down = [UNetModule(Cin, input_sizes[0], kernel_size, dropout)]
+        self.down = [UNetModule(Cin, input_sizes[0], kernel_size, dropout, use_leaky)]
         self.up = []
         for i in range(len(input_sizes) - 1):
             self.down.append(
-                UNetModule(input_sizes[i], input_sizes[i + 1], kernel_size, dropout)
+                UNetModule(
+                    input_sizes[i], input_sizes[i + 1], kernel_size, dropout, use_leaky
+                )
             )
             self.up.append(
                 UNetModule(
