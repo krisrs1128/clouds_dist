@@ -11,14 +11,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
 from addict import Dict
 
 # from torch import optim
 
 from src.data import get_loader, get_transforms
 from src.gan import GAN
-from src.optim import ExtraSGD, extragrad_step
+from src.optim import get_optimizers
 from src.stats import get_stats
 from src.utils import (
     check_data_dirs,
@@ -143,20 +142,7 @@ class gan_trainer:
                 }
             )
 
-        self.d_optimizer = (
-            ExtraSGD(self.d.parameters(), lr=self.opts.train.lr_d)
-            if self.opts.train.use_extragradient_optimizer
-            else optim.Adam(
-                self.d.parameters(), lr=self.opts.train.lr_d, betas=(0.5, 0.999)
-            )
-        )
-        self.g_optimizer = (
-            ExtraSGD(self.g.parameters(), lr=self.opts.train.lr_g)
-            if self.opts.train.use_extragradient_optimizer
-            else optim.Adam(
-                self.g.parameters(), lr=self.opts.train.lr_g, betas=(0.5, 0.999)
-            )
-        )
+        self.d_optimizer, self.g_optimizer = get_optimizers(self.g, self.d, self.opts)
 
     def run_trial(self):
         self.train(
@@ -307,10 +293,7 @@ class gan_trainer:
                         ) / float(num_D_accumulations)
 
                 d_loss.backward()
-                if self.opts.train.use_extragradient_optimizer:
-                    extragrad_step(self.d_optimizer, self.d, i)
-                else:
-                    self.d_optimizer.step()
+                self.d_optimizer.step()
 
                 # ----------------------------
                 # ----- Generator Update -----
@@ -333,10 +316,7 @@ class gan_trainer:
 
                 g_loss_total = lambda_gan * gan_loss + lambda_L * loss
                 g_loss_total.backward()
-                if self.opts.train.use_extragradient_optimizer:
-                    extragrad_step(self.g_optimizer, self.g, i)
-                else:
-                    self.g_optimizer.step()
+                self.g_optimizer.step()
 
                 self.total_steps += 1
 
