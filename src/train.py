@@ -139,7 +139,7 @@ class gan_trainer:
                 }
             )
 
-        self.d_optimizer, self.g_optimizer = get_optimizers(self.g, self.d, self.opts)
+        self.g_optimizer, self.d_optimizer = get_optimizers(self.g, self.d, self.opts)
 
         if self.exp:
             wandb.config.update(
