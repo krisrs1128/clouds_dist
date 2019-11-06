@@ -1,19 +1,16 @@
 #!/usr/bin/env python
-from addict import Dict
-from datetime import datetime
-from pathlib import Path
 import argparse
-import matplotlib.pyplot as plt
-import numpy as np
 import os
 import time
+from datetime import datetime
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn as nn
-from addict import Dict
-
-# from torch import optim
-import torch.optim as optim
 import wandb
+from addict import Dict
 
 from src.data import get_loader, get_transforms
 from src.gan import GAN
@@ -487,7 +484,7 @@ if __name__ == "__main__":
     else:
         exp, init_opts = True, {"dir": str(output_path)}
         if parsed_opts.offline:
-            os.environ['WANDB_MODE'] = 'dryrun'
+            os.environ["WANDB_MODE"] = "dryrun"
         else:
             if parsed_opts.resume and parsed_opts.existing_exp_id:
                 init_opts["resume"] = parsed_opts.existing_exp_id
