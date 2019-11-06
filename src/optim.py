@@ -9,6 +9,7 @@ Copyright (c) Facebook, Inc. and its affiliates.
 written by Hugo Berard (berard.hugo@gmail.com) while at Facebook.
 """
 import torch
+import math
 import torch.optim as optim
 from torch.optim import Optimizer
 
