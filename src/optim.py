@@ -19,8 +19,13 @@ def get_optimizers(g, d, opts):
     if not isinstance(optimizer, str):
         # legacy use_extragradient_optimizer compatibility
         if opts.train.use_extragradient_optimizer:
+            print(
+                "WARNING: 'use_extragradient_optimizer' is deprecated; use 'optimizer'",
+                "(see defaults.yaml)",
+            )
             optimizer = "extrasgd"
         else:
+            print("No 'opts.train.optimizer' specified ; defaulting to adam")
             optimizer = "adam"
 
     if optimizer.lower() not in {"adam", "extraadam", "extrasgd"}:
