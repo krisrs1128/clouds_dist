@@ -3,12 +3,9 @@
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 
-from torch import Tensor, nn
-from torch.autograd import Variable
+from torch import nn
 from torch.nn import Parameter
-from torch.optim.optimizer import Optimizer, required
 
 
 class ResBlockDiscriminator(nn.Module):

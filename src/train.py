@@ -303,7 +303,13 @@ class gan_trainer:
                         ) / float(num_D_accumulations)
 
                 d_loss.backward()
-                self.d_optimizer.step()
+                if (
+                    "extra" not in self.opts.train.optimizer
+                    or (self.total_steps + 1) % 2 == 0
+                ):
+                    self.d_optimizer.step()
+                else:
+                    self.d_optimizer.extrapolation()
 
                 # ----------------------------
                 # ----- Generator Update -----
@@ -326,7 +332,13 @@ class gan_trainer:
 
                 g_loss_total = lambda_gan * gan_loss + lambda_L * loss
                 g_loss_total.backward()
-                self.g_optimizer.step()
+                if (
+                    "extra" not in self.opts.train.optimizer
+                    or (self.total_steps + 1) % 2 == 0
+                ):
+                    self.g_optimizer.step()
+                else:
+                    self.g_optimizer.extrapolation()
 
                 self.total_steps += 1
 
