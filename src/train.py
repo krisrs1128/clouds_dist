@@ -1,20 +1,16 @@
 #!/usr/bin/env python
-import wandb
-import os
-import argparse
-import subprocess
-import time
+from addict import Dict
 from datetime import datetime
 from pathlib import Path
-
+import argparse
 import matplotlib.pyplot as plt
 import numpy as np
+import os
+import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from addict import Dict
-
-# from torch import optim
+import wandb
 
 from src.data import get_loader, get_transforms
 from src.gan import GAN
