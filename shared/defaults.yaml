@@ -11,6 +11,7 @@ model:
     Cnoise: 0 # Number of channels dedicated to the noise - total input to Generator is Cnoise + Cin
     bottleneck_dim: 44 # number of feature maps in the thinnest layer of the Unet
     multi_disc: false # use resnet  generator or MultiDisc from MUNIT
+    use_leaky: false # use LeakyRelu(0.2) instead of Relu() in the UNetModules
 # ------------------------------
 # -----    Train Params    -----
 # ------------------------------

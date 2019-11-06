@@ -21,6 +21,7 @@ class GAN(nn.Module):
         bottleneck_dim=27,
         device=None,
         multi_disc=False,
+        use_leaky=False,
     ):
         super(GAN, self).__init__()
         self.bottleneck_dim = bottleneck_dim
@@ -33,6 +34,7 @@ class GAN(nn.Module):
             dropout,
             bottleneck_dim,
             device,
+            use_leaky,
         )
         self.d = (
             Discriminator(Cout, disc_size, device=device)

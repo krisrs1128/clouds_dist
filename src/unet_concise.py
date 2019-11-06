@@ -9,11 +9,11 @@ class UNetModule(nn.Module):
     One of the "triple layer" blocks in https://arxiv.org/pdf/1505.04597.pdf
     """
 
-    def __init__(self, n_in, n_out, kernel_size=3, dropout=0.5):
+    def __init__(self, n_in, n_out, kernel_size=3, dropout=0.5, use_leaky=False):
         super().__init__()
         self.conv1 = nn.Conv2d(n_in, n_out, kernel_size, padding=1)
         self.conv2 = nn.Conv2d(n_out, n_out, kernel_size, padding=1)
-        self.activation = nn.ReLU()
+        self.activation = nn.LeakyReLU(0.2) if use_leaky else nn.ReLU()
         self.bn = nn.BatchNorm2d(n_out)
         self.drop = nn.Dropout(dropout)
 
@@ -55,6 +55,7 @@ class UNet(nn.Module):
         dropout=0.5,
         bottleneck_dim=27,
         device=None,
+        use_leaky=False,
     ):
         super().__init__()
         if not filter_factors:
@@ -80,6 +81,7 @@ class UNet(nn.Module):
                     input_sizes[i],
                     kernel_size,
                     dropout,
+                    use_leaky,
                 )
             )
 
