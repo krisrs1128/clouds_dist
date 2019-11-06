@@ -53,6 +53,10 @@ def get_template(param, conf_path, run_dir, name):
     zip_command = indented.join(zip_command.split(base))
     cp_unzip_command = indented.join(cp_unzip_command.split(base))
 
+    main_partition = ""
+    if sbp.get("use_main_partition", False):
+        main_partition = "#SBATCH -p main"
+
     if name == "victor_mila":
         return dedent(
             f"""\
@@ -62,6 +66,7 @@ def get_template(param, conf_path, run_dir, name):
             #SBATCH --mem=32G                 # Ask for 32 GB of RAM
             #SBATCH --time={sbp.get("runtime", "24:00:00")}
             #SBATCH -o {str(run_dir)}/slurm-%j.out  # Write the log in $SCRATCH
+            {main_partition}
 
             {zip_command}
 
@@ -95,6 +100,7 @@ def get_template(param, conf_path, run_dir, name):
             #SBATCH --mem={sbp["mem"]}G                 # Ask for 32 GB of RAM
             #SBATCH --time={sbp.get("runtime", "24:00:00")}
             #SBATCH -o {env_to_path(sbp["slurm_out"])}  # Write the log in $SCRATCH
+            {main_partition}
 
             {zip_command}
             {cp_unzip_command}
@@ -174,6 +180,13 @@ if __name__ == "__main__":
         "--test_mode",
         action="store_true",
         help="create files but not run sbatch to test",
+    )
+    parser.add_argument(
+        "-p",
+        "--main_partitions",
+        type=int,
+        default=0,
+        help="how many (0, 1 or 2) main partitions to use in the sbatch config",
     )
 
     opts = parser.parse_args()
@@ -258,6 +271,9 @@ if __name__ == "__main__":
 
         conf_path = write_conf(run_dir, param)  # returns Path() from pathlib
         write_hash(run_dir)
+
+        if "main_partitions" in opts and opts.main_partitions > i:
+            param["sbatch"]["use_main_partition"] = True
 
         template = get_template(param, conf_path, run_dir, opts.template_name)
 
