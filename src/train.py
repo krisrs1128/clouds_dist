@@ -341,10 +341,6 @@ class gan_trainer:
                             "g/loss/disc": gan_loss.item(),
                             "g/loss/matching": loss.item(),
                             "d/loss": d_loss.item(),
-                            # "track_gen/min": generated_img.min().item(),
-                            # "track_gen/max": generated_img.max().item(),
-                            # "track_gen/mean": generated_img.mean().item(),
-                            # "track_gen/std": generated_img.std().item(),
                         },
                         step=self.total_steps,
                     )
