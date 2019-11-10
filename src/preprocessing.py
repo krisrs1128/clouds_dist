@@ -38,7 +38,7 @@ def expand_as(a, b):
 
 class Standardize:
     def set_stats(self, stats):
-        self.means, self.ranges = stats
+        self.means, _, self.ranges, _ = stats
 
     def __call__(self, sample):
         for k in sample:
