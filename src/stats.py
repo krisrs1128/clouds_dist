@@ -4,7 +4,7 @@ from torchvision import transforms
 from src.data import EarthData
 
 
-def get_stats(opts, device, trsfs, verbose=0):
+def get_stats(opts, trsfs, verbose=0):
 
     should_compute_stats = False
     transforms_before_rescale = []
@@ -37,7 +37,6 @@ def get_stats(opts, device, trsfs, verbose=0):
     for i, batch in enumerate(data_loader):
         torch.cuda.empty_cache()
         for k, v in batch.items():
-            v = v.to(device)
             if i == 0:
                 means[k] = torch.tensor(
                     [
@@ -45,28 +44,28 @@ def get_stats(opts, device, trsfs, verbose=0):
                         for c in range(v.shape[1])
                     ],
                     dtype=torch.float,
-                ).to(device)
+                )
                 maxes[k] = torch.tensor(
                     [
                         (v[:, c, :][~torch.isnan(v[:, c, :])]).max()
                         for c in range(v.shape[1])
                     ],
                     dtype=torch.float,
-                ).to(device)
+                )
                 mins[k] = torch.tensor(
                     [
                         (v[:, c, :][~torch.isnan(v[:, c, :])]).min()
                         for c in range(v.shape[1])
                     ],
                     dtype=torch.float,
-                ).to(device)
+                )
                 norm[k] = torch.tensor(
                     [
                         v[:, c, :][~torch.isnan(v[:, c, :])].numel()
                         for c in range(v.shape[1])
                     ],
                     dtype=torch.float,
-                ).to(device)
+                )
             else:
 
                 # count all elements that aren't nans per channel
@@ -76,7 +75,7 @@ def get_stats(opts, device, trsfs, verbose=0):
                         for i in range(v.shape[1])
                     ],
                     dtype=torch.float,
-                ).to(device)
+                )
                 means[k] *= norm[k] / (norm[k] + m)
                 means[k] += torch.tensor(
                     [
@@ -84,7 +83,7 @@ def get_stats(opts, device, trsfs, verbose=0):
                         for c in range(v.shape[1])
                     ],
                     dtype=torch.float,
-                ).to(device) / (norm[k] + m)
+                ) / (norm[k] + m)
 
                 norm[k] += m
 
@@ -94,14 +93,14 @@ def get_stats(opts, device, trsfs, verbose=0):
                         for i in range(v.shape[1])
                     ],
                     dtype=torch.float,
-                ).to(device)
+                )
                 cur_min = torch.tensor(
                     [
                         v[:, i, :][~torch.isnan(v[:, i, :])].min()
                         for i in range(v.shape[1])
                     ],
                     dtype=torch.float,
-                ).to(device)
+                )
 
                 maxes[k][maxes[k] < cur_max] = cur_max[maxes[k] < cur_max]
                 mins[k][mins[k] > cur_min] = cur_min[mins[k] > cur_min]
@@ -118,7 +117,6 @@ def get_stats(opts, device, trsfs, verbose=0):
     # calculate ranges and avoid cuda multiprocessing by bringing tensors back to cpu
     stats = (
         {k: v.to("cpu") for k, v in means.items()},
-        {k: (maxes[k] - v).to("cpu") for k, v in mins.items()},  # return range
+        {k: (maxes[k] - v) for k, v in mins.items()},  # return range
     )
-    torch.cuda.empty_cache()
     return stats
