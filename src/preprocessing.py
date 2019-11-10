@@ -1,5 +1,7 @@
 import numpy as np
 import torch
+import pdb
+
 
 def expand_as(a, b):
     """Repeat vector b that gives 1 value per channel so that it
@@ -127,10 +129,12 @@ class Quantize:
             self.noq[k] = self.quantiles[k].shape[1]
 
     def __call__(self, sample):
-        result = {"real_imgs":[], "metos":[]}
+        result = {"real_imgs": [], "metos": []}
         for name, tensor in sample.items():
             for c in range(tensor.shape[0]):
                 channel_quantile = self.quantiles[name][c]
-                result[name] += [np.digitize(tensor[c].flatten(), channel_quantile - 1).reshape(tensor[c].shape) / self.noq[name] + 1 / (2 * self.noq[name])]
+                result[name] += [
+                    np.digitize(tensor[c].flatten(), channel_quantile).reshape(*tensor[c].shape)
+                ]
             result[name] = torch.tensor(result[name], dtype=torch.float)
         return result
