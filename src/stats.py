@@ -9,7 +9,7 @@ def get_stats(opts, device, trsfs, verbose=0):
     should_compute_stats = False
     transforms_before_rescale = []
     for t in trsfs:
-        if t.__class__.__name__ == "Standardize":
+        if t.__class__.__name__ in ["Standardize", "Quantize"]:
             should_compute_stats = True
             break
         transforms_before_rescale.append(t)
