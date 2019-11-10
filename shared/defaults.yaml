@@ -35,7 +35,7 @@ train:
 # -----    Data Conf    -----
 # ---------------------------
 data:
-    path: "/scratch/sankarak/data/clouds/" # Where's the data?
+    path: "../clouds_small/" # Where's the data?
     preprocessed_data_path: null # If you set this path to something != null, it will override the "data" path
     num_workers: 12 # How many workers for the dataloader
     with_stats: true # Normalize with stats? Computed before the training loop if no using preprocessed data
@@ -43,3 +43,4 @@ data:
     squash_channels: false # If set to True, don't forget to change model.Cin from 44 to 8
     crop_to_inner_square: false # crop metos and imgs to the size of the real_img's inner square
     noq: 5 # if it's not None quantize the data to no_of_quantiles
+

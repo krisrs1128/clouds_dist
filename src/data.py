@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from pathlib import Path
-
+import pdb
 import numpy as np
 import torch
 from torch.utils.data import Dataset
@@ -12,6 +12,7 @@ from src.preprocessing import (
     Standardize,
     SquashChannels,
     Rescale,
+    Quantize
 )
 
 
@@ -120,7 +121,9 @@ def get_transforms(opts):
         assert (
             opts.model.Cin == 8
         ), "using squash_channels, Cin should be 8 not {}".format(opts.model.Cin)
-    if opts.data.preprocessed_data_path is None and opts.data.with_stats:
+    if opts.data.noq:
+        transfs += [Quantize()]
+    elif opts.data.preprocessed_data_path is None and opts.data.with_stats:
         transfs += [Standardize()]
     transfs += [ReplaceNans()]
 
@@ -128,10 +131,11 @@ def get_transforms(opts):
 
 
 def get_loader(opts, transfs=None, stats=None):
-
+    # pdb.set_trace()
     if stats is not None:
         for t in transfs:
-            if "Standardize" in str(t.__class__):
+            # pdb.set_trace()
+            if "Standardize" in str(t.__class__) or "Quantize" in str(t.__class__):
                 t.set_stats(stats)
 
     trainset = EarthData(

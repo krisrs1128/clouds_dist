@@ -11,7 +11,6 @@ import torch
 import torch.nn as nn
 import wandb
 from addict import Dict
-
 from src.data import get_loader, get_transforms
 from src.gan import GAN
 from src.optim import get_optimizers

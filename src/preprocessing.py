@@ -1,7 +1,5 @@
 import numpy as np
 import torch
-from torchvision import transforms
-
 
 def expand_as(a, b):
     """Repeat vector b that gives 1 value per channel so that it
@@ -119,3 +117,22 @@ class CropInnerSquare:
         for name, tensor in sample.items():
             sample[name] = tensor[:, i:-i, i:-i]
         return sample
+
+
+class Quantize:
+    def set_stats(self, stats):
+        _, _, _, self.quantiles = stats
+        self.noq = {}
+        for k in ["real_imgs", "metos"]:
+            self.noq[k] = self.quantiles[k].shape[1]
+
+    def __call__(self, sample):
+        result = {"real_imgs":[], "metos":[]}
+        for name, tensor in sample.items():
+            for c in range(tensor.shape[0]):
+                channel_quantile = self.quantiles[name][c]
+                result[name] += [np.digitize(tensor[c].flatten(), channel_quantile - 1).reshape(tensor[c].shape) / self.noq[name] + 1 / (2 * self.noq[name])]
+            result[name] = torch.tensor(result[name], dtype=torch.float)
+        return result
+
+
