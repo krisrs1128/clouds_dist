@@ -103,7 +103,7 @@ class gan_trainer:
         self.make_directories()
 
         self.transforms = get_transforms(self.opts)
-        self.stats = get_stats(self.opts, self.device, self.transforms)
+        self.stats = get_stats(self.opts, self.transforms)
         self.trainloader, transforms_string = get_loader(
             opts, self.transforms, self.stats
         )
