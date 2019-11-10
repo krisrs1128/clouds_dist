@@ -141,7 +141,6 @@ def get_stats(opts, trsfs, verbose=0):
             )
 
     print()
-    # calculate ranges and avoid cuda multiprocessing by bringing tensors back to cpu
     stats = (
         means,
         stds,
