@@ -122,10 +122,6 @@ class gan_trainer:
             )
 
         self.gan = GAN(**self.opts.model, device=self.device).to(self.device)
-        if self.opts.train.checkpoint:
-            state = torch.load(Path(self.opts.train.checkpoint))
-            self.gan.load_state_dict(state["state_dict"])
-
         self.g = self.gan.g
         self.d = self.gan.d
 
@@ -144,6 +140,10 @@ class gan_trainer:
             )
 
         self.g_optimizer, self.d_optimizer = get_optimizers(self.g, self.d, self.opts)
+
+        if self.opts.train.init_chkpt_dir:
+            chkpt_path = Path(self.opts.train.init_chkpt_dir)
+            self.resume(chkpt_path, self.opts.train.init_chkpt_step)
 
         if self.exp:
             wandb.config.update(
