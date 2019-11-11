@@ -122,6 +122,10 @@ class gan_trainer:
             )
 
         self.gan = GAN(**self.opts.model, device=self.device).to(self.device)
+        if self.opts.train.checkpoint:
+            state = torch.load(Path(self.opts.train.checkpoint))
+            self.gan.load_state_dict(state["state_dict"])
+
         self.g = self.gan.g
         self.d = self.gan.d
 
