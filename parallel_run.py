@@ -106,8 +106,8 @@ def get_template(param, conf_path, run_dir, name):
 
             echo "Starting job"
 
-            singularity exec --nv --bind {param["config"]["data"]["path"]},{str(run_dir)}\\
-                    {","+param["config"]["data"]["preprocessed_data_path"] if param["config"]["data"]["preprocessed_data_path"] else "" } \\
+            singularity exec --nv --bind {param["config"]["data"]["path"]},{str(run_dir)},{str(param["config"]["train"]["init_chkpt_dir"])}\\
+                    {","+param["config"]["data"]["preprocessed_data_path"] if param["config"]["data"]["preprocessed_data_path"] else "" }\\
                     {sbp["singularity_path"]}\\
                     python3 -m src.train \\
                     -m "{sbp["message"]}" \\
