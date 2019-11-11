@@ -31,7 +31,8 @@ train:
     offline_losses_steps: 50 # how often to log the losses with no comet logs
     use_extragradient_optimizer: true # >>DEPRECATED: use optimizer instead<< use ExtragradientSGD or Adam(betas=(0.5, 0.999))
     optimizer: "adam" # one of [adam, extrasgd, extraadam]
-    initialization: null # can give path to saved checkpoint
+    init_chkpt_dir: null # can initialize from a checkpoint directory
+    init_chkpt_step: "latest" # can give path to saved checkpoint
 # ---------------------------
 # -----    Data Conf    -----
 # ---------------------------

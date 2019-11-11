@@ -12,49 +12,41 @@ import torch
 import math
 import torch.optim as optim
 from torch.optim import Optimizer, SGD
-from pathlib import Path
 
 
 def get_optimizers(g, d, opts):
-    optim_id = opts.train.optimizer
+    optimizer = opts.train.optimizer
 
-    if not isinstance(optim_id, str):
-        # legacy use_extragradient_optim_id compatibility
-        if opts.train.use_extragradient_optim_id:
+    if not isinstance(optimizer, str):
+        # legacy use_extragradient_optimizer compatibility
+        if opts.train.use_extragradient_optimizer:
             print(
-                "WARNING: 'use_extragradient_optim_id' is deprecated; use 'optimizer'",
+                "WARNING: 'use_extragradient_optimizer' is deprecated; use 'optimizer'",
                 "(see defaults.yaml)",
             )
-            optim_id = "extrasgd"
+            optimizer = "extrasgd"
         else:
-            print("No 'opts.train.optim_id' specified ; defaulting to adam")
-            optim_id = "adam"
+            print("No 'opts.train.optimizer' specified ; defaulting to adam")
+            optimizer = "adam"
 
-    if optim_id.lower() not in {"adam", "extraadam", "extrasgd"}:
-        raise ValueError("unknown optim_id from train opts {}".format(opts.train))
+    if optimizer.lower() not in {"adam", "extraadam", "extrasgd"}:
+        raise ValueError("unknown optimizer from train opts {}".format(opts.train))
 
-    if optim_id.lower() == "adam":
-       optimizer = (
+    if optimizer.lower() == "adam":
+        return (
             optim.Adam(g.parameters(), lr=opts.train.lr_g, betas=(0.5, 0.999)),
             optim.Adam(d.parameters(), lr=opts.train.lr_d, betas=(0.5, 0.999)),
         )
-    if optim_id.lower() == "extraadam":
-        optimizer = (
+    if optimizer.lower() == "extraadam":
+        return (
             ExtraAdam(g.parameters(), lr=opts.train.lr_g, betas=(0.5, 0.999)),
             ExtraAdam(d.parameters(), lr=opts.train.lr_d, betas=(0.5, 0.999)),
         )
-    if optim_id.lower() == "extrasgd":
-        optimizer = (
+    if optimizer.lower() == "extrasgd":
+        return (
             ExtraSGD(g.parameters(), opts.train.lr_g),
             ExtraSGD(d.parameters(), opts.train.lr_d),
         )
-
-    if self.opts.train.checkpoint:
-        state = torch.load(Path(self.opts.train.checkpoint))
-        optimizer[0].load_state_dict(state["g_optimizer"])
-        optimizer[1].load_state_dict(state["d_optimizer"])
-
-    return optimizer
 
 
 def extragrad_step(optimizer, model, i):
