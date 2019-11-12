@@ -128,9 +128,9 @@ def get_stats(opts, trsfs, verbose=0):
             stds[k] += [subsample_channel.std()]
             if noq:
                 quantiles[k] += [np.quantile(subsample_channel, bins, axis=-1, interpolation="lower")]
-        if noq:
-            quantiles[k] = torch.tensor(quantiles[k])
-            stds[k] = torch.tensor(stds[k])
+
+        quantiles[k] = torch.tensor(quantiles[k])
+        stds[k] = torch.tensor(stds[k])
 
         if verbose > 0:
             print(
