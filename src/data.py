@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 from pathlib import Path
-import pdb
 import numpy as np
 import torch
 from torch.utils.data import Dataset
@@ -131,10 +130,8 @@ def get_transforms(opts):
 
 
 def get_loader(opts, transfs=None, stats=None):
-    # pdb.set_trace()
     if stats is not None:
         for t in transfs:
-            # pdb.set_trace()
             if "Standardize" in str(t.__class__) or "Quantize" in str(t.__class__):
                 t.set_stats(stats)
 
