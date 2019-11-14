@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from torchvision import transforms
+
 
 
 def expand_as(a, b):
@@ -40,7 +40,7 @@ def expand_as(a, b):
 
 class Standardize:
     def set_stats(self, stats):
-        self.means, self.ranges = stats
+        self.means, _, self.ranges, _ = stats
 
     def __call__(self, sample):
         for k in sample:
@@ -119,3 +119,22 @@ class CropInnerSquare:
         for name, tensor in sample.items():
             sample[name] = tensor[:, i:-i, i:-i]
         return sample
+
+
+class Quantize:
+    def set_stats(self, stats):
+        _, _, _, self.quantiles = stats
+        self.noq = {}
+        for k in ["real_imgs", "metos"]:
+            self.noq[k] = self.quantiles[k].shape[1]
+
+    def __call__(self, sample):
+        result = {"real_imgs": [], "metos": []}
+        for name, tensor in sample.items():
+            for c in range(tensor.shape[0]):
+                channel_quantile = self.quantiles[name][c]
+                result[name] += [
+                    np.digitize(tensor[c].flatten(), channel_quantile).reshape(*tensor[c].shape)
+                ]
+            result[name] = torch.tensor(result[name], dtype=torch.float)
+        return result

@@ -44,4 +44,5 @@ data:
     load_limit: -1 # Limit the number of samples per epoch | -1 to disable
     squash_channels: false # If set to True, don't forget to change model.Cin from 44 to 8
     crop_to_inner_square: false # crop metos and imgs to the size of the real_img's inner square
-    no_of_quantiles: null # if it's not None quantize the data to no_of_quantiles
+    noq: null # if it's not None quantize the data to no_of_quantiles
+

@@ -11,7 +11,6 @@ import torch
 import torch.nn as nn
 import wandb
 from addict import Dict
-
 from src.data import get_loader, get_transforms
 from src.gan import GAN
 from src.optim import get_optimizers
@@ -24,7 +23,6 @@ from src.utils import (
     to_0_1,
     weighted_mse_loss,
 )
-
 
 class gan_trainer:
     def __init__(self, opts, exp=None, output_dir=".", n_epochs=50, verbose=1):
@@ -103,7 +101,7 @@ class gan_trainer:
         self.make_directories()
 
         self.transforms = get_transforms(self.opts)
-        self.stats = get_stats(self.opts, self.device, self.transforms)
+        self.stats = get_stats(self.opts, self.transforms)
         self.trainloader, transforms_string = get_loader(
             opts, self.transforms, self.stats
         )
