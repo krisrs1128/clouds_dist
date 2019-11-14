@@ -2,6 +2,7 @@ import numpy as np
 import torch
 
 
+
 def expand_as(a, b):
     """Repeat vector b that gives 1 value per channel so that it
     can be used in elementwise computations with a. a.shape[1] should
