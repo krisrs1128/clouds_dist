@@ -104,7 +104,7 @@ if __name__ == "__main__":
             ]
             resume_sbatch_file = sbatch_file.parent / (sbatch_file.stem + "_resume.sh")
             with (resume_sbatch_file).open("w") as f:
-                f.write(new_lines)
+                f.writelines(new_lines)
             if not opts.test_mode:
                 print(
                     subprocess.check_output(

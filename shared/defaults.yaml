@@ -18,19 +18,18 @@ model:
 train:
     batch_size: 8
     early_break_epoch: 0 # Break an epoch loop after early_break_epoch steps in this epoch
-    infer_every_steps: 5000 # How often to infer validation images
-    lambda_gan: 0.01 # Gan loss scaling constant
+    infer_every_steps: 1000 # How often to infer validation images
+    lambda_gan: 1 # Gan loss scaling constant
     lambda_L: 1 # Matching loss scaling constant
-    lr_d: 0.0002 # Discriminator's learning rate
-    lr_g: 0.00005 # Generator's learning rate
-    matching_loss: l2 # Which matching loss to use: l2 | l1 | weighted
-    n_epochs: 100 # How many training epochs
+    lr_d: 0.0001 # Discriminator's learning rate
+    lr_g: 0.0001 # Generator's learning rate
+    matching_loss: l1 # Which matching loss to use: l2 | l1 | weighted
+    n_epochs: 1000 # How many training epochs
     num_D_accumulations: 8 # How many gradients to accumulate in current batch (different geenrator predictions) before doing one discriminator optimization step
     save_every_steps: 5000 # How often to save  the model's weights
     store_images: false # Do you want to write infered images to disk
     offline_losses_steps: 50 # how often to log the losses with no comet logs
-    use_extragradient_optimizer: true # >>DEPRECATED: use optimizer instead<< use ExtragradientSGD or Adam(betas=(0.5, 0.999))
-    optimizer: "adam" # one of [adam, extrasgd, extraadam]
+    optimizer: "extraadam" # one of [adam, extrasgd, extraadam]
 # ---------------------------
 # -----    Data Conf    -----
 # ---------------------------
