@@ -7,6 +7,7 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 
 from src.preprocessing import (
+    ClipReflectance,
     CropInnerSquare,
     ReplaceNans,
     Standardize,
@@ -120,6 +121,8 @@ def get_transforms(opts):
         assert (
             opts.model.Cin == 8
         ), "using squash_channels, Cin should be 8 not {}".format(opts.model.Cin)
+    if opts.data.clip_reflectance and opts.data.clip_reflectance > 0:
+        transfs += [ClipReflectance(opts.data.clip_reflectance)]
     if opts.data.preprocessed_data_path is None and opts.data.with_stats:
         transfs += [Standardize()]
     transfs += [ReplaceNans()]

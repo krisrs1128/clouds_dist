@@ -38,6 +38,30 @@ def expand_as(a, b):
     )
 
 
+class ClipReflectance:
+    """
+    np.quantile(ref_680, 0.99) >>> 0.6791079149527586
+    np.quantile(ref_551, 0.99) >>> 0.6702599556531738
+    np.quantile(ref_443, 0.99) >>> 0.7186933615126095
+
+    np.quantile(ref_680, 0.999) >>> 0.8614172062075665
+    np.quantile(ref_551, 0.999) >>> 0.8580325935816656
+    np.quantile(ref_443, 0.999) >>> 0.9071594989032588
+    """
+    def __init__(self, ref=0.9):
+        try:
+            ref = float(ref)
+        except TypeError:
+            raise TypeError(
+                "ClipReflectance: ref can't be broadcasted to float ( {} )".format(ref)
+            )
+        self.ref = ref
+
+    def __call__(self, sample):
+        sample["real_imgs"][sample["real_imgs"] > self.ref] = self.ref
+        return sample
+
+
 class Standardize:
     def set_stats(self, stats):
         self.means, self.ranges = stats
@@ -119,3 +143,4 @@ class CropInnerSquare:
         for name, tensor in sample.items():
             sample[name] = tensor[:, i:-i, i:-i]
         return sample
+

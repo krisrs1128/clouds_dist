@@ -42,3 +42,4 @@ data:
     squash_channels: false # If set to True, don't forget to change model.Cin from 44 to 8
     crop_to_inner_square: false # crop metos and imgs to the size of the real_img's inner square
     no_of_quantiles: null # if it's not None quantize the data to no_of_quantiles
+    clip_reflectance: 0.9 # set to -1 not to use this transform
