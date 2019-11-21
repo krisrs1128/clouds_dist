@@ -1,18 +1,17 @@
 #!/usr/bin/env python
 from pathlib import Path
-
 import numpy as np
 import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
-
 from src.preprocessing import (
     ClipReflectance,
     CropInnerSquare,
     ReplaceNans,
     Standardize,
     SquashChannels,
-    Rescale,
+    Resize,
+    Quantize,
 )
 
 
@@ -115,15 +114,18 @@ def get_transforms(opts):
     transfs = []
     if opts.data.crop_to_inner_square:
         transfs += [CropInnerSquare()]
-    transfs += [Rescale(256)]
+    transfs += [Resize(256)]
     if opts.data.squash_channels:
         transfs += [SquashChannels()]
         assert (
             opts.model.Cin == 8
         ), "using squash_channels, Cin should be 8 not {}".format(opts.model.Cin)
+
     if opts.data.clip_reflectance and opts.data.clip_reflectance > 0:
         transfs += [ClipReflectance(opts.data.clip_reflectance)]
-    if opts.data.preprocessed_data_path is None and opts.data.with_stats:
+    if opts.data.noq:
+        transfs += [Quantize()]
+    elif opts.data.preprocessed_data_path is None and opts.data.with_stats:
         transfs += [Standardize()]
     transfs += [ReplaceNans()]
 
@@ -131,10 +133,22 @@ def get_transforms(opts):
 
 
 def get_loader(opts, transfs=None, stats=None):
-
     if stats is not None:
+
+        stand_or_quant = (
+            False
+        )  # make sure not to quantize and standarize at the same time
         for t in transfs:
-            if "Standardize" in str(t.__class__):
+            if "Standardize" in str(t.__class__) or "Quantize" in str(t.__class__):
+                assert (
+                    not stand_or_quant,
+                    "cannot perform quantization and standardization at the same time!",
+                )
+
+                t.set_stats(stats)
+                stand_or_quant = True
+
+            if "ReplaceNans" in str(t.__class__):
                 t.set_stats(stats)
 
     trainset = EarthData(

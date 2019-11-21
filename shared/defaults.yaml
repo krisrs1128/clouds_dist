@@ -29,7 +29,10 @@ train:
     save_every_steps: 5000 # How often to save  the model's weights
     store_images: false # Do you want to write infered images to disk
     offline_losses_steps: 50 # how often to log the losses with no comet logs
+    use_extragradient_optimizer: true # >>DEPRECATED: use optimizer instead<< use ExtragradientSGD or Adam(betas=(0.5, 0.999))
     optimizer: "extraadam" # one of [adam, extrasgd, extraadam]
+    init_chkpt_dir: null # can initialize from a checkpoint directory
+    init_chkpt_step: "latest" # can give path to saved checkpoint
 # ---------------------------
 # -----    Data Conf    -----
 # ---------------------------
@@ -41,5 +44,6 @@ data:
     load_limit: -1 # Limit the number of samples per epoch | -1 to disable
     squash_channels: false # If set to True, don't forget to change model.Cin from 44 to 8
     crop_to_inner_square: false # crop metos and imgs to the size of the real_img's inner square
-    no_of_quantiles: null # if it's not None quantize the data to no_of_quantiles
     clip_reflectance: 0.9 # set to -1 not to use this transform
+    noq: null # if it's not None quantize the data to no_of_quantiles
+

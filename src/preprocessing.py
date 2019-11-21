@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-from torchvision import transforms
 
 
 def expand_as(a, b):
@@ -48,6 +47,7 @@ class ClipReflectance:
     np.quantile(ref_551, 0.999) >>> 0.8580325935816656
     np.quantile(ref_443, 0.999) >>> 0.9071594989032588
     """
+
     def __init__(self, ref=0.9):
         try:
             ref = float(ref)
@@ -64,7 +64,7 @@ class ClipReflectance:
 
 class Standardize:
     def set_stats(self, stats):
-        self.means, self.ranges = stats
+        self.means, _, self.ranges, _ = stats
 
     def __call__(self, sample):
         for k in sample:
@@ -89,20 +89,23 @@ class CropBackground:
         return result
 
 
-class Rescale:
+class Resize:
     def __init__(self, resolution):
         self.res = resolution
         return
 
     def __call__(self, sample):
         upsample = torch.nn.UpsamplingNearest2d(size=self.res)
-        rescaled_sample = {
+        resized_sample = {
             k: upsample(v.unsqueeze(0)).squeeze(0) for k, v in sample.items()
         }
-        return rescaled_sample
+        return resized_sample
 
 
 class ReplaceNans:
+    def set_stats(self, stats):
+        self.means, self.stds, _, _ = stats
+
     def __call__(self, sample):
         sample["real_imgs"][torch.isnan(sample["real_imgs"])] = -1
         sample["real_imgs"][torch.isinf(sample["real_imgs"])] = 1
@@ -144,3 +147,37 @@ class CropInnerSquare:
             sample[name] = tensor[:, i:-i, i:-i]
         return sample
 
+
+class Quantize:
+    def set_stats(self, stats):
+        _, _, _, self.quantiles = stats
+        self.noq = {}
+        for k in ["real_imgs", "metos"]:
+            self.noq[k] = self.quantiles[k].shape[1]
+
+    def __call__(self, sample):
+        result = {"real_imgs": [], "metos": []}
+
+        for key, tensor in sample.items():
+            if key == "metos":
+                for c in range(tensor.shape[0]):
+                    channel_quantile = self.quantiles[key][c]
+
+                    nan_free_tensor = tensor[c][~torch.isnan(tensor[c])]
+                    digitized_flattened = torch.tensor(
+                        np.digitize(nan_free_tensor, channel_quantile),
+                        dtype=torch.float,
+                    )
+
+                    digitized_reshaped = torch.zeros(tensor[c].shape)
+                    digitized_reshaped[torch.isnan(tensor[c])] = np.nan
+                    digitized_reshaped[~torch.isnan(tensor[c])] = digitized_flattened
+
+                    result[key] += [digitized_reshaped]
+                result[key] = torch.stack(result[key])
+                result[key] = 2 * (
+                    (result[key] / self.noq[key]) - 0.5
+                )  # rescale to [-1,1)
+            else:
+                result[key] = tensor
+        return result

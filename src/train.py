@@ -11,7 +11,6 @@ import torch
 import torch.nn as nn
 import wandb
 from addict import Dict
-
 from src.data import get_loader, get_transforms
 from src.gan import GAN
 from src.optim import get_optimizers
@@ -25,6 +24,7 @@ from src.utils import (
     weighted_mse_loss,
 )
 
+torch.manual_seed(0)
 
 class gan_trainer:
     def __init__(self, opts, exp=None, output_dir=".", n_epochs=50, verbose=1):
@@ -103,7 +103,7 @@ class gan_trainer:
         self.make_directories()
 
         self.transforms = get_transforms(self.opts)
-        self.stats = get_stats(self.opts, self.device, self.transforms)
+        self.stats = get_stats(self.opts, self.transforms)
         self.trainloader, transforms_string = get_loader(
             opts, self.transforms, self.stats
         )
@@ -140,6 +140,10 @@ class gan_trainer:
             )
 
         self.g_optimizer, self.d_optimizer = get_optimizers(self.g, self.d, self.opts)
+
+        if self.opts.train.init_chkpt_dir:
+            chkpt_path = Path(self.opts.train.init_chkpt_dir)
+            self.resume(chkpt_path, self.opts.train.init_chkpt_step)
 
         if self.exp:
             wandb.config.update(
@@ -304,12 +308,13 @@ class gan_trainer:
 
                 d_loss.backward()
                 if (
-                    "extra" not in self.opts.train.optimizer
-                    or (self.total_steps + 1) % 2 == 0
+                        "extra" in self.opts.train.optimizer
+                        or (self.total_steps) % 2 == 0
+                        or i == 0
                 ):
-                    self.d_optimizer.step()
-                else:
                     self.d_optimizer.extrapolation()
+                else:
+                    self.d_optimizer.step()
 
                 # ----------------------------
                 # ----- Generator Update -----
@@ -333,12 +338,13 @@ class gan_trainer:
                 g_loss_total = lambda_gan * gan_loss + lambda_L * loss
                 g_loss_total.backward()
                 if (
-                    "extra" not in self.opts.train.optimizer
-                    or (self.total_steps + 1) % 2 == 0
+                        "extra" in self.opts.train.optimizer
+                        or (self.total_steps) % 2 == 0
+                        or i == 0
                 ):
-                    self.g_optimizer.step()
-                else:
                     self.g_optimizer.extrapolation()
+                else:
+                    self.g_optimizer.step()
 
                 self.total_steps += 1
 
@@ -349,7 +355,7 @@ class gan_trainer:
                 if self.exp:
                     wandb.log(
                         {
-                            "g/losss/total": g_loss_total.item(),
+                            "g/loss/total": g_loss_total.item(),
                             "g/loss/disc": gan_loss.item(),
                             "g/loss/matching": loss.item(),
                             "d/loss": d_loss.item(),
@@ -358,7 +364,7 @@ class gan_trainer:
                     )
 
                 if self.should_infer(self.total_steps):
-                    print("\nINFERING\n")
+                    print("\nINFERRING\n")
                     self.infer(
                         batch,
                         self.total_steps,
