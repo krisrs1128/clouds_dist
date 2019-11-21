@@ -178,15 +178,17 @@ class gan_trainer:
         self.debug[name].prev = self.debug[name].curr
         self.debug[name].curr = var
 
-    def infer(self, batch, step, store_images, imgdir, exp):
+    def infer_(self, batch):
         real_img = batch["real_imgs"].to(self.device)
-
         input_tensor = self.get_noisy_input_tensor(batch)
-
         generated_img = self.g(input_tensor)
+        return real_img, generated_img
+
+    def infer(self, batch, step, store_images, imgdir, exp, n_infer=4):
+        input_tensor, real_img, generated_img = self.infer(batch)
+        imgs = make_images(input_tensor, real_img, generated_img)
 
         wandb_images = []
-
         for i in range(input_tensor.shape[0]):
             # concatenate verticaly:
             # [3 metos, generated clouds, ground truth clouds]

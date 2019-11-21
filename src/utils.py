@@ -138,3 +138,6 @@ def check_data_dirs(opts):
         str(Path(opts.data.path) / "metos")
     )
     return opts
+
+
+def make_images(input_tensor, real_img, generated_img):
