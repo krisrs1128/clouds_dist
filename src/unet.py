@@ -114,4 +114,3 @@ class UNet(nn.Module):
 
         out = self.conv_final(out)
         return torch.tanh(out)
-        # return torch.sigmoid(out)
