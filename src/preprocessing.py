@@ -79,6 +79,9 @@ class Rescale:
 
 
 class ReplaceNans:
+    def set_stats(self, stats):
+        self.means, self.stds, _, _ = stats
+
     def __call__(self, sample):
         sample["real_imgs"][torch.isnan(sample["real_imgs"])] = -1
         sample["real_imgs"][torch.isinf(sample["real_imgs"])] = 1

@@ -140,6 +140,9 @@ def get_loader(opts, transfs=None, stats=None):
                 t.set_stats(stats)
                 stand_or_quant = True
 
+            if "ReplaceNans" in str(t.__class__):
+                t.set_stats(stats)
+
     trainset = EarthData(
         opts.data.path,
         preprocessed_data_path=opts.data.preprocessed_data_path,
