@@ -24,6 +24,8 @@ from src.utils import (
     weighted_mse_loss,
 )
 
+torch.manual_seed(0)
+
 class gan_trainer:
     def __init__(self, opts, exp=None, output_dir=".", n_epochs=50, verbose=1):
         self.opts = opts
