@@ -140,4 +140,31 @@ def check_data_dirs(opts):
     return opts
 
 
-def make_images(input_tensor, real_img, generated_img):
+def batch_images(input_tensor, real_img, generated_img):
+    imgs = []
+    for i in range(input_tensor.shape[0]):
+        # concatenate verticaly:
+        # [3 metos, generated clouds, ground truth clouds]
+        img = torch.cat(
+            (
+                to_0_1(input_tensor[i, 22:25]),
+                to_0_1(generated_img[i]),
+                to_0_1(real_img[i]),
+            ),
+            1,
+        )
+        img_cpu = imgs.cpu().clone().detach().numpy()
+        imgs.append(np.swapaxes(imgs_cpu, 0, 2))
+
+    return imgs
+
+def wandb_img_log(imgs, step):
+    wandb_images = []
+    for i, im in enumerate(imgs):
+        wandb_images.append(wandb.Image(im, caption=f"imgs_{step}_{i}"))
+
+    try:
+        wandb.log({"inference_images": wandb_images}, step=step)
+    except Exception as e:
+        print(f"\n{e}\n")
+

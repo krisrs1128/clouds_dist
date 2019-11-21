@@ -16,11 +16,13 @@ from src.gan import GAN
 from src.optim import get_optimizers
 from src.stats import get_stats
 from src.utils import (
+    batch_images,
     check_data_dirs,
     get_opts,
     loss_hinge_dis,
     loss_hinge_gen,
     to_0_1,
+    wandb_img_log,
     weighted_mse_loss,
 )
 
@@ -185,32 +187,14 @@ class gan_trainer:
         return real_img, generated_img
 
     def infer(self, batch, step, store_images, imgdir, exp, n_infer=4):
-        input_tensor, real_img, generated_img = self.infer(batch)
-        imgs = make_images(input_tensor, real_img, generated_img)
+        input_tensor, real_img, generated_img = self.infer_(batch)
+        imgs = batch_images(input_tensor, real_img, generated_img)
+        if store_images:
+            for i, im in enumerate(imgs):
+                plt.imsave(str(imgdir / f"imgs_{step}_{i}.png"), im)
 
-        wandb_images = []
-        for i in range(input_tensor.shape[0]):
-            # concatenate verticaly:
-            # [3 metos, generated clouds, ground truth clouds]
-            imgs = torch.cat(
-                (
-                    to_0_1(input_tensor[i, 22:25]),
-                    to_0_1(generated_img[i]),
-                    to_0_1(real_img[i]),
-                ),
-                1,
-            )
-            imgs_cpu = imgs.cpu().clone().detach().numpy()
-            imgs_cpu = np.swapaxes(imgs_cpu, 0, 2)
-            if store_images:
-                plt.imsave(str(imgdir / f"imgs_{step}_{i}.png"), imgs_cpu)
-            if exp:
-                wandb_images.append(wandb.Image(imgs_cpu, caption=f"imgs_{step}_{i}"))
         if exp:
-            try:
-                wandb.log({"inference_images": wandb_images}, step=step)
-            except Exception as e:
-                print(f"\n{e}\n")
+            wandb_img_log(imgs, step)
 
     def should_save(self, steps):
         return not self.opts.train.save_every_steps or (
