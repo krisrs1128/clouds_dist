@@ -104,11 +104,19 @@ def process_sample(data):
             data["metos"]["RH"],
             data["metos"]["Scattering_angle"].reshape(1, 256, 256),
             data["metos"]["TS"].reshape(1, 256, 256),
-            coords.reshape(2, 256, 256),
+            coords
         ]
     )
     return {"real_imgs": torch.Tensor(imgs), "metos": torch.Tensor(metos)}
 
+def get_nan_value(transfs):
+    nan_value = "raw"
+    for t in transfs:
+        if t.__class__.__name__ == "Standardize":
+            nan_value = "Standardize"
+        elif t.__class__.__name__ == "Quantize":
+            nan_value = "Quantize"
+    return nan_value
 
 def get_transforms(opts):
     transfs = []
@@ -127,7 +135,8 @@ def get_transforms(opts):
         transfs += [Quantize()]
     elif opts.data.preprocessed_data_path is None and opts.data.with_stats:
         transfs += [Standardize()]
-    transfs += [ReplaceNans()]
+    nan_value = get_nan_value(transfs)
+    transfs += [ReplaceNans(nan_value)]
 
     return transfs
 
