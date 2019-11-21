@@ -7,6 +7,7 @@ from src.stats import get_stats
 from src.utils import get_opts
 import argparse
 import numpy as np
+import pandas
 import pathlib
 import seaborn as sns
 import src.gan as gan
@@ -205,9 +206,6 @@ if __name__ == '__main__':
     save_iterator(loader_gen(loader, "metos"), "x.csv", (50, 60))
 
     # make some plots
-    import pdb
-    pdb.set_trace()
-
     one_row = next(tensor_gen(y_hat)).numpy().flatten()
     usecols = np.random.choice(range(len(one_row)), 2000, replace=False)
     y = pd.read_csv("y.csv", header=None, usecols=usecols, names=range(len(one_row)))
