@@ -107,7 +107,7 @@ def loader_from_run(opts_path, data_path=None):
     transfs = get_transforms(opts)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("getting stats")
-    stats = get_stats(opts, device, transfs)
+    stats = get_stats(opts, transfs)
     loader, _ = get_loader(opts, transfs, stats)
     return loader
 
@@ -152,7 +152,7 @@ if __name__ == '__main__':
     # get the model and loader
     checkpoints_dir = pathlib.Path(pathlib.Path(opts.conf_path).parent, "checkpoints")
     model = model_from_run(opts.conf_path, checkpoints_dir, opts.model_pt)
-    loader = loader_from_run(opts.conf_path, "/scratch/sankarak/data/clouds/")
+    loader = loader_from_run(opts.conf_path)
 
     # make predictions and summarize
     y_hat = infer(model, loader)
