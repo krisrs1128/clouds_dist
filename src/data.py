@@ -131,7 +131,7 @@ def get_transforms(opts):
 def get_loader(opts, transfs=None, stats=None):
     if stats is not None:
 
-        stand_or_quant = False #used to make sure not to quantize and standarize at the same time
+        stand_or_quant = False #make sure not to quantize and standarize at the same time
         for t in transfs:
             if "Standardize" in str(t.__class__) or "Quantize" in str(t.__class__):
                 assert (not stand_or_quant,
@@ -139,6 +139,9 @@ def get_loader(opts, transfs=None, stats=None):
 
                 t.set_stats(stats)
                 stand_or_quant = True
+
+            if "ReplaceNans" in str(t.__class__):
+                t.set_stats(stats)
 
     trainset = EarthData(
         opts.data.path,

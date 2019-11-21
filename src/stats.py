@@ -7,12 +7,12 @@ from src.data import EarthData
 def get_stats(opts, trsfs, verbose=0):
 
     should_compute_stats = False
-    transforms_before_rescale = []
+    transforms_before_stats = []
     for t in trsfs:
-        if t.__class__.__name__ in ["Standardize", "Quantize"]:
+        if t.__class__.__name__ in ["Standardize", "Quantize", "ReplaceNans"]: #transforms that require stats
             should_compute_stats = True
             break
-        transforms_before_rescale.append(t)
+        transforms_before_stats.append(t)
 
     if not should_compute_stats:
         return None
@@ -20,7 +20,7 @@ def get_stats(opts, trsfs, verbose=0):
     dataset = EarthData(
         data_dir=opts.data.path,
         load_limit=opts.data.load_limit or -1,
-        transform=transforms.Compose(transforms_before_rescale),
+        transform=transforms.Compose(transforms_before_stats),
     )
 
     data_loader = torch.utils.data.DataLoader(
