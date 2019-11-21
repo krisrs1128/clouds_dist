@@ -103,14 +103,23 @@ class Resize:
 
 
 class ReplaceNans:
+
+    def __init__(self, nan_value):
+        self.nan_value = nan_value
+
     def set_stats(self, stats):
         self.means, self.stds, _, _ = stats
 
     def __call__(self, sample):
-        sample["real_imgs"][torch.isnan(sample["real_imgs"])] = -1
-        sample["real_imgs"][torch.isinf(sample["real_imgs"])] = 1
-        sample["metos"][torch.isnan(sample["metos"])] = 0.0
-        sample["metos"][torch.isinf(sample["metos"])] = 0.0
+        sample["real_imgs"][torch.isnan(sample["real_imgs"])] = -1 #Black pixels
+        for c in range(sample["metos"].shape[0]):
+            if self.nan_value == "Standardize":
+                sample["metos"][c][torch.isnan(sample["metos"][c])] = -3
+            elif self.nan_value == "Quantize":
+                sample["metos"][c][torch.isnan(sample["metos"][c])] = -1.1
+            else:
+                sample["metos"][c][torch.isnan(sample["metos"][c])] = self.means["metos"][c] - 3 * self.stds["metos"][c]
+
         return sample
 
 
