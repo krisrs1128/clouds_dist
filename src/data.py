@@ -95,6 +95,7 @@ class EarthData(Dataset):
 def process_sample(data):
     # rearrange into numpy arrays
     coords = np.stack([data["real_imgs"]["Lat"], data["real_imgs"]["Lon"]])
+    coords[np.isinf(coords)] = np.nan
     imgs = np.stack([v for k, v in data["real_imgs"].items() if "Reflect" in k])
     metos = np.concatenate(
         [
