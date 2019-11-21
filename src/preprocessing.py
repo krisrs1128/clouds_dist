@@ -130,17 +130,21 @@ class Quantize:
 
     def __call__(self, sample):
         result = {"real_imgs": [], "metos": []}
+
         for key, tensor in sample.items():
-            for c in range(tensor.shape[0]):
-                channel_quantile = self.quantiles[key][c]
+            if key == "metos":
+                for c in range(tensor.shape[0]):
+                    channel_quantile = self.quantiles[key][c]
 
-                nan_free_tensor = tensor[c][~torch.isnan(tensor[c])]
-                digitized_flattened = torch.tensor(np.digitize(nan_free_tensor, channel_quantile), dtype=torch.float)
+                    nan_free_tensor = tensor[c][~torch.isnan(tensor[c])]
+                    digitized_flattened = torch.tensor(np.digitize(nan_free_tensor, channel_quantile), dtype=torch.float)
 
-                digitized_reshaped = torch.zeros(tensor[c].shape)
-                digitized_reshaped[torch.isnan(tensor[c])] = np.nan
-                digitized_reshaped[~torch.isnan(tensor[c])] = digitized_flattened
+                    digitized_reshaped = torch.zeros(tensor[c].shape)
+                    digitized_reshaped[torch.isnan(tensor[c])] = np.nan
+                    digitized_reshaped[~torch.isnan(tensor[c])] = digitized_flattened
 
-                result[key] += [digitized_reshaped]
-            result[key] = torch.stack(result[key])
+                    result[key] += [digitized_reshaped]
+                result[key] = torch.stack(result[key])
+            else:
+                result[key] = tensor
         return result
