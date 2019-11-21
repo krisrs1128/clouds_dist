@@ -33,7 +33,7 @@ def infer(model, loader, model_opts, M=1000):
         if m > M: break
         print(f"Inferring batch {m}/{M}")
         x = get_noisy_input_tensor(batch, model_opts)
-        y_hat = model.g(batch["metos"].to(device))
+        y_hat = model.g(x.to(device))
         result.append(y_hat.detach().cpu())
     return torch.cat(result)
 
@@ -64,7 +64,9 @@ def save_line(z, f, round_level=4):
     f.write(str_fun(z.flatten().numpy()))
     f.write("\n")
 
+
 def get_noise_tensor(model_opts, shape):
+    """Functional version of method in src/train.py"""
     b, h, w = shape[0], shape[2], shape[3]
     Ctot = model_opts.Cin + model_opts.Cnoise
     noise_tensor = torch.FloatTensor(b, Ctot, h, w)
@@ -111,7 +113,6 @@ def loader_from_run(opts_path, data_path=None):
     """
     Get Loader (with transforms) from Experiment
     """
-    opts = get_opts(opts_path)
     if not data_path:
         opts["data"]["path"] = opts["data"]["original_path"]
     else:
@@ -126,11 +127,10 @@ def loader_from_run(opts_path, data_path=None):
     return loader
 
 
-def model_from_run(opts_path, checkpoints_dir, model_name):
+def model_from_run(opts, checkpoints_dir, model_name):
     """
     Get Model from Experiment
     """
-    opts = get_opts(opts_path)
     model_path = pathlib.Path(checkpoints_dir, model_name)
 
     state = torch.load(model_path)["state_dict"]
@@ -161,15 +161,16 @@ if __name__ == '__main__':
         default= "state_latest.pt",
         help="The name of the checkpoint whose predictions you want to study"
     )
-    opts = parser.parse_args()
+    args = parser.parse_args()
+    opts = get_opts(args.conf_path)
 
     # get the model and loader
-    checkpoints_dir = pathlib.Path(pathlib.Path(opts.conf_path).parent, "checkpoints")
-    model = model_from_run(opts.conf_path, checkpoints_dir, opts.model_pt)
-    loader = loader_from_run(opts.conf_path)
+    checkpoints_dir = pathlib.Path(pathlib.Path(args.conf_path).parent, "checkpoints")
+    model = model_from_run(opts, checkpoints_dir, args.model_pt)
+    loader = loader_from_run(opts)
 
     # make predictions and summarize
-    y_hat = infer(model, loader, opts.model)
+    y_hat = infer(model, loader, opts["model"])
     save_iterator(tensor_gen(y_hat), "y_hat.csv")
     save_iterator(loader_gen(loader, "real_imgs"), "y.csv")
     save_iterator(loader_gen(loader, "metos"), "x.csv", (120, 130))
