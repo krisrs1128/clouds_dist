@@ -148,6 +148,7 @@ class Quantize:
 
                     result[key] += [digitized_reshaped]
                 result[key] = torch.stack(result[key])
+                result[key] = 2 * ((result[key] / self.noq[key]) - 0.5) #rescale to [-1,1)
             else:
                 result[key] = tensor
         return result
