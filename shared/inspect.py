@@ -205,6 +205,11 @@ if __name__ == '__main__':
     save_iterator(loader_gen(loader, "metos"), "x.csv", (50, 60))
 
     # make some plots
-    y = pd.read_csv("y.csv")
-    y_hat = pd.read_csv("y_hat.csv")
+    import pdb
+    pdb.set_trace()
+
+    one_row = next(tensor_gen(y_hat)).numpy().flatten()
+    usecols = np.random.choice(range(len(one_row)), 2000, replace=False)
+    y = pd.read_csv("y.csv", header=None, usecols=usecols, names=range(len(one_row)))
+    y_hat = pd.read_csv("y_hat.csv", header=None, usecols=usecols, names=range(len(one_row)))
     y_scatter(y, y_hat)
