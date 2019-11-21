@@ -13,7 +13,7 @@ import src.gan as gan
 import torch
 
 
-def infer(model, loader, M=1000):
+def infer(model, loader, model_opts, M=1000):
     """
     Predictions on a Subset
 
@@ -32,6 +32,7 @@ def infer(model, loader, M=1000):
     for m, batch in enumerate(loader):
         if m > M: break
         print(f"Inferring batch {m}/{M}")
+        x = get_noisy_input_tensor(batch, model_opts)
         y_hat = model.g(batch["metos"].to(device))
         result.append(y_hat.detach().cpu())
     return torch.cat(result)
@@ -62,6 +63,19 @@ def save_line(z, f, round_level=4):
     str_fun = lambda z: ",".join(np.round(z, round_level).astype(str))
     f.write(str_fun(z.flatten().numpy()))
     f.write("\n")
+
+def get_noise_tensor(model_opts, shape):
+    b, h, w = shape[0], shape[2], shape[3]
+    Ctot = model_opts.Cin + model_opts.Cnoise
+    noise_tensor = torch.FloatTensor(b, Ctot, h, w)
+    noise_tensor.uniform_(-1, 1)
+    return noise_tensor
+
+
+def get_noisy_input_tensor(batch, model_opts):
+    input_tensor = get_noise_tensor(model_opts, batch["metos"].shape)
+    input_tensor[:, : model_opts.Cin, :, :] = batch["metos"]
+    return input_tensor
 
 
 def loader_gen(loader, key="metos"):
@@ -155,7 +169,7 @@ if __name__ == '__main__':
     loader = loader_from_run(opts.conf_path)
 
     # make predictions and summarize
-    y_hat = infer(model, loader)
+    y_hat = infer(model, loader, opts.model)
     save_iterator(tensor_gen(y_hat), "y_hat.csv")
     save_iterator(loader_gen(loader, "real_imgs"), "y.csv")
     save_iterator(loader_gen(loader, "metos"), "x.csv", (120, 130))
