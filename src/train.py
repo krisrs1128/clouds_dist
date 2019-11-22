@@ -16,7 +16,7 @@ from src.gan import GAN
 from src.optim import get_optimizers
 from src.stats import get_stats
 from src.utils import (
-    batch_images,
+    cpu_images,
     check_data_dirs,
     get_opts,
     loss_hinge_dis,
@@ -188,7 +188,7 @@ class gan_trainer:
 
     def infer(self, batch, store_images, imgdir, exp, suffix):
         input_tensor, real_img, generated_img = self.infer_(batch)
-        imgs = batch_images(input_tensor, real_img, generated_img)
+        imgs = cpu_images(input_tensor, real_img, generated_img)
         if store_images:
             for i, im in enumerate(imgs):
                 plt.imsave(str(imgdir / f"imgs_{i}_{suffix}.png"), im)

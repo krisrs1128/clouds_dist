@@ -140,7 +140,7 @@ def check_data_dirs(opts):
     return opts
 
 
-def batch_images(input_tensor, real_img, generated_img):
+def cpu_images(input_tensor, real_img, generated_img):
     imgs = []
     for i in range(input_tensor.shape[0]):
         # concatenate verticaly:
