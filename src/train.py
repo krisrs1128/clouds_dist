@@ -186,15 +186,15 @@ class gan_trainer:
         generated_img = self.g(input_tensor)
         return real_img, generated_img
 
-    def infer(self, batch, step, store_images, imgdir, exp, n_infer=4):
+    def infer(self, batch, store_images, imgdir, exp, suffix):
         input_tensor, real_img, generated_img = self.infer_(batch)
         imgs = batch_images(input_tensor, real_img, generated_img)
         if store_images:
             for i, im in enumerate(imgs):
-                plt.imsave(str(imgdir / f"imgs_{step}_{i}.png"), im)
+                plt.imsave(str(imgdir / f"imgs_{i}_{suffix}.png"), im)
 
         if exp:
-            wandb_img_log(imgs, step)
+            wandb_img_log(imgs, suffix)
 
     def should_save(self, steps):
         return not self.opts.train.save_every_steps or (
@@ -351,13 +351,14 @@ class gan_trainer:
 
                 if self.should_infer(self.total_steps):
                     print("\nINFERRING\n")
-                    self.infer(
-                        batch,
-                        self.total_steps,
-                        self.opts.train.store_images,
-                        self.imgdir,
-                        self.exp,
-                    )
+                    for infer_ix in range(self.n_infer):
+                        self.infer(
+                            batch,
+                            self.opts.train.store_images,
+                            self.imgdir,
+                            self.exp,
+                            f"{self.total_steps}-{infer_ix}"
+                        )
 
                 if self.should_save(self.total_steps):
                     print("\nSAVING\n")

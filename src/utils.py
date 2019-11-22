@@ -158,10 +158,11 @@ def batch_images(input_tensor, real_img, generated_img):
 
     return imgs
 
-def wandb_img_log(imgs, step):
+
+def wandb_img_log(imgs, suffix):
     wandb_images = []
     for i, im in enumerate(imgs):
-        wandb_images.append(wandb.Image(im, caption=f"imgs_{step}_{i}"))
+        wandb_images.append(wandb.Image(im, caption=f"imgs_{i}_{suffix}"))
 
     try:
         wandb.log({"inference_images": wandb_images}, step=step)
