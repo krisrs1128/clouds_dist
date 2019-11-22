@@ -351,7 +351,7 @@ class gan_trainer:
 
                 if self.should_infer(self.total_steps):
                     print("\nINFERRING\n")
-                    for infer_ix in range(self.n_infer):
+                    for infer_ix in range(self.opts.train.n_infer):
                         self.infer(
                             batch,
                             self.opts.train.store_images,
