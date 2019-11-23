@@ -1,11 +1,13 @@
+#!/usr/bin/env python
+from addict import Dict
 from pathlib import Path
-
+from src.cluster_utils import env_to_path
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn.functional as F
+import wandb
 import yaml
-from addict import Dict
-from src.cluster_utils import env_to_path
 
 
 def load_conf(path):
@@ -153,19 +155,25 @@ def cpu_images(input_tensor, real_img, generated_img):
             ),
             1,
         )
-        img_cpu = imgs.cpu().clone().detach().numpy()
-        imgs.append(np.swapaxes(imgs_cpu, 0, 2))
+        img_cpu = img.cpu().clone().detach().numpy()
+        imgs.append(np.swapaxes(img_cpu, 0, 2))
 
     return imgs
 
 
-def wandb_img_log(imgs, suffix):
-    wandb_images = []
+def record_images(imgs, store_images, exp, imgdir, step, infer_ix):
     for i, im in enumerate(imgs):
-        wandb_images.append(wandb.Image(im, caption=f"imgs_{i}_{suffix}"))
+        im_caption = f"imgs_{i}_{step}_{infer_ix}"
+        if store_images:
+            plt.imsave(str(imgdir / im_caption) + ".png", im)
+        if exp:
+            try:
+                wandb.log({
+                    "inference": [wandb.Image(im, caption=im_caption)],
+                    "index_in_batch": i,
+                    "sample": infer_ix
+                }, step=step)
+            except Exception as e:
+                print(f"\n{e}\n")
 
-    try:
-        wandb.log({"inference_images": wandb_images}, step=step)
-    except Exception as e:
-        print(f"\n{e}\n")
 

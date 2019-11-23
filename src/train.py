@@ -22,7 +22,7 @@ from src.utils import (
     loss_hinge_dis,
     loss_hinge_gen,
     to_0_1,
-    wandb_img_log,
+    record_images,
     weighted_mse_loss,
 )
 
@@ -37,7 +37,6 @@ class gan_trainer:
             "g_loss_total": [],
             "d_loss": [],
         }
-        self.trial_number = 0
         self.n_epochs = n_epochs
         self.start_time = datetime.now()
         self.verbose = verbose
@@ -184,17 +183,12 @@ class gan_trainer:
         real_img = batch["real_imgs"].to(self.device)
         input_tensor = self.get_noisy_input_tensor(batch)
         generated_img = self.g(input_tensor)
-        return real_img, generated_img
+        return input_tensor, real_img, generated_img
 
-    def infer(self, batch, store_images, imgdir, exp, suffix):
+    def infer(self, batch, store_images, imgdir, exp, step, infer_ix):
         input_tensor, real_img, generated_img = self.infer_(batch)
         imgs = cpu_images(input_tensor, real_img, generated_img)
-        if store_images:
-            for i, im in enumerate(imgs):
-                plt.imsave(str(imgdir / f"imgs_{i}_{suffix}.png"), im)
-
-        if exp:
-            wandb_img_log(imgs, suffix)
+        record_images(imgs, store_images, exp, imgdir, step, infer_ix)
 
     def should_save(self, steps):
         return not self.opts.train.save_every_steps or (
@@ -357,7 +351,8 @@ class gan_trainer:
                             self.opts.train.store_images,
                             self.imgdir,
                             self.exp,
-                            f"{self.total_steps}-{infer_ix}"
+                            self.total_steps,
+                            infer_ix
                         )
 
                 if self.should_save(self.total_steps):
