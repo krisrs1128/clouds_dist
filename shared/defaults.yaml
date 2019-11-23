@@ -11,27 +11,27 @@ model:
     Cnoise: 0 # Number of channels dedicated to the noise - total input to Generator is Cnoise + Cin
     bottleneck_dim: 44 # number of feature maps in the thinnest layer of the Unet
     multi_disc: false # use resnet  generator or MultiDisc from MUNIT
-    use_leaky: false # use LeakyRelu(0.2) instead of Relu() in the UNetModules
+    use_leaky: true # use LeakyRelu(0.2) instead of Relu() in the UNetModules
 # ------------------------------
 # -----    Train Params    -----
 # ------------------------------
 train:
     batch_size: 8
     early_break_epoch: 0 # Break an epoch loop after early_break_epoch steps in this epoch
-    infer_every_steps: 5000 # How often to infer validation images
-    lambda_gan: 0.01 # Gan loss scaling constant
+    infer_every_steps: 1000 # How often to infer validation images
+    lambda_gan: 1 # Gan loss scaling constant
     lambda_L: 1 # Matching loss scaling constant
-    lr_d: 0.0002 # Discriminator's learning rate
-    lr_g: 0.00005 # Generator's learning rate
-    matching_loss: l2 # Which matching loss to use: l2 | l1 | weighted
-    n_epochs: 100 # How many training epochs
-    n_infer: 3 # How many inference samples
+    lr_d: 0.0001 # Discriminator's learning rate
+    lr_g: 0.0001 # Generator's learning rate
+    matching_loss: l1 # Which matching loss to use: l2 | l1 | weighted
+    n_epochs: 1000 # How many training epochs
     num_D_accumulations: 8 # How many gradients to accumulate in current batch (different geenrator predictions) before doing one discriminator optimization step
+    n_infer: 3 # How many inference samples
     save_every_steps: 5000 # How often to save  the model's weights
     store_images: false # Do you want to write infered images to disk
     offline_losses_steps: 50 # how often to log the losses with no comet logs
     use_extragradient_optimizer: true # >>DEPRECATED: use optimizer instead<< use ExtragradientSGD or Adam(betas=(0.5, 0.999))
-    optimizer: "adam" # one of [adam, extrasgd, extraadam]
+    optimizer: "extraadam" # one of [adam, extrasgd, extraadam]
     init_chkpt_dir: null # can initialize from a checkpoint directory
     init_chkpt_step: "latest" # can give path to saved checkpoint
 # ---------------------------
@@ -45,5 +45,6 @@ data:
     load_limit: -1 # Limit the number of samples per epoch | -1 to disable
     squash_channels: false # If set to True, don't forget to change model.Cin from 44 to 8
     crop_to_inner_square: false # crop metos and imgs to the size of the real_img's inner square
+    clip_reflectance: 0.9 # set to -1 not to use this transform
     noq: null # if it's not None quantize the data to no_of_quantiles
 

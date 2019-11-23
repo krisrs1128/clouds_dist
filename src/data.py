@@ -5,12 +5,13 @@ import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 from src.preprocessing import (
+    ClipReflectance,
     CropInnerSquare,
     ReplaceNans,
     Standardize,
     SquashChannels,
-    Rescale,
-    Quantize
+    Resize,
+    Quantize,
 )
 
 
@@ -94,6 +95,7 @@ class EarthData(Dataset):
 def process_sample(data):
     # rearrange into numpy arrays
     coords = np.stack([data["real_imgs"]["Lat"], data["real_imgs"]["Lon"]])
+    coords[np.isinf(coords)] = np.nan
     imgs = np.stack([v for k, v in data["real_imgs"].items() if "Reflect" in k])
     metos = np.concatenate(
         [
@@ -103,27 +105,39 @@ def process_sample(data):
             data["metos"]["RH"],
             data["metos"]["Scattering_angle"].reshape(1, 256, 256),
             data["metos"]["TS"].reshape(1, 256, 256),
-            coords.reshape(2, 256, 256),
+            coords
         ]
     )
     return {"real_imgs": torch.Tensor(imgs), "metos": torch.Tensor(metos)}
 
+def get_nan_value(transfs):
+    nan_value = "raw"
+    for t in transfs:
+        if t.__class__.__name__ == "Standardize":
+            nan_value = "Standardize"
+        elif t.__class__.__name__ == "Quantize":
+            nan_value = "Quantize"
+    return nan_value
 
 def get_transforms(opts):
     transfs = []
     if opts.data.crop_to_inner_square:
         transfs += [CropInnerSquare()]
-    transfs += [Rescale(256)]
+    transfs += [Resize(256)]
     if opts.data.squash_channels:
         transfs += [SquashChannels()]
         assert (
             opts.model.Cin == 8
         ), "using squash_channels, Cin should be 8 not {}".format(opts.model.Cin)
+
+    if opts.data.clip_reflectance and opts.data.clip_reflectance > 0:
+        transfs += [ClipReflectance(opts.data.clip_reflectance)]
     if opts.data.noq:
         transfs += [Quantize()]
     elif opts.data.preprocessed_data_path is None and opts.data.with_stats:
         transfs += [Standardize()]
-    transfs += [ReplaceNans()]
+    nan_value = get_nan_value(transfs)
+    transfs += [ReplaceNans(nan_value)]
 
     return transfs
 
@@ -131,11 +145,15 @@ def get_transforms(opts):
 def get_loader(opts, transfs=None, stats=None):
     if stats is not None:
 
-        stand_or_quant = False #make sure not to quantize and standarize at the same time
+        stand_or_quant = (
+            False
+        )  # make sure not to quantize and standarize at the same time
         for t in transfs:
             if "Standardize" in str(t.__class__) or "Quantize" in str(t.__class__):
-                assert (not stand_or_quant,
-                        "cannot perform quantization and standardization at the same time!")
+                assert (
+                    not stand_or_quant,
+                    "cannot perform quantization and standardization at the same time!",
+                )
 
                 t.set_stats(stats)
                 stand_or_quant = True

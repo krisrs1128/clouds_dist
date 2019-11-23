@@ -2,7 +2,6 @@ import numpy as np
 import torch
 
 
-
 def expand_as(a, b):
     """Repeat vector b that gives 1 value per channel so that it
     can be used in elementwise computations with a. a.shape[1] should
@@ -38,6 +37,31 @@ def expand_as(a, b):
     )
 
 
+class ClipReflectance:
+    """
+    np.quantile(ref_680, 0.99) >>> 0.6791079149527586
+    np.quantile(ref_551, 0.99) >>> 0.6702599556531738
+    np.quantile(ref_443, 0.99) >>> 0.7186933615126095
+
+    np.quantile(ref_680, 0.999) >>> 0.8614172062075665
+    np.quantile(ref_551, 0.999) >>> 0.8580325935816656
+    np.quantile(ref_443, 0.999) >>> 0.9071594989032588
+    """
+
+    def __init__(self, ref=0.9):
+        try:
+            ref = float(ref)
+        except TypeError:
+            raise TypeError(
+                "ClipReflectance: ref can't be broadcasted to float ( {} )".format(ref)
+            )
+        self.ref = ref
+
+    def __call__(self, sample):
+        sample["real_imgs"][sample["real_imgs"] > self.ref] = self.ref
+        return sample
+
+
 class Standardize:
     def set_stats(self, stats):
         self.means, _, self.ranges, _ = stats
@@ -65,28 +89,37 @@ class CropBackground:
         return result
 
 
-class Rescale:
+class Resize:
     def __init__(self, resolution):
         self.res = resolution
         return
 
     def __call__(self, sample):
         upsample = torch.nn.UpsamplingNearest2d(size=self.res)
-        rescaled_sample = {
+        resized_sample = {
             k: upsample(v.unsqueeze(0)).squeeze(0) for k, v in sample.items()
         }
-        return rescaled_sample
+        return resized_sample
 
 
 class ReplaceNans:
+
+    def __init__(self, nan_value):
+        self.nan_value = nan_value
+
     def set_stats(self, stats):
         self.means, self.stds, _, _ = stats
 
     def __call__(self, sample):
-        sample["real_imgs"][torch.isnan(sample["real_imgs"])] = -1
-        sample["real_imgs"][torch.isinf(sample["real_imgs"])] = 1
-        sample["metos"][torch.isnan(sample["metos"])] = 0.0
-        sample["metos"][torch.isinf(sample["metos"])] = 0.0
+        sample["real_imgs"][torch.isnan(sample["real_imgs"])] = -1 #Black pixels
+        for c in range(sample["metos"].shape[0]):
+            if self.nan_value == "Standardize":
+                sample["metos"][c][torch.isnan(sample["metos"][c])] = -3
+            elif self.nan_value == "Quantize":
+                sample["metos"][c][torch.isnan(sample["metos"][c])] = -1.1
+            else:
+                sample["metos"][c][torch.isnan(sample["metos"][c])] = self.means["metos"][c] - 3 * self.stds["metos"][c]
+
         return sample
 
 
@@ -140,7 +173,10 @@ class Quantize:
                     channel_quantile = self.quantiles[key][c]
 
                     nan_free_tensor = tensor[c][~torch.isnan(tensor[c])]
-                    digitized_flattened = torch.tensor(np.digitize(nan_free_tensor, channel_quantile), dtype=torch.float)
+                    digitized_flattened = torch.tensor(
+                        np.digitize(nan_free_tensor, channel_quantile),
+                        dtype=torch.float,
+                    )
 
                     digitized_reshaped = torch.zeros(tensor[c].shape)
                     digitized_reshaped[torch.isnan(tensor[c])] = np.nan
@@ -148,7 +184,9 @@ class Quantize:
 
                     result[key] += [digitized_reshaped]
                 result[key] = torch.stack(result[key])
-                result[key] = 2 * ((result[key] / self.noq[key]) - 0.5) #rescale to [-1,1)
+                result[key] = 2 * (
+                    (result[key] / self.noq[key]) - 0.5
+                )  # rescale to [-1,1)
             else:
                 result[key] = tensor
         return result
