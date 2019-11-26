@@ -1,8 +1,6 @@
 import torch.nn as nn
 
-from src.unet_concise import UNet
-
-# from src.cloud_unet import Discriminator
+from src.unet import UNet
 from src.res_discriminator import Discriminator, MultiDiscriminator
 
 

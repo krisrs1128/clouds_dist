@@ -11,8 +11,9 @@ class UNetModule(nn.Module):
 
     def __init__(self, n_in, n_out, kernel_size=3, dropout=0.5, use_leaky=False):
         super().__init__()
-        self.conv1 = nn.Conv2d(n_in, n_out, kernel_size, padding=1)
-        self.conv2 = nn.Conv2d(n_out, n_out, kernel_size, padding=1)
+        self.conv1 = nn.Conv2d(n_in, n_out, kernel_size)
+        self.pad = nn.ReflectionPad2d(1)
+        self.conv2 = nn.Conv2d(n_out, n_out, kernel_size)
         self.activation = nn.LeakyReLU(0.2) if use_leaky else nn.ReLU()
         self.bn = nn.BatchNorm2d(n_out)
         self.drop = nn.Dropout(dropout)
@@ -20,10 +21,12 @@ class UNetModule(nn.Module):
     def forward(self, x):
         layers = nn.Sequential(
             self.conv1,
+            self.pad,
             self.bn,
             self.activation,
             self.drop,
             self.conv2,
+            self.pad,
             self.bn,
             self.activation,
             self.drop,
@@ -40,8 +43,8 @@ class UNet(nn.Module):
 
     Example
     -------
-    >>> model = UNet(42, 3)
-    >>> x = torch.randn(1, 42, 216, 216)
+    >>> model = UNet(49, 3)
+    >>> x = torch.randn(1, 49, 128, 128)
     >>> y = model(x)
     """
 
@@ -111,4 +114,3 @@ class UNet(nn.Module):
 
         out = self.conv_final(out)
         return torch.tanh(out)
-        # return torch.sigmoid(out)
