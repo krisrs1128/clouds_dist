@@ -16,11 +16,13 @@ from src.gan import GAN
 from src.optim import get_optimizers
 from src.stats import get_stats
 from src.utils import (
+    cpu_images,
     check_data_dirs,
     get_opts,
     loss_hinge_dis,
     loss_hinge_gen,
     to_0_1,
+    record_images,
     weighted_mse_loss,
 )
 
@@ -35,7 +37,6 @@ class gan_trainer:
             "g_loss_total": [],
             "d_loss": [],
         }
-        self.trial_number = 0
         self.n_epochs = n_epochs
         self.start_time = datetime.now()
         self.verbose = verbose
@@ -178,37 +179,16 @@ class gan_trainer:
         self.debug[name].prev = self.debug[name].curr
         self.debug[name].curr = var
 
-    def infer(self, batch, step, store_images, imgdir, exp):
+    def infer_(self, batch):
         real_img = batch["real_imgs"].to(self.device)
-
         input_tensor = self.get_noisy_input_tensor(batch)
-
         generated_img = self.g(input_tensor)
+        return input_tensor, real_img, generated_img
 
-        wandb_images = []
-
-        for i in range(input_tensor.shape[0]):
-            # concatenate verticaly:
-            # [3 metos, generated clouds, ground truth clouds]
-            imgs = torch.cat(
-                (
-                    to_0_1(input_tensor[i, 22:25]),
-                    to_0_1(generated_img[i]),
-                    to_0_1(real_img[i]),
-                ),
-                1,
-            )
-            imgs_cpu = imgs.cpu().clone().detach().numpy()
-            imgs_cpu = np.swapaxes(imgs_cpu, 0, 2)
-            if store_images:
-                plt.imsave(str(imgdir / f"imgs_{step}_{i}.png"), imgs_cpu)
-            if exp:
-                wandb_images.append(wandb.Image(imgs_cpu, caption=f"imgs_{step}_{i}"))
-        if exp:
-            try:
-                wandb.log({"inference_images": wandb_images}, step=step)
-            except Exception as e:
-                print(f"\n{e}\n")
+    def infer(self, batch, store_images, imgdir, exp, step, infer_ix):
+        input_tensor, real_img, generated_img = self.infer_(batch)
+        imgs = cpu_images(input_tensor, real_img, generated_img)
+        record_images(imgs, store_images, exp, imgdir, step, infer_ix)
 
     def should_save(self, steps):
         return not self.opts.train.save_every_steps or (
@@ -365,13 +345,15 @@ class gan_trainer:
 
                 if self.should_infer(self.total_steps):
                     print("\nINFERRING\n")
-                    self.infer(
-                        batch,
-                        self.total_steps,
-                        self.opts.train.store_images,
-                        self.imgdir,
-                        self.exp,
-                    )
+                    for infer_ix in range(self.opts.train.n_infer):
+                        self.infer(
+                            batch,
+                            self.opts.train.store_images,
+                            self.imgdir,
+                            self.exp,
+                            self.total_steps,
+                            infer_ix
+                        )
 
                 if self.should_save(self.total_steps):
                     print("\nSAVING\n")

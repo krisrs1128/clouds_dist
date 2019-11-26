@@ -1,11 +1,13 @@
+#!/usr/bin/env python
+from addict import Dict
 from pathlib import Path
-
+from src.cluster_utils import env_to_path
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn.functional as F
+import wandb
 import yaml
-from addict import Dict
-from src.cluster_utils import env_to_path
 
 
 def load_conf(path):
@@ -138,3 +140,40 @@ def check_data_dirs(opts):
         str(Path(opts.data.path) / "metos")
     )
     return opts
+
+
+def cpu_images(input_tensor, real_img, generated_img):
+    imgs = []
+    for i in range(input_tensor.shape[0]):
+        # concatenate verticaly:
+        # [3 metos, generated clouds, ground truth clouds]
+        img = torch.cat(
+            (
+                to_0_1(input_tensor[i, 22:25]),
+                to_0_1(generated_img[i]),
+                to_0_1(real_img[i]),
+            ),
+            1,
+        )
+        img_cpu = img.cpu().clone().detach().numpy()
+        imgs.append(np.swapaxes(img_cpu, 0, 2))
+
+    return imgs
+
+
+def record_images(imgs, store_images, exp, imgdir, step, infer_ix):
+    for i, im in enumerate(imgs):
+        im_caption = f"imgs_{i}_{step}_{infer_ix}"
+        if store_images:
+            plt.imsave(str(imgdir / im_caption) + ".png", im)
+        if exp:
+            try:
+                wandb.log({
+                    "inference": [wandb.Image(im, caption=im_caption)],
+                    "index_in_batch": i,
+                    "sample": infer_ix
+                }, step=step)
+            except Exception as e:
+                print(f"\n{e}\n")
+
+

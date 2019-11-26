@@ -26,6 +26,7 @@ train:
     matching_loss: l1 # Which matching loss to use: l2 | l1 | weighted
     n_epochs: 1000 # How many training epochs
     num_D_accumulations: 8 # How many gradients to accumulate in current batch (different geenrator predictions) before doing one discriminator optimization step
+    n_infer: 3 # How many inference samples
     save_every_steps: 5000 # How often to save  the model's weights
     store_images: false # Do you want to write infered images to disk
     offline_losses_steps: 50 # how often to log the losses with no comet logs
