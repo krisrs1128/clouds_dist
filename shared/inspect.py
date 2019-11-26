@@ -7,6 +7,7 @@ from src.stats import get_stats
 from src.utils import get_opts
 import argparse
 import numpy as np
+import pandas
 import pathlib
 import seaborn as sns
 import src.gan as gan
@@ -38,22 +39,50 @@ def infer(model, loader, model_opts, M=1000):
     return torch.cat(result)
 
 
-def histogram(x, sample_frac=0.3, out_path=None):
+def histogram(x, sample_frac=0.3, out_dir=None):
     """
     Values from Random Tensor Indices
 
     :param x: A torch tensor or arbitrary dimension
     :param sample_frac: A float specifying what fraction of indices to include
       in the histogram
-    :out_path: The directory to save the figure.
-    :return None, but saves figure.png in `out_path`
+    :out_dir: The directory to save the figure.
+    :return None, but saves figure.png in `out_dir`
     """
-    if not out_path:
-        out_path = pathlib.Path.cwd()
+    if not out_dir:
+        out_dir = pathlib.Path.cwd()
 
     x = x.numpy().flatten()
     indices = np.random.choice(len(x), int(len(x) * sample_frac))
-    sns.distplot(x[indices]).figure.savefig(pathlib.Path(out_path, "figure.png"))
+    sns.distplot(x[indices]).figuresavefig(pathlib.Path(out_dir, "histogram.png"))
+
+
+def y_scatter(y, y_hat, sample_frac=0.3, out_dir=None):
+    """
+    Scatterplot of y vs. y_hat
+
+    :param y: Pandas data frame of raw output, as saved by save_iterator
+    :param y_hat: Pandas data frame of raw predictions, as saved by
+      save_iterator
+    :param sample_frac: Proportion of pixels (across w x h x c) to keep when
+      plotting
+    :out_dir: The directory to save the outputs to.
+    """
+    if not out_dir:
+        out_dir = pathlib.Path.cwd()
+
+    y, y_hat = y.values.flatten(), y_hat.values.flatten()
+    indices = np.random.choice(len(y), int(len(y) * sample_frac))
+    p = sns.jointplot(
+        y[indices],
+        y_hat[indices],
+        color="black",
+        kind="hex",
+        bins=400,
+        gridsize=50
+    )
+    p.set_axis_labels('y', 'y_hat', fontsize=16)
+    p.savefig(pathlib.Path(out_dir, "scatterplot.png"))
 
 
 def save_line(z, f, round_level=4):
@@ -97,15 +126,17 @@ def tensor_gen(z):
         yield z[i]
 
 
-def save_iterator(iterator, out_path="x.csv", crop_ix=(124, 127), M=1000):
+def save_iterator(iterator, out_path="x.csv", crop_ix=None, M=1000):
     """
     Save Iterator to File Incrementally
     """
     with open(out_path, "w") as f:
         for m, sample in enumerate(iterator):
             if m > M: break
-            print(f"Extracting batch {m}/{M}")
-            cropped = sample[:, crop_ix[0]:crop_ix[1], crop_ix[0]:crop_ix[1]]
+            print(f"Extracting batch {m} [at most {M} will be saved]")
+            cropped = sample
+            if crop_ix:
+                cropped = cropped[:, crop_ix[0]:crop_ix[1], crop_ix[0]:crop_ix[1]]
             save_line(cropped, f)
 
 
@@ -173,4 +204,11 @@ if __name__ == '__main__':
     y_hat = infer(model, loader, opts["model"])
     save_iterator(tensor_gen(y_hat), "y_hat.csv")
     save_iterator(loader_gen(loader, "real_imgs"), "y.csv")
-    save_iterator(loader_gen(loader, "metos"), "x.csv", (120, 130))
+    save_iterator(loader_gen(loader, "metos"), "x.csv", (50, 60))
+
+    # make some plots
+    one_row = next(tensor_gen(y_hat)).numpy().flatten()
+    usecols = np.random.choice(range(len(one_row)), 2000, replace=False)
+    y = pd.read_csv("y.csv", header=None, usecols=usecols, names=range(len(one_row)))
+    y_hat = pd.read_csv("y_hat.csv", header=None, usecols=usecols, names=range(len(one_row)))
+    y_scatter(y, y_hat)
