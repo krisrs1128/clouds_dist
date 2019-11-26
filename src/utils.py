@@ -4,6 +4,7 @@ from pathlib import Path
 from src.cluster_utils import env_to_path
 import matplotlib.pyplot as plt
 import numpy as np
+import re
 import torch
 import torch.nn.functional as F
 import wandb
@@ -177,3 +178,15 @@ def record_images(imgs, store_images, exp, imgdir, step, infer_ix):
                 print(f"\n{e}\n")
 
 
+def subset_keys(D0, patterns):
+    D = D0.copy()
+    for k in list(D.keys()):
+        omit = True
+        for pattern in patterns:
+            if re.compile(pattern).match(k):
+                omit = False
+                continue
+        if omit:
+            D.pop(k)
+
+    return D

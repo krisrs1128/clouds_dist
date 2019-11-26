@@ -24,6 +24,7 @@ from src.utils import (
     to_0_1,
     record_images,
     weighted_mse_loss,
+    subset_keys,
 )
 
 torch.manual_seed(0)
@@ -60,7 +61,7 @@ class gan_trainer:
                     print("{:<30}: {:<30}".format(str(k), str(v)))
             print()
 
-    def resume(self, path=None, step_name="latest"):
+    def resume(self, path=None, step_name="latest", init_keys=["*"]):
         if path is None:
             file_path = self.ckptdir / f"state_{str(step_name)}.pt"
         else:
@@ -72,11 +73,15 @@ class gan_trainer:
             str(file_path), path, step_name
         )
 
-        state = torch.load(str(file_path))
-        self.gan.load_state_dict(state["state_dict"])
-        self.g_optimizer.load_state_dict(state["g_optimizer"])
-        self.d_optimizer.load_state_dict(state["d_optimizer"])
-        self.total_steps = state["step"]
+        chkpt = torch.load(str(file_path))
+        state = self.gan.state_dict()
+        partial_state = subset_keys(chkpt["state_dict"], init_keys)
+        state.update(partial_state)
+        self.gan.load_state_dict(state)
+
+        self.g_optimizer.load_state_dict(chkpt["g_optimizer"])
+        self.d_optimizer.load_state_dict(chkpt["d_optimizer"])
+        self.total_steps = chkpt["step"]
         self.resumed = True
         print("Loaded model from {}".format(str(file_path)))
 
@@ -144,7 +149,12 @@ class gan_trainer:
 
         if self.opts.train.init_chkpt_dir:
             chkpt_path = Path(self.opts.train.init_chkpt_dir)
-            self.resume(chkpt_path, self.opts.train.init_chkpt_step)
+            self.resume(
+                chkpt_path,
+                self.opts.train.init_chkpt_step,
+                self.opts.train.init_keys
+            )
+
 
         if self.exp:
             wandb.config.update(
