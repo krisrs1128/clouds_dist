@@ -62,7 +62,8 @@ def y_scatter(y, y_hat, sample_frac=0.3, out_dir=None):
     Scatterplot of y vs. y_hat
 
     :param y: Pandas data frame of raw output, as saved by save_iterator
-    :param y: Pandas data frame of raw predictions, as saved by save_iterator
+    :param y_hat: Pandas data frame of raw predictions, as saved by
+      save_iterator
     :param sample_frac: Proportion of pixels (across w x h x c) to keep when
       plotting
     :out_dir: The directory to save the outputs to.
