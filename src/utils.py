@@ -162,18 +162,21 @@ def cpu_images(input_tensor, real_img, generated_img):
     return imgs
 
 
-def record_images(imgs, store_images, exp, imgdir, step, infer_ix):
+def record_images(imgs, store_images, exp, imgdir, step, nb_images, val_epoch):
     for i, im in enumerate(imgs):
-        im_caption = f"imgs_{i}_{step}_{infer_ix}"
+        im_caption = f"imgs_{step}_{nb_images + i}"
         if store_images:
             plt.imsave(str(imgdir / im_caption) + ".png", im)
         if exp:
             try:
-                wandb.log({
-                    "inference": [wandb.Image(im, caption=im_caption)],
-                    "index_in_batch": i,
-                    "sample": infer_ix
-                }, step=step)
+                wandb.log(
+                    {
+                        "inference": [wandb.Image(im, caption=im_caption)],
+                        "index_in_batch": i,
+                        "sample": nb_images + i,
+                    },
+                    step=step,
+                )
             except Exception as e:
                 print(f"\n{e}\n")
 
