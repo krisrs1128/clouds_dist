@@ -194,7 +194,7 @@ def get_loader(opts, transfs=None, stats=None):
         load_limit=opts.data.load_limit or -1,
         transform=transforms.Compose(transfs),
         is_val=False,
-        val_ids=opts.data.get("val_ids", []),
+        val_ids=opts.val.get("val_ids", []),
     )
 
     valset = EarthData(
@@ -203,7 +203,7 @@ def get_loader(opts, transfs=None, stats=None):
         load_limit=opts.data.load_limit or -1,
         transform=transforms.Compose(transfs),
         is_val=True,
-        val_ids=opts.data.get("val_ids", []),
+        val_ids=opts.val.get("val_ids", []),
     )
 
     transforms_string = " -> ".join([t.__class__.__name__ for t in transfs])
