@@ -48,7 +48,6 @@ class gan_trainer:
         self.debug = Dict()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.stats = None
-        self.shape = None
 
         if self.verbose > 0:
             print("-------------------------")
@@ -215,6 +214,140 @@ class gan_trainer:
         input_tensor[:, : self.opts.model.Cin, :, :] = batch["metos"]
         return input_tensor.to(self.device)
 
+    def discriminator_step(self, batch, real_img, i):
+        d_loss = 0
+        n_acc = self.opts.train.num_D_accumulations
+        for acc in range(n_acc):
+            # ---------------------------------------------
+            # ----- Accumulate Discriminator Gradient -----
+            # ---------------------------------------------
+            self.input_tensor = self.get_noisy_input_tensor(batch)
+            generated_img = self.g(self.input_tensor)
+            if not self.opts.model.multi_disc:
+                real_prob = self.d(real_img)
+                fake_prob = self.d(generated_img.detach())
+
+                # ----------------------------------
+                # ----- Backprop Discriminator -----
+                # ----------------------------------
+                self.d_optimizer.zero_grad()
+                d_loss += loss_hinge_dis(fake_prob, real_prob) / float(n_acc)
+            else:
+                d_loss += (
+                    self.d.compute_loss(real_img, 1)
+                    + self.d.compute_loss(generated_img.detach(), 0)
+                ) / float(n_acc)
+
+        d_loss.backward()
+        if (
+                "extra" in self.opts.train.optimizer
+                or (self.total_steps) % 2 == 0
+                or i == 0
+        ):
+            self.d_optimizer.extrapolation()
+        else:
+            self.d_optimizer.step()
+
+        return generated_img, d_loss
+
+    def generator_step(self, batch, real_img, generated_img, i, matching_loss):
+        # ----------------------------
+        # ----- Generator Update -----
+        # ----------------------------
+        num_D_accumulations = self.opts.train.num_D_accumulations
+        lambda_gan = self.opts.train.lambda_gan
+        lambda_L = self.opts.train.lambda_L
+
+        self.g_optimizer.zero_grad()
+        loss = matching_loss(real_img, generated_img)
+        if num_D_accumulations > 0:
+            if not self.opts.model.multi_disc:
+                fake_prob = self.d(generated_img)
+                gan_loss = loss_hinge_gen(fake_prob)
+            else:
+                gan_loss = self.d.compute_loss(generated_img, 1)
+
+        g_loss_total = lambda_gan * gan_loss + lambda_L * loss
+        g_loss_total.backward()
+        if (
+                "extra" in self.opts.train.optimizer
+                or (self.total_steps) % 2 == 0
+                or i == 0
+        ):
+            self.g_optimizer.extrapolation()
+        else:
+            self.g_optimizer.step()
+
+        return g_loss_total, gan_loss, loss
+
+
+    def log_step(batch, stime, d_loss, g_loss_total, gan_loss, loss):
+        if self.exp:
+            wandb.log(
+                {
+                    "g/loss/total": g_loss_total.item(),
+                    "g/loss/disc": gan_loss.item(),
+                    "g/loss/matching": loss.item(),
+                    "d/loss": d_loss.item(),
+                },
+                step=self.total_steps,
+            )
+
+        if self.should_infer(self.total_steps):
+            print("\nINFERRING\n")
+            for infer_ix in range(self.opts.train.n_infer):
+                self.infer(
+                    batch,
+                    self.opts.train.store_images,
+                    self.imgdir,
+                    self.exp,
+                    self.total_steps,
+                    infer_ix
+                )
+
+        if self.should_save(self.total_steps):
+            print("\nSAVING\n")
+            self.save(self.total_steps)
+
+        t = time.time()
+        self.times.append(t - stime)
+        self.times = self.times[-100:]
+
+        if (
+            self.total_steps % self.opts.train.offline_losses_steps == 0
+            and self.exp is None
+        ):  # TODO create self.should_plot_losses()
+            self.losses["gan_loss"].append(gan_loss.item())
+            self.losses["matching_loss"].append(loss.item())
+            self.losses["g_loss_total"].append(g_loss_total.item())
+            self.losses["d_loss"].append(d_loss.item())
+            self.plot_losses(self.losses)
+
+        if self.total_steps % 10 == 0 and self.verbose > 0:
+            ep_str = "epoch:{}/{} step {}/{} ({})"
+            ep_str += " d_loss:{:0.4f} l:{:0.4f} gan_loss:{:0.4f} "
+            ep_str += (
+                "g_loss_total:{:0.4f} | t/step {:.1f} | t/ep {:.1f} | t {:.1f}"
+            )
+            print(
+                ep_str.format(
+                    epoch + 1,
+                    n_epochs,
+                    i + 1,
+                    len(self.trainloader),
+                    self.total_steps,
+                    d_loss.item(),
+                    loss.item(),
+                    gan_loss.item(),
+                    g_loss_total.item(),
+                    np.mean(self.times),
+                    t - etime,
+                    t - start_time,
+                ),
+                end="\r",
+            )
+
+
     def train(
         self, n_epochs, lambda_gan=0.01, lambda_L=1, num_D_accumulations=1, loss="l1"
     ):
@@ -237,7 +370,6 @@ class gan_trainer:
         self.times = []
         start_time = time.time()
         self.total_steps = 0
-        t = 0
         for epoch in range(n_epochs):
             # -------------------------
             # ----- Prepare Epoch -----
@@ -247,155 +379,38 @@ class gan_trainer:
             etime = time.time()
             for i, batch in enumerate(self.trainloader):
                 # --------------------------------
-                # ----- Start Step Procedure -----
+                # ----- Prepare Step Procedure -----
                 # --------------------------------
                 if i > (self.opts.train.early_break_epoch or 1e9):
                     break
                 stime = time.time()
-                self.batch = batch
 
                 if i == 0 and self.verbose > -1:
                     print("\n\nLoading time: {:.3f}".format(stime - etime))
 
-                if self.shape is None:
-                    self.shape = batch["metos"].shape
-
-                generated_img = None
+                # --------------------------------
+                # ----- Take Gradient Steps -----
+                # --------------------------------
                 real_img = batch["real_imgs"].to(device)
-                d_loss = 0
-                for acc in range(num_D_accumulations):
-                    # ---------------------------------------------
-                    # ----- Accumulate Discriminator Gradient -----
-                    # ---------------------------------------------
-                    self.input_tensor = self.get_noisy_input_tensor(batch)
-                    generated_img = self.g(self.input_tensor)
-                    if not self.opts.model.multi_disc:
-                        real_prob = self.d(real_img)
-                        fake_prob = self.d(generated_img.detach())
-
-                        # ----------------------------------
-                        # ----- Backprop Discriminator -----
-                        # ----------------------------------
-                        self.d_optimizer.zero_grad()
-                        d_loss += loss_hinge_dis(fake_prob, real_prob) / float(
-                            num_D_accumulations
-                        )
-                    else:
-                        d_loss += (
-                            self.d.compute_loss(real_img, 1)
-                            + self.d.compute_loss(generated_img.detach(), 0)
-                        ) / float(num_D_accumulations)
-
-                d_loss.backward()
-                if (
-                        "extra" in self.opts.train.optimizer
-                        or (self.total_steps) % 2 == 0
-                        or i == 0
-                ):
-                    self.d_optimizer.extrapolation()
-                else:
-                    self.d_optimizer.step()
-
-                # ----------------------------
-                # ----- Generator Update -----
-                # ----------------------------
-                self.g_optimizer.zero_grad()
-                if generated_img is None:
-                    self.input_tensor = self.get_noisy_input_tensor(batch)
-                    generated_img = self.g(self.input_tensor)
-                loss = matching_loss(real_img, generated_img)
-
-                if num_D_accumulations > 0:
-                    if not self.opts.model.multi_disc:
-                        fake_prob = self.d(generated_img)
-                        gan_loss = loss_hinge_gen(fake_prob)
-                    else:
-                        gan_loss = self.d.compute_loss(generated_img, 1)
-                else:
-                    gan_loss = torch.Tensor([-1])
-                    d_loss = torch.Tensor([-1])
-
-                g_loss_total = lambda_gan * gan_loss + lambda_L * loss
-                g_loss_total.backward()
-                if (
-                        "extra" in self.opts.train.optimizer
-                        or (self.total_steps) % 2 == 0
-                        or i == 0
-                ):
-                    self.g_optimizer.extrapolation()
-                else:
-                    self.g_optimizer.step()
-
+                generated_img, d_loss = self.discriminator_step(
+                    batch,
+                    real_img,
+                    i,
+                )
+                g_loss_total, gan_loss, loss = self.generator_step(
+                    batch,
+                    real_img,
+                    generated_img,
+                    i,
+                    matching_loss
+                )
                 self.total_steps += 1
 
                 # -------------------
                 # ----- Logging -----
                 # -------------------
+                self.log_step(batch, stime, d_loss, g_loss_total, gan_loss, loss)
 
-                if self.exp:
-                    wandb.log(
-                        {
-                            "g/loss/total": g_loss_total.item(),
-                            "g/loss/disc": gan_loss.item(),
-                            "g/loss/matching": loss.item(),
-                            "d/loss": d_loss.item(),
-                        },
-                        step=self.total_steps,
-                    )
-
-                if self.should_infer(self.total_steps):
-                    print("\nINFERRING\n")
-                    for infer_ix in range(self.opts.train.n_infer):
-                        self.infer(
-                            batch,
-                            self.opts.train.store_images,
-                            self.imgdir,
-                            self.exp,
-                            self.total_steps,
-                            infer_ix
-                        )
-
-                if self.should_save(self.total_steps):
-                    print("\nSAVING\n")
-                    self.save(self.total_steps)
-
-                t = time.time()
-                self.times.append(t - stime)
-                self.times = self.times[-100:]
-
-                if (
-                    self.total_steps % opts.train.offline_losses_steps == 0
-                    and self.exp is None
-                ):  # TODO create self.should_plot_losses()
-                    self.losses["gan_loss"].append(gan_loss.item())
-                    self.losses["matching_loss"].append(loss.item())
-                    self.losses["g_loss_total"].append(g_loss_total.item())
-                    self.losses["d_loss"].append(d_loss.item())
-                    self.plot_losses(self.losses)
-
-                if self.total_steps % 10 == 0 and self.verbose > 0:
-                    ep_str = "epoch:{}/{} step {}/{} ({})"
-                    ep_str += " d_loss:{:0.4f} l:{:0.4f} gan_loss:{:0.4f} "
-                    ep_str += (
-                        "g_loss_total:{:0.4f} | t/step {:.1f} | t/ep {:.1f} | t {:.1f}"
-                    )
-                    print(
-                        ep_str.format(
-                            epoch + 1,
-                            n_epochs,
-                            i + 1,
-                            len(self.trainloader),
-                            self.total_steps,
-                            d_loss.item(),
-                            loss.item(),
-                            gan_loss.item(),
-                            g_loss_total.item(),
-                            np.mean(self.times),
-                            t - etime,
-                            t - start_time,
-                        ),
-                        end="\r",
-                    )
             print("\nEnd of Epoch\n")
             # ------------------------
             # ----- END OF EPOCH -----
