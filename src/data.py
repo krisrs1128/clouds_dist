@@ -177,9 +177,9 @@ def get_loader(opts, transfs=None, stats=None):
         )  # make sure not to quantize and standarize at the same time
         for t in transfs:
             if "Standardize" in str(t.__class__) or "Quantize" in str(t.__class__):
-                assert (
-                    not stand_or_quant,
-                    "cannot perform quantization and standardization at the same time!",
+                assert not stand_or_quant, (
+                    "cannot perform quantization and"
+                    + " standardization at the same time!"
                 )
 
                 t.set_stats(stats)
