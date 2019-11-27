@@ -34,6 +34,7 @@ train:
     optimizer: "extraadam" # one of [adam, extrasgd, extraadam]
     init_chkpt_dir: null # can initialize from a checkpoint directory
     init_chkpt_step: "latest" # can give path to saved checkpoint
+    init_keys: ["g.down*", "models.d*"]
 # ---------------------------
 # -----    Data Conf    -----
 # ---------------------------

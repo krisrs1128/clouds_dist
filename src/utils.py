@@ -4,6 +4,7 @@ from pathlib import Path
 from src.cluster_utils import env_to_path
 import matplotlib.pyplot as plt
 import numpy as np
+import re
 import torch
 import torch.nn.functional as F
 import wandb
@@ -177,3 +178,27 @@ def record_images(imgs, store_images, exp, imgdir, step, infer_ix):
                 print(f"\n{e}\n")
 
 
+def subset_keys(D0, patterns):
+    """
+    Subset Dictionary using Regexes
+
+    We use this when we want to partially load a state dict, but want to
+    specify the parameters to keep using regexes (rather than a list of all
+    parameter names).
+
+    :param D0: A dictionary whose elements we want to subset.
+    :param patterns: A list of regex strings, specifying which keys to subset
+      down to. If a key matches any of the regexes, it is included in the
+      output dictionary.
+    """
+    D = D0.copy()
+    for k in list(D.keys()):
+        omit = True
+        for pattern in patterns:
+            if re.compile(pattern).match(k):
+                omit = False
+                continue
+        if omit:
+            D.pop(k)
+
+    return D
