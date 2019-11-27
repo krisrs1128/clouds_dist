@@ -35,15 +35,26 @@ class EarthData(Dataset):
     """
 
     def __init__(
-        self, data_dir, preprocessed_data_path=None, load_limit=-1, transform=None
+        self,
+        data_dir,
+        preprocessed_data_path=None,
+        load_limit=-1,
+        val_ids=set(),
+        is_val=False,
+        transform=None,
     ):
         super(EarthData).__init__()
         self.subsample = {}
         self.transform = transform
         self.preprocessed_data_path = preprocessed_data_path
+        self.val_ids = val_ids
+        self.is_val = is_val
 
         if preprocessed_data_path:
             data_dir = preprocessed_data_path
+
+        if not isinstance(val_ids, set):
+            val_ids = set(val_ids)
 
         self.paths = {
             "real_imgs": {
@@ -54,6 +65,20 @@ class EarthData(Dataset):
                 for g in Path(data_dir).glob("metos/*.npz")
             },
         }
+
+        self.paths = {
+            "real_imgs": {
+                k: v
+                for k, v in self.paths["real_imgs"].items()
+                if (is_val and k in val_ids) or (not is_val and k not in val_ids)
+            },
+            "metos": {
+                k: v
+                for k, v in self.paths["metos"].items()
+                if (is_val and k in val_ids) or (not is_val and k not in val_ids)
+            },
+        }
+
         self.ids = list(self.paths["real_imgs"].keys())[:load_limit]
 
         # ------------------------------------
@@ -105,10 +130,11 @@ def process_sample(data):
             data["metos"]["RH"],
             data["metos"]["Scattering_angle"].reshape(1, 256, 256),
             data["metos"]["TS"].reshape(1, 256, 256),
-            coords
+            coords,
         ]
     )
     return {"real_imgs": torch.Tensor(imgs), "metos": torch.Tensor(metos)}
+
 
 def get_nan_value(transfs):
     nan_value = "raw"
@@ -118,6 +144,7 @@ def get_nan_value(transfs):
         elif t.__class__.__name__ == "Quantize":
             nan_value = "Quantize"
     return nan_value
+
 
 def get_transforms(opts):
     transfs = []
@@ -166,6 +193,17 @@ def get_loader(opts, transfs=None, stats=None):
         preprocessed_data_path=opts.data.preprocessed_data_path,
         load_limit=opts.data.load_limit or -1,
         transform=transforms.Compose(transfs),
+        is_val=False,
+        val_ids=opts.data.get("val_ids", []),
+    )
+
+    valset = EarthData(
+        opts.data.path,
+        preprocessed_data_path=opts.data.preprocessed_data_path,
+        load_limit=opts.data.load_limit or -1,
+        transform=transforms.Compose(transfs),
+        is_val=True,
+        val_ids=opts.data.get("val_ids", []),
     )
 
     transforms_string = " -> ".join([t.__class__.__name__ for t in transfs])
@@ -175,6 +213,12 @@ def get_loader(opts, transfs=None, stats=None):
             trainset,
             batch_size=opts.train.batch_size,
             shuffle=True,
+            num_workers=opts.data.get("num_workers", 3),
+        ),
+        torch.utils.data.DataLoader(
+            valset,
+            batch_size=opts.train.batch_size,
+            shuffle=False,
             num_workers=opts.data.get("num_workers", 3),
         ),
         transforms_string,

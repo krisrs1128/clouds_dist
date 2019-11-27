@@ -29,6 +29,7 @@ from src.utils import (
 
 torch.manual_seed(0)
 
+
 class gan_trainer:
     def __init__(self, opts, exp=None, output_dir=".", n_epochs=50, verbose=1):
         self.opts = opts
@@ -110,10 +111,10 @@ class gan_trainer:
 
         self.transforms = get_transforms(self.opts)
         self.stats = get_stats(self.opts, self.transforms)
-        self.trainloader, transforms_string = get_loader(
+        self.train_loader, self.val_loader, transforms_string = get_loader(
             opts, self.transforms, self.stats
         )
-        self.trainset = self.trainloader.dataset
+        self.trainset = self.train_loader.dataset
 
         # calculate the bottleneck dimension
         if self.trainset.metos_shape[-1] % 2 ** self.opts.model.n_blocks != 0:
@@ -150,11 +151,8 @@ class gan_trainer:
         if self.opts.train.init_chkpt_dir:
             chkpt_path = Path(self.opts.train.init_chkpt_dir)
             self.resume(
-                chkpt_path,
-                self.opts.train.init_chkpt_step,
-                self.opts.train.init_keys
+                chkpt_path, self.opts.train.init_chkpt_step, self.opts.train.init_keys
             )
-
 
         if self.exp:
             wandb.config.update(
@@ -206,8 +204,8 @@ class gan_trainer:
         )
 
     def should_infer(self, steps):
-        return not self.opts.train.infer_every_steps or (
-            steps and steps % self.opts.train.infer_every_steps == 0
+        return not self.opts.val.infer_every_steps or (
+            steps and steps % self.opts.val.infer_every_steps == 0
         )
 
     def plot_losses(self, losses):
@@ -255,7 +253,7 @@ class gan_trainer:
             torch.cuda.empty_cache()
             self.gan.train()  # train mode
             etime = time.time()
-            for i, batch in enumerate(self.trainloader):
+            for i, batch in enumerate(self.train_loader):
                 # --------------------------------
                 # ----- Start Step Procedure -----
                 # --------------------------------
@@ -298,9 +296,9 @@ class gan_trainer:
 
                 d_loss.backward()
                 if (
-                        "extra" in self.opts.train.optimizer
-                        or (self.total_steps) % 2 == 0
-                        or i == 0
+                    "extra" in self.opts.train.optimizer
+                    or (self.total_steps) % 2 == 0
+                    or i == 0
                 ):
                     self.d_optimizer.extrapolation()
                 else:
@@ -328,9 +326,9 @@ class gan_trainer:
                 g_loss_total = lambda_gan * gan_loss + lambda_L * loss
                 g_loss_total.backward()
                 if (
-                        "extra" in self.opts.train.optimizer
-                        or (self.total_steps) % 2 == 0
-                        or i == 0
+                    "extra" in self.opts.train.optimizer
+                    or (self.total_steps) % 2 == 0
+                    or i == 0
                 ):
                     self.g_optimizer.extrapolation()
                 else:
@@ -355,15 +353,18 @@ class gan_trainer:
 
                 if self.should_infer(self.total_steps):
                     print("\nINFERRING\n")
-                    for infer_ix in range(self.opts.train.n_infer):
-                        self.infer(
-                            batch,
-                            self.opts.train.store_images,
-                            self.imgdir,
-                            self.exp,
-                            self.total_steps,
-                            infer_ix
-                        )
+                    self.g.eval()
+                    for val_ep in range(self.opts.val.val_epochs):
+                        for i, batch in enumerate(self.val_loader):
+                            self.infer(
+                                batch,
+                                self.opts.val.store_images,
+                                self.imgdir,
+                                self.exp,
+                                self.total_steps,
+                                val_ep,
+                            )
+                    self.g.train()
 
                 if self.should_save(self.total_steps):
                     print("\nSAVING\n")
@@ -394,7 +395,7 @@ class gan_trainer:
                             epoch + 1,
                             n_epochs,
                             i + 1,
-                            len(self.trainloader),
+                            len(self.train_loader),
                             self.total_steps,
                             d_loss.item(),
                             loss.item(),
