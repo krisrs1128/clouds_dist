@@ -13,7 +13,7 @@ from src.preprocessing import (
     Resize,
     Quantize,
 )
-
+import pdb
 
 class EarthData(Dataset):
     """
@@ -80,7 +80,7 @@ class EarthData(Dataset):
         }
 
         self.ids = list(self.paths["real_imgs"].keys())[:load_limit]
-
+        pdb.set_trace()
         # ------------------------------------
         # ----- Infer Data Size for Unet -----
         # ------------------------------------
