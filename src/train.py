@@ -280,7 +280,6 @@ class gan_trainer:
 
         return g_loss_total, gan_loss, loss
 
-
     def log_step(self, batch, stime, d_loss, g_loss_total, gan_loss, loss):
         if self.exp:
             wandb.log(
@@ -346,7 +345,6 @@ class gan_trainer:
                 ),
                 end="\r",
             )
-
 
     def train(
         self, n_epochs, lambda_gan=0.01, lambda_L=1, num_D_accumulations=1, loss="l1"
