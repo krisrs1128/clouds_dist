@@ -2,7 +2,7 @@
 from pathlib import Path
 import numpy as np
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Sampler
 from torchvision import transforms
 from src.preprocessing import (
     ClipReflectance,
@@ -211,12 +211,14 @@ def get_loader(opts, transfs=None, stats=None):
             trainset,
             batch_size=opts.train.batch_size,
             shuffle=True,
+            #sampler=torch.utils.data.SubsetRandomSampler([0]*45),
             num_workers=opts.data.get("num_workers", 3),
         ),
         torch.utils.data.DataLoader(
             valset,
             batch_size=opts.train.batch_size,
             shuffle=False,
+            #sampler=torch.utils.data.SubsetRandomSampler([0]*5),
             num_workers=opts.data.get("num_workers", 3),
         ),
         transforms_string,

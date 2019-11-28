@@ -357,15 +357,17 @@ class gan_trainer:
                     for val_ep in range(self.opts.val.val_epochs):
                         nb_images = 0
                         for i, batch in enumerate(self.val_loader):
-                            self.infer(
-                                batch,
-                                self.opts.val.store_images,
-                                self.imgdir,
-                                self.exp,
-                                self.total_steps,
-                                nb_images,
-                                val_ep,
-                            )
+                            torch.cuda.empty_cache()
+                            with torch.no_grad():
+                                self.infer(
+                                    batch,
+                                    self.opts.val.store_images,
+                                    self.imgdir,
+                                    self.exp,
+                                    self.total_steps,
+                                    nb_images,
+                                    val_ep,
+                                )
                             nb_images += len(batch)
                     self.g.train()
 
