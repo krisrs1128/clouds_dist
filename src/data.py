@@ -152,7 +152,7 @@ class LowClouds(Dataset):
 
         if self.transform:
             data = self.transform(data)
-        return data, self.ids[i]
+        return data
 
 
 def parse_dates(s):
