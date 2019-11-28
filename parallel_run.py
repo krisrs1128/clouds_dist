@@ -7,16 +7,6 @@ import subprocess
 import yaml
 
 
-def get_git_revision_hash():
-    return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
-
-
-def write_hash(run_dir):
-    run_dir = Path(run_dir)
-    with Path(run_dir / "hash.txt").open("w") as f:
-        f.write(get_git_revision_hash())
-
-
 def get_template(param, conf_path, run_dir, name):
 
     zip_command = ""
@@ -266,7 +256,6 @@ if __name__ == "__main__":
         param["config"]["data"]["original_path"] = original_data_path
 
         conf_path = write_conf(run_dir, param)  # returns Path() from pathlib
-        write_hash(run_dir)
 
         if "main_partitions" in opts and opts.main_partitions > i:
             param["sbatch"]["use_main_partition"] = True

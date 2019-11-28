@@ -21,10 +21,10 @@ from src.utils import (
     get_opts,
     loss_hinge_dis,
     loss_hinge_gen,
-    to_0_1,
     record_images,
     weighted_mse_loss,
     subset_keys,
+    write_hash
 )
 
 torch.manual_seed(0)
@@ -474,6 +474,8 @@ if __name__ == "__main__":
 
     if not output_path.exists():
         output_path.mkdir()
+
+    write_hash(output_path)
 
     # --------------------
     # ----- Get Opts -----
