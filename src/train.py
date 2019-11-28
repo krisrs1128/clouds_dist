@@ -29,6 +29,7 @@ from src.utils import (
 
 torch.manual_seed(0)
 
+
 class gan_trainer:
     def __init__(self, opts, exp=None, output_dir=".", n_epochs=50, verbose=1):
         self.opts = opts
@@ -150,11 +151,8 @@ class gan_trainer:
         if self.opts.train.init_chkpt_dir:
             chkpt_path = Path(self.opts.train.init_chkpt_dir)
             self.resume(
-                chkpt_path,
-                self.opts.train.init_chkpt_step,
-                self.opts.train.init_keys
+                chkpt_path, self.opts.train.init_chkpt_step, self.opts.train.init_keys
             )
-
 
         if self.exp:
             wandb.config.update(
@@ -297,10 +295,8 @@ class gan_trainer:
                         ) / float(num_D_accumulations)
 
                     d_loss.backward()
-                if (
-                        "extra" in self.opts.train.optimizer
-                        or (self.total_steps) % 2 == 0
-                        or i == 0
+                if "extra" in self.opts.train.optimizer and (
+                    self.total_steps % 2 == 0 or i == 0
                 ):
                     self.d_optimizer.extrapolation()
                 else:
@@ -328,9 +324,9 @@ class gan_trainer:
                 g_loss_total = lambda_gan * gan_loss + lambda_L * loss
                 g_loss_total.backward()
                 if (
-                        "extra" in self.opts.train.optimizer
-                        or (self.total_steps) % 2 == 0
-                        or i == 0
+                    "extra" in self.opts.train.optimizer
+                    or (self.total_steps) % 2 == 0
+                    or i == 0
                 ):
                     self.g_optimizer.extrapolation()
                 else:
@@ -362,7 +358,7 @@ class gan_trainer:
                             self.imgdir,
                             self.exp,
                             self.total_steps,
-                            infer_ix
+                            infer_ix,
                         )
 
                 if self.should_save(self.total_steps):
