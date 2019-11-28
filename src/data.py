@@ -130,7 +130,7 @@ class LowClouds(Dataset):
         }
 
         # some metadata
-        files = [np.load(Path(data_dir, "files.npy"))]
+        files = np.load(Path(data_dir, "files.npy"))
         self.ids = [Path(str(f)).name for f in files]
         self.metadata = [{"id": s, "date": parse_dates(s)} for s in self.ids]
         self.transform = transform
@@ -156,8 +156,14 @@ class LowClouds(Dataset):
 
 def parse_dates(s):
     pattern = "(20[0-9][0-9])([0-9][0-9])([0-9]+).([0-9][0-9])([0-9][0-9])" # regexr.com/4ponn
-    groups = (int(g) for g in re.search(pattern, s).groups())
-    return datetime.datetime(*groups)
+    groups = [int(g) for g in re.search(pattern, s).groups()]
+    try:
+        groups[1], groups[2] = groups[2], groups[1] # month and day are swapped
+        result = datetime.datetime(*groups)
+    except:
+        result = np.nan
+
+    return result
 
 
 def get_nan_value(transfs):
