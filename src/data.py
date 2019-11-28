@@ -16,6 +16,7 @@ from src.preprocessing import (
     Quantize,
 )
 
+
 class EarthData(Dataset):
     """
     Earth Clouds / Metereology Data
@@ -105,7 +106,7 @@ def process_sample(data):
             data["metos"]["RH"],
             data["metos"]["Scattering_angle"].reshape(1, 256, 256),
             data["metos"]["TS"].reshape(1, 256, 256),
-            coords
+            coords,
         ]
     )
     return {"real_imgs": torch.Tensor(imgs), "metos": torch.Tensor(metos)}
@@ -123,11 +124,13 @@ class LowClouds(Dataset):
     -------
     >>> clouds = LowClouds("/scratch/sankarak/data/low_clouds/")
     """
-    def __init__(self, data_dir, load_limit=-1, preprocessed_data_path=None,
-                 transform=None):
+
+    def __init__(
+        self, data_dir, load_limit=-1, preprocessed_data_path=None, transform=None
+    ):
         self.data = {
             "metos": np.load(Path(data_dir, "meto.npy")),
-            "real_imgs": np.load(Path(data_dir, "train.npy"))
+            "real_imgs": np.load(Path(data_dir, "train.npy")),
         }
 
         # some metadata
@@ -147,7 +150,7 @@ class LowClouds(Dataset):
     def __getitem__(self, i):
         data = {
             "metos": self.data["metos"][:, i],
-            "real_imgs": self.data["real_imgs"][:, :, i]
+            "real_imgs": self.data["real_imgs"][:, :, i],
         }
 
         if self.transform:
@@ -156,10 +159,12 @@ class LowClouds(Dataset):
 
 
 def parse_dates(s):
-    pattern = "(20[0-9][0-9])([0-9][0-9])([0-9]+).([0-9][0-9])([0-9][0-9])" # regexr.com/4ponn
+    pattern = (
+        "(20[0-9][0-9])([0-9][0-9])([0-9]+).([0-9][0-9])([0-9][0-9])"
+    )  # regexr.com/4ponn
     groups = [int(g) for g in re.search(pattern, s).groups()]
     try:
-        groups[1], groups[2] = groups[2], groups[1] # month and day are swapped
+        groups[1], groups[2] = groups[2], groups[1]  # month and day are swapped
         result = datetime.datetime(*groups)
     except:
         result = np.nan
@@ -175,6 +180,7 @@ def get_nan_value(transfs):
         elif t.__class__.__name__ == "Quantize":
             nan_value = "Quantize"
     return nan_value
+
 
 def get_transforms(opts):
     transfs = []
@@ -202,15 +208,14 @@ def get_transforms(opts):
 def get_loader(opts, transfs=None, stats=None):
     if stats is not None:
 
-        stand_or_quant = (
-            False
-        )  # make sure not to quantize and standarize at the same time
+        # make sure not to quantize and standarize at the same time
+        stand_or_quant = False
         for t in transfs:
             if "Standardize" in str(t.__class__) or "Quantize" in str(t.__class__):
-                assert (
-                    not stand_or_quant,
-                    "cannot perform quantization and standardization at the same time!",
-                )
+                if stand_or_quant:
+                    raise ValueError(
+                        "cannot perform both quantization AND standardization"
+                    )
 
                 t.set_stats(stats)
                 stand_or_quant = True
@@ -222,12 +227,15 @@ def get_loader(opts, transfs=None, stats=None):
         "data_dir": opts.data.path,
         "preprocessed_data_path": opts.data.preprocessed_data_path,
         "load_limit": opts.data.load_limit or -1,
-        "transform": transforms.Compose(transfs)
+        "transform": transforms.Compose(transfs),
     }
-    assert(
-        opts.data.cloud_type in ["global", "local"],
-        "Cloud type must be either 'global' or 'local'"
-    )
+    if opts.data.cloud_type not in {"global", "local"}:
+        raise ValueError(
+            "Cloud type must be either 'global' or 'local', got {}".format(
+                opts.data.cloud_type
+            )
+        )
+
     if opts.data.cloud_type == "global":
         trainset = EarthData(**dataset_args)
     else:
