@@ -38,10 +38,8 @@ class gan_trainer:
             "d_loss": [],
         }
         self.n_epochs = n_epochs
-        self.start_time = datetime.now()
         self.verbose = verbose
         self.resumed = False
-        self.timestamp = self.start_time.strftime("%Y_%m_%d_%H_%M_%S")
         self.results = []
         self.exp = exp
         self.output_dir = Path(output_dir)
@@ -280,7 +278,8 @@ class gan_trainer:
 
         return g_loss_total, gan_loss, loss
 
-    def log_step(self, batch, stime, d_loss, g_loss_total, gan_loss, loss):
+    def log_step(self, batch, i, epoch, stime, etime, d_loss, g_loss_total,
+                 gan_loss, loss):
         if self.exp:
             wandb.log(
                 {
@@ -331,7 +330,7 @@ class gan_trainer:
             print(
                 ep_str.format(
                     epoch + 1,
-                    n_epochs,
+                    self.opts.train.n_epochs,
                     i + 1,
                     len(self.trainloader),
                     self.total_steps,
@@ -341,9 +340,9 @@ class gan_trainer:
                     g_loss_total.item(),
                     np.mean(self.times),
                     t - etime,
-                    t - start_time,
+                    t - self.start_time,
                 ),
-                end="\r",
+                end="",
             )
 
     def train(
@@ -366,7 +365,7 @@ class gan_trainer:
             print("----- Starting training -----")
             print("-----------------------------")
         self.times = []
-        start_time = time.time()
+        self.start_time = time.time()
         self.total_steps = 0
         for epoch in range(n_epochs):
             # -------------------------
@@ -407,7 +406,17 @@ class gan_trainer:
                 # -------------------
                 # ----- Logging -----
                 # -------------------
-                self.log_step(batch, stime, d_loss, g_loss_total, gan_loss, loss)
+                self.log_step(
+                    batch,
+                    i,
+                    epoch,
+                    stime,
+                    etime,
+                    d_loss,
+                    g_loss_total,
+                    gan_loss,
+                    loss
+                )
 
             print("\nEnd of Epoch\n")
             # ------------------------
