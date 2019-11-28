@@ -124,7 +124,7 @@ class LowClouds(Dataset):
     >>> clouds = LowClouds("/scratch/sankarak/data/low_clouds/")
     """
     def __init__(self, data_dir, load_limit=-1, preprocessed_data_path=None,
-                 transform=None):
+                 transforms=None):
         self.data = {
             "metos": np.load(Path(data_dir, "meto.npy")),
             "real_imgs": np.load(Path(data_dir, "train.npy"))
@@ -134,7 +134,7 @@ class LowClouds(Dataset):
         files = np.load(Path(data_dir, "files.npy"))
         self.ids = [Path(str(f)).name for f in files]
         self.metadata = [{"id": s, "date": parse_dates(s)} for s in self.ids]
-        self.transform = transform
+        self.transforms = transforms
 
         if load_limit != -1:
             self.ids = self.ids[:load_limit]
@@ -150,8 +150,8 @@ class LowClouds(Dataset):
             "real_imgs": self.data["real_imgs"][:, :, i]
         }
 
-        if self.transform:
-            data = self.transform(data)
+        if self.transforms:
+            data = self.transforms(data)
         return data, self.ids[i]
 
 
