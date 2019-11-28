@@ -233,7 +233,9 @@ def get_loader(opts, transfs=None, stats=None):
     else:
         trainset = LowClouds(**dataset_args)
 
-    transforms_string = " -> ".join([t.__class__.__name__ for t in transfs])
+    transforms_string = ""
+    if transfs:
+        transforms_string += " -> ".join([t.__class__.__name__ for t in transfs])
 
     return (
         torch.utils.data.DataLoader(
