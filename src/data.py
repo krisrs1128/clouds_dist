@@ -123,7 +123,8 @@ class LowClouds(Dataset):
     -------
     >>> clouds = LowClouds("/scratch/sankarak/data/low_clouds/")
     """
-    def __init__(self, data_dir, load_limit=-1, transform=None):
+    def __init__(self, data_dir, load_limit=-1, preprocessed_data_path=None,
+                 transform=None):
         self.data = {
             "metos": np.load(Path(data_dir, "meto.npy")),
             "real_imgs": np.load(Path(data_dir, "train.npy"))
@@ -217,14 +218,24 @@ def get_loader(opts, transfs=None, stats=None):
             if "ReplaceNans" in str(t.__class__):
                 t.set_stats(stats)
 
-    trainset = EarthData(
-        opts.data.path,
-        preprocessed_data_path=opts.data.preprocessed_data_path,
-        load_limit=opts.data.load_limit or -1,
-        transform=transforms.Compose(transfs),
+    dataset_args = {
+        "data_dir": opts.data.path,
+        "preprocessed_data_path": opts.data.preprocessed_data_path,
+        "load_limit": opts.data.load_limit or -1,
+        "transform": transforms.Compose(transfs)
+    }
+    assert(
+        opts.data.cloud_type in ["global", "local"],
+        "Cloud type must be either 'global' or 'local'"
     )
+    if opts.data.cloud_type == "global":
+        trainset = EarthData(**dataset_args)
+    else:
+        trainset = LowClouds(**dataset_args)
 
-    transforms_string = " -> ".join([t.__class__.__name__ for t in transfs])
+    transforms_string = ""
+    if transfs:
+        transforms_string += " -> ".join([t.__class__.__name__ for t in transfs])
 
     return (
         torch.utils.data.DataLoader(
