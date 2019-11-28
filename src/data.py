@@ -231,15 +231,14 @@ def get_transforms(opts):
 def get_loader(opts, transfs=None, stats=None):
     if stats is not None:
 
-        stand_or_quant = (
-            False
-        )  # make sure not to quantize and standarize at the same time
+        # make sure not to quantize and standarize at the same time
+        stand_or_quant = False
         for t in transfs:
             if "Standardize" in str(t.__class__) or "Quantize" in str(t.__class__):
-                assert not stand_or_quant, (
-                    "cannot perform quantization and"
-                    + " standardization at the same time!"
-                )
+                if stand_or_quant:
+                    raise ValueError(
+                        "cannot perform both quantization AND standardization"
+                    )
 
                 t.set_stats(stats)
                 stand_or_quant = True

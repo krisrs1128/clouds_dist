@@ -284,6 +284,7 @@ class gan_trainer:
                 generated_img = None
                 real_img = batch["real_imgs"].to(device)
                 d_loss = 0
+                self.d_optimizer.zero_grad()
                 for acc in range(num_D_accumulations):
                     # ---------------------------------------------
                     # ----- Accumulate Discriminator Gradient -----
@@ -297,7 +298,6 @@ class gan_trainer:
                         # ----------------------------------
                         # ----- Backprop Discriminator -----
                         # ----------------------------------
-                        self.d_optimizer.zero_grad()
                         d_loss += loss_hinge_dis(fake_prob, real_prob) / float(
                             num_D_accumulations
                         )
@@ -307,11 +307,11 @@ class gan_trainer:
                             + self.d.compute_loss(generated_img.detach(), 0)
                         ) / float(num_D_accumulations)
 
-                d_loss.backward()
-                if (
-                    "extra" in self.opts.train.optimizer
-                    or (self.total_steps) % 2 == 0
-                    or i == 0
+
+                    d_loss.backward()
+
+                if "extra" in self.opts.train.optimizer and (
+                    self.total_steps % 2 == 0 or i == 0
                 ):
                     self.d_optimizer.extrapolation()
                 else:
