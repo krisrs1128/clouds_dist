@@ -157,7 +157,7 @@ def cpu_images(input_tensor, real_img, generated_img):
             ),
             -1,
         )
-        img_cpu = img.permute((1,2,0)).cpu().clone().detach().numpy()
+        img_cpu = img.permute((1, 2, 0)).cpu().clone().detach().numpy()
         imgs.append(img_cpu)
 
     return imgs
@@ -213,3 +213,15 @@ def write_hash(run_dir):
     run_dir = Path(run_dir)
     with Path(run_dir / "hash.txt").open("w") as f:
         f.write(get_git_revision_hash())
+
+
+def all_distances(b):
+    distances = []
+    normalizing = np.sqrt(b[0].numel())
+    for i, im_i in enumerate(b):
+        for j in range(i):
+            distances += [
+                torch.norm(im_i.reshape(-1) - b[j].reshape(-1)) / normalizing
+            ]
+
+    return distances
