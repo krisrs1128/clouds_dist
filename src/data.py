@@ -4,7 +4,7 @@ import datetime
 import numpy as np
 import re
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Sampler
 from torchvision import transforms
 from src.preprocessing import (
     ClipReflectance,
@@ -37,14 +37,24 @@ class EarthData(Dataset):
     """
 
     def __init__(
-        self, data_dir, preprocessed_data_path=None, load_limit=-1, transform=None
+        self,
+        data_dir,
+        preprocessed_data_path=None,
+        load_limit=-1,
+        val_ids=set(),
+        is_val=False,
+        transform=None,
     ):
         super(EarthData).__init__()
         self.transform = transform
         self.preprocessed_data_path = preprocessed_data_path
+        self.val_ids = val_ids
+        self.is_val = is_val
 
         if preprocessed_data_path:
             data_dir = preprocessed_data_path
+
+        val_ids = set(str(v) for v in val_ids)
 
         self.paths = {
             "real_imgs": {
@@ -55,8 +65,21 @@ class EarthData(Dataset):
                 for g in Path(data_dir).glob("metos/*.npz")
             },
         }
-        self.ids = list(self.paths["real_imgs"].keys())[:load_limit]
 
+        self.paths = {
+            "real_imgs": {
+                k: v
+                for k, v in self.paths["real_imgs"].items()
+                if (is_val and k in val_ids) or (not is_val and k not in val_ids)
+            },
+            "metos": {
+                k: v
+                for k, v in self.paths["metos"].items()
+                if (is_val and k in val_ids) or (not is_val and k not in val_ids)
+            },
+        }
+
+        self.ids = list(self.paths["real_imgs"].keys())[:load_limit]
         # ------------------------------------
         # ----- Infer Data Size for Unet -----
         # ------------------------------------
@@ -229,6 +252,7 @@ def get_loader(opts, transfs=None, stats=None):
         "load_limit": opts.data.load_limit or -1,
         "transform": transforms.Compose(transfs),
     }
+
     if opts.data.cloud_type not in {"global", "local"}:
         raise ValueError(
             "Cloud type must be either 'global' or 'local', got {}".format(
@@ -237,9 +261,19 @@ def get_loader(opts, transfs=None, stats=None):
         )
 
     if opts.data.cloud_type == "global":
-        trainset = EarthData(**dataset_args)
+        trainset = EarthData(
+            **dataset_args, is_val=False, val_ids=opts.val.get("val_ids", [])
+        )
+        valset = EarthData(
+            **dataset_args, is_val=True, val_ids=opts.val.get("val_ids", [])
+        )
     else:
-        trainset = LowClouds(**dataset_args)
+        trainset = LowClouds(
+            **dataset_args, is_val=False, val_ids=opts.val.get("val_ids", [])
+        )
+        valset = LowClouds(
+            **dataset_args, is_val=True, val_ids=opts.val.get("val_ids", [])
+        )
 
     transforms_string = ""
     if transfs:
@@ -250,6 +284,14 @@ def get_loader(opts, transfs=None, stats=None):
             trainset,
             batch_size=opts.train.batch_size,
             shuffle=True,
+            # sampler=torch.utils.data.SubsetRandomSampler([0]*45),
+            num_workers=opts.data.get("num_workers", 3),
+        ),
+        torch.utils.data.DataLoader(
+            valset,
+            batch_size=opts.train.batch_size,
+            shuffle=False,
+            # sampler=torch.utils.data.SubsetRandomSampler([0]*5),
             num_workers=opts.data.get("num_workers", 3),
         ),
         transforms_string,

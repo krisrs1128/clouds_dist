@@ -9,6 +9,7 @@ import torch
 import torch.nn.functional as F
 import wandb
 import yaml
+import subprocess
 
 
 def load_conf(path):
@@ -154,28 +155,28 @@ def cpu_images(input_tensor, real_img, generated_img):
                 to_0_1(generated_img[i]),
                 to_0_1(real_img[i]),
             ),
-            1,
+            -1,
         )
-        img_cpu = img.cpu().clone().detach().numpy()
-        imgs.append(np.swapaxes(img_cpu, 0, 2))
+        img_cpu = img.permute((1, 2, 0)).cpu().clone().detach().numpy()
+        imgs.append(img_cpu)
 
     return imgs
 
 
-def record_images(imgs, store_images, exp, imgdir, step, infer_ix):
+def record_images(imgs, store_images, exp, imgdir, step, nb_images):
+    wandb_images = []
     for i, im in enumerate(imgs):
-        im_caption = f"imgs_{i}_{step}_{infer_ix}"
+        im_caption = f"imgs_{step}_{nb_images + i}"
         if store_images:
             plt.imsave(str(imgdir / im_caption) + ".png", im)
         if exp:
-            try:
-                wandb.log({
-                    "inference": [wandb.Image(im, caption=im_caption)],
-                    "index_in_batch": i,
-                    "sample": infer_ix
-                }, step=step)
-            except Exception as e:
-                print(f"\n{e}\n")
+
+            wandb_images.append(wandb.Image(im, caption=im_caption))
+    if exp:
+        try:
+            wandb.log({"validation_images": wandb_images}, step=step)
+        except Exception as e:
+            print(f"\n{e}\n")
 
 
 def subset_keys(D0, patterns):
@@ -202,3 +203,25 @@ def subset_keys(D0, patterns):
             D.pop(k)
 
     return D
+
+
+def get_git_revision_hash():
+    return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
+
+
+def write_hash(run_dir):
+    run_dir = Path(run_dir)
+    with Path(run_dir / "hash.txt").open("w") as f:
+        f.write(get_git_revision_hash())
+
+
+def all_distances(b):
+    distances = []
+    normalizing = np.sqrt(b[0].numel())
+    for i, im_i in enumerate(b):
+        for j in range(i):
+            distances += [
+                torch.norm(im_i.reshape(-1) - b[j].reshape(-1)) / normalizing
+            ]
+
+    return distances

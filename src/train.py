@@ -16,15 +16,16 @@ from src.gan import GAN
 from src.optim import get_optimizers
 from src.stats import get_stats
 from src.utils import (
+    all_distances,
     cpu_images,
     check_data_dirs,
     get_opts,
     loss_hinge_dis,
     loss_hinge_gen,
-    to_0_1,
     record_images,
     weighted_mse_loss,
     subset_keys,
+    write_hash,
 )
 
 torch.manual_seed(0)
@@ -111,10 +112,10 @@ class gan_trainer:
 
         self.transforms = get_transforms(self.opts)
         self.stats = get_stats(self.opts, self.transforms)
-        self.trainloader, transforms_string = get_loader(
+        self.train_loader, self.val_loader, transforms_string = get_loader(
             opts, self.transforms, self.stats
         )
-        self.trainset = self.trainloader.dataset
+        self.trainset = self.train_loader.dataset
 
         # calculate the bottleneck dimension
         if self.trainset.metos_shape[-1] % 2 ** self.opts.model.n_blocks != 0:
@@ -143,6 +144,8 @@ class gan_trainer:
                     "g_num_trainable_params": sum(
                         p.numel() for p in self.g.parameters() if p.requires_grad
                     ),
+                    "val_samples": len(self.val_loader.dataset),
+                    "train_samples": len(self.train_loader.dataset),
                 }
             )
 
@@ -187,16 +190,26 @@ class gan_trainer:
         self.debug[name].prev = self.debug[name].curr
         self.debug[name].curr = var
 
-    def infer_(self, batch):
+    def infer_(self, batch, nb_of_inferences):
         real_img = batch["real_imgs"].to(self.device)
-        input_tensor = self.get_noisy_input_tensor(batch)
-        generated_img = self.g(input_tensor)
+        generated_img = None
+        for i in range(nb_of_inferences):
+            input_tensor = self.get_noisy_input_tensor(batch)
+            gen = self.g(input_tensor)
+            if generated_img is None:
+                generated_img = gen
+            else:
+                generated_img = torch.cat([generated_img, gen], dim=-1)
+
         return input_tensor, real_img, generated_img
 
-    def infer(self, batch, store_images, imgdir, exp, step, infer_ix):
-        input_tensor, real_img, generated_img = self.infer_(batch)
+    def infer(
+        self, batch, store_images, imgdir, exp, step, nb_images, nb_of_inferences
+    ):
+        input_tensor, real_img, generated_img = self.infer_(batch, nb_of_inferences)
         imgs = cpu_images(input_tensor, real_img, generated_img)
-        record_images(imgs, store_images, exp, imgdir, step, infer_ix)
+        record_images(imgs, store_images, exp, imgdir, step, nb_images)
+        return generated_img
 
     def should_save(self, steps):
         return not self.opts.train.save_every_steps or (
@@ -204,8 +217,8 @@ class gan_trainer:
         )
 
     def should_infer(self, steps):
-        return not self.opts.train.infer_every_steps or (
-            steps and steps % self.opts.train.infer_every_steps == 0
+        return not self.opts.val.infer_every_steps or (
+            steps and steps % self.opts.val.infer_every_steps == 0
         )
 
     def plot_losses(self, losses):
@@ -253,7 +266,7 @@ class gan_trainer:
             torch.cuda.empty_cache()
             self.gan.train()  # train mode
             etime = time.time()
-            for i, batch in enumerate(self.trainloader):
+            for i, batch in enumerate(self.train_loader):
                 # --------------------------------
                 # ----- Start Step Procedure -----
                 # --------------------------------
@@ -294,7 +307,9 @@ class gan_trainer:
                             + self.d.compute_loss(generated_img.detach(), 0)
                         ) / float(num_D_accumulations)
 
+
                     d_loss.backward()
+
                 if "extra" in self.opts.train.optimizer and (
                     self.total_steps % 2 == 0 or i == 0
                 ):
@@ -351,15 +366,47 @@ class gan_trainer:
 
                 if self.should_infer(self.total_steps):
                     print("\nINFERRING\n")
-                    for infer_ix in range(self.opts.train.n_infer):
-                        self.infer(
-                            batch,
-                            self.opts.train.store_images,
-                            self.imgdir,
-                            self.exp,
-                            self.total_steps,
-                            infer_ix,
-                        )
+                    self.g.eval()
+                    nb_images = 0
+                    self.val_distances = []
+                    with torch.no_grad():
+                        for i, batch in enumerate(self.val_loader):
+                            # batch x channels x height x (nb_of_inferences * width)
+                            generated_imgs = self.infer(
+                                batch,
+                                self.opts.val.store_images,
+                                self.imgdir,
+                                self.exp,
+                                self.total_steps,
+                                nb_images,
+                                self.opts.val.nb_of_inferences,
+                            )
+                            for gen_im in generated_imgs:
+                                self.val_distances += all_distances(
+                                    torch.split(
+                                        gen_im,
+                                        gen_im.shape[-1]
+                                        // self.opts.val.nb_of_inferences,
+                                        -1,
+                                    )
+                                )
+                        self.val_distances = [d.item() for d in self.val_distances]
+                        iqd = np.quantile(self.val_distances, (0.25, 0.75))
+                        iqd = iqd[1] - iqd[0]
+                        nb_images += len(batch)
+                        mean = np.mean(self.val_distances)
+                        std = np.std(self.val_distances)
+                        if self.exp:
+                            wandb.log(
+                                {
+                                    "val_sample_dist_iqd": iqd,
+                                    "val_sample_dist_mean": mean,
+                                    "val_sample_dist_std": std,
+                                },
+                                step=self.total_steps,
+                            )
+
+                    self.g.train()
 
                 if self.should_save(self.total_steps):
                     print("\nSAVING\n")
@@ -390,7 +437,7 @@ class gan_trainer:
                             epoch + 1,
                             n_epochs,
                             i + 1,
-                            len(self.trainloader),
+                            len(self.train_loader),
                             self.total_steps,
                             d_loss.item(),
                             loss.item(),
@@ -453,7 +500,13 @@ if __name__ == "__main__":
         type=str,
         help="if resuming, the existing exp id to continue",
     )
-    parser.add_argument("-n", "--no_exp", default=False, action="store_true")
+    parser.add_argument(
+        "-n",
+        "--no_exp",
+        default=False,
+        action="store_true",
+        help="Don't start an experiment for this run",
+    )
     parsed_opts = parser.parse_args()
 
     # ---------------------------
@@ -464,6 +517,8 @@ if __name__ == "__main__":
 
     if not output_path.exists():
         output_path.mkdir()
+
+    write_hash(output_path)
 
     # --------------------
     # ----- Get Opts -----
