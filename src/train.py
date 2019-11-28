@@ -187,16 +187,23 @@ class gan_trainer:
         self.debug[name].prev = self.debug[name].curr
         self.debug[name].curr = var
 
-    def infer_(self, batch):
+    def infer_(self, batch, nb_of_inferences):
         real_img = batch["real_imgs"].to(self.device)
-        input_tensor = self.get_noisy_input_tensor(batch)
-        generated_img = self.g(input_tensor)
+        generated_img = None
+        for i in range(nb_of_inferences):
+            input_tensor = self.get_noisy_input_tensor(batch)
+            gen = self.g(input_tensor)
+            if generated_img is None:
+                generated_img = gen
+            else:
+                generated_img = torch.cat([generated_img, gen], dim=-1)
+            
         return input_tensor, real_img, generated_img
 
-    def infer(self, batch, store_images, imgdir, exp, step, nb_images, val_epoch):
-        input_tensor, real_img, generated_img = self.infer_(batch)
+    def infer(self, batch, store_images, imgdir, exp, step, nb_images, nb_of_inferences):
+        input_tensor, real_img, generated_img = self.infer_(batch, nb_of_inferences)
         imgs = cpu_images(input_tensor, real_img, generated_img)
-        record_images(imgs, store_images, exp, imgdir, step, nb_images, val_epoch)
+        record_images(imgs, store_images, exp, imgdir, step, nb_images)
 
     def should_save(self, steps):
         return not self.opts.train.save_every_steps or (
@@ -354,21 +361,20 @@ class gan_trainer:
                 if self.should_infer(self.total_steps):
                     print("\nINFERRING\n")
                     self.g.eval()
-                    for val_ep in range(self.opts.val.val_epochs):
-                        nb_images = 0
+                    nb_images = 0
+                    with torch.no_grad():
                         for i, batch in enumerate(self.val_loader):
-                            torch.cuda.empty_cache()
-                            with torch.no_grad():
-                                self.infer(
-                                    batch,
-                                    self.opts.val.store_images,
-                                    self.imgdir,
-                                    self.exp,
-                                    self.total_steps,
-                                    nb_images,
-                                    val_ep,
-                                )
-                            nb_images += len(batch)
+                        
+                            self.infer(
+                                batch,
+                                self.opts.val.store_images,
+                                self.imgdir,
+                                self.exp,
+                                self.total_steps,
+                                nb_images,
+                                self.opts.val.nb_of_inferences,
+                            )
+                        nb_images += len(batch)
                     self.g.train()
 
                 if self.should_save(self.total_steps):

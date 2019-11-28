@@ -155,15 +155,15 @@ def cpu_images(input_tensor, real_img, generated_img):
                 to_0_1(generated_img[i]),
                 to_0_1(real_img[i]),
             ),
-            1,
+            -1,
         )
-        img_cpu = img.cpu().clone().detach().numpy()
-        imgs.append(np.swapaxes(img_cpu, 0, 2))
+        img_cpu = img.permute((1,2,0)).cpu().clone().detach().numpy()
+        imgs.append(img_cpu)
 
     return imgs
 
 
-def record_images(imgs, store_images, exp, imgdir, step, nb_images, val_epoch):
+def record_images(imgs, store_images, exp, imgdir, step, nb_images):
     wandb_images = []
     for i, im in enumerate(imgs):
         im_caption = f"imgs_{step}_{nb_images + i}"
