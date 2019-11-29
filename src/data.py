@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 from pathlib import Path
+import datetime
 import numpy as np
+import re
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Sampler
 from torchvision import transforms
 from src.preprocessing import (
     ClipReflectance,
@@ -35,15 +37,24 @@ class EarthData(Dataset):
     """
 
     def __init__(
-        self, data_dir, preprocessed_data_path=None, load_limit=-1, transform=None
+        self,
+        data_dir,
+        preprocessed_data_path=None,
+        load_limit=-1,
+        val_ids=set(),
+        is_val=False,
+        transform=None,
     ):
         super(EarthData).__init__()
-        self.subsample = {}
         self.transform = transform
         self.preprocessed_data_path = preprocessed_data_path
+        self.val_ids = val_ids
+        self.is_val = is_val
 
         if preprocessed_data_path:
             data_dir = preprocessed_data_path
+
+        val_ids = set(str(v) for v in val_ids)
 
         self.paths = {
             "real_imgs": {
@@ -54,8 +65,21 @@ class EarthData(Dataset):
                 for g in Path(data_dir).glob("metos/*.npz")
             },
         }
-        self.ids = list(self.paths["real_imgs"].keys())[:load_limit]
 
+        self.paths = {
+            "real_imgs": {
+                k: v
+                for k, v in self.paths["real_imgs"].items()
+                if (is_val and k in val_ids) or (not is_val and k not in val_ids)
+            },
+            "metos": {
+                k: v
+                for k, v in self.paths["metos"].items()
+                if (is_val and k in val_ids) or (not is_val and k not in val_ids)
+            },
+        }
+
+        self.ids = list(self.paths["real_imgs"].keys())[:load_limit]
         # ------------------------------------
         # ----- Infer Data Size for Unet -----
         # ------------------------------------
@@ -105,10 +129,71 @@ def process_sample(data):
             data["metos"]["RH"],
             data["metos"]["Scattering_angle"].reshape(1, 256, 256),
             data["metos"]["TS"].reshape(1, 256, 256),
-            coords
+            coords,
         ]
     )
     return {"real_imgs": torch.Tensor(imgs), "metos": torch.Tensor(metos)}
+
+
+class LowClouds(Dataset):
+    """
+    Low Clouds / Metereology Data
+
+    Each index corresponds to one 128 x 128 low cloud image, along with 8
+    meteorological variables. A separate metadata field stores parsed
+    information from the filenames.
+
+    Example
+    -------
+    >>> clouds = LowClouds("/scratch/sankarak/data/low_clouds/")
+    """
+
+    def __init__(
+        self, data_dir, load_limit=-1, preprocessed_data_path=None, transform=None
+    ):
+        self.data = {
+            "metos": np.load(Path(data_dir, "meto.npy")),
+            "real_imgs": np.load(Path(data_dir, "train.npy")),
+        }
+
+        # some metadata
+        files = np.load(Path(data_dir, "files.npy"))
+        self.ids = [Path(str(f)).name for f in files]
+        self.metadata = [{"id": s, "date": parse_dates(s)} for s in self.ids]
+        self.transform = transform
+
+        if load_limit != -1:
+            self.ids = self.ids[:load_limit]
+            self.data["metos"] = self.data["metos"][:load_limit]
+            self.data["real_imgs"] = self.data["real_imgs"][:load_limit]
+
+    def __len__(self):
+        return len(self.ids)
+
+    def __getitem__(self, i):
+        data = {
+            "metos": self.data["metos"][:, i],
+            "real_imgs": self.data["real_imgs"][:, :, i],
+        }
+
+        if self.transform:
+            data = self.transform(data)
+        return data
+
+
+def parse_dates(s):
+    pattern = (
+        "(20[0-9][0-9])([0-9][0-9])([0-9]+).([0-9][0-9])([0-9][0-9])"
+    )  # regexr.com/4ponn
+    groups = [int(g) for g in re.search(pattern, s).groups()]
+    try:
+        groups[1], groups[2] = groups[2], groups[1]  # month and day are swapped
+        result = datetime.datetime(*groups)
+    except:
+        result = np.nan
+
+    return result
+
 
 def get_nan_value(transfs):
     nan_value = "raw"
@@ -118,6 +203,7 @@ def get_nan_value(transfs):
         elif t.__class__.__name__ == "Quantize":
             nan_value = "Quantize"
     return nan_value
+
 
 def get_transforms(opts):
     transfs = []
@@ -145,15 +231,14 @@ def get_transforms(opts):
 def get_loader(opts, transfs=None, stats=None):
     if stats is not None:
 
-        stand_or_quant = (
-            False
-        )  # make sure not to quantize and standarize at the same time
+        # make sure not to quantize and standarize at the same time
+        stand_or_quant = False
         for t in transfs:
             if "Standardize" in str(t.__class__) or "Quantize" in str(t.__class__):
-                assert (
-                    not stand_or_quant,
-                    "cannot perform quantization and standardization at the same time!",
-                )
+                if stand_or_quant:
+                    raise ValueError(
+                        "cannot perform both quantization AND standardization"
+                    )
 
                 t.set_stats(stats)
                 stand_or_quant = True
@@ -161,20 +246,52 @@ def get_loader(opts, transfs=None, stats=None):
             if "ReplaceNans" in str(t.__class__):
                 t.set_stats(stats)
 
-    trainset = EarthData(
-        opts.data.path,
-        preprocessed_data_path=opts.data.preprocessed_data_path,
-        load_limit=opts.data.load_limit or -1,
-        transform=transforms.Compose(transfs),
-    )
+    dataset_args = {
+        "data_dir": opts.data.path,
+        "preprocessed_data_path": opts.data.preprocessed_data_path,
+        "load_limit": opts.data.load_limit or -1,
+        "transform": transforms.Compose(transfs),
+    }
 
-    transforms_string = " -> ".join([t.__class__.__name__ for t in transfs])
+    if opts.data.cloud_type not in {"global", "local"}:
+        raise ValueError(
+            "Cloud type must be either 'global' or 'local', got {}".format(
+                opts.data.cloud_type
+            )
+        )
+
+    if opts.data.cloud_type == "global":
+        trainset = EarthData(
+            **dataset_args, is_val=False, val_ids=opts.val.get("val_ids", [])
+        )
+        valset = EarthData(
+            **dataset_args, is_val=True, val_ids=opts.val.get("val_ids", [])
+        )
+    else:
+        trainset = LowClouds(
+            **dataset_args, is_val=False, val_ids=opts.val.get("val_ids", [])
+        )
+        valset = LowClouds(
+            **dataset_args, is_val=True, val_ids=opts.val.get("val_ids", [])
+        )
+
+    transforms_string = ""
+    if transfs:
+        transforms_string += " -> ".join([t.__class__.__name__ for t in transfs])
 
     return (
         torch.utils.data.DataLoader(
             trainset,
             batch_size=opts.train.batch_size,
             shuffle=True,
+            # sampler=torch.utils.data.SubsetRandomSampler([0]*45),
+            num_workers=opts.data.get("num_workers", 3),
+        ),
+        torch.utils.data.DataLoader(
+            valset,
+            batch_size=opts.train.batch_size,
+            shuffle=False,
+            # sampler=torch.utils.data.SubsetRandomSampler([0]*5),
             num_workers=opts.data.get("num_workers", 3),
         ),
         transforms_string,

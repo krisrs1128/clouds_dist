@@ -18,7 +18,9 @@ model:
 train:
     batch_size: 8
     early_break_epoch: 0 # Break an epoch loop after early_break_epoch steps in this epoch
-    infer_every_steps: 1000 # How often to infer validation images
+    init_chkpt_dir: null # can initialize from a checkpoint directory
+    init_chkpt_step: "latest" # can give path to saved checkpoint
+    init_keys: ["g.down*", "models.d*"]
     lambda_gan: 1 # Gan loss scaling constant
     lambda_L: 1 # Matching loss scaling constant
     lr_d: 0.0001 # Discriminator's learning rate
@@ -26,19 +28,24 @@ train:
     matching_loss: l1 # Which matching loss to use: l2 | l1 | weighted
     n_epochs: 1000 # How many training epochs
     num_D_accumulations: 8 # How many gradients to accumulate in current batch (different geenrator predictions) before doing one discriminator optimization step
-    n_infer: 3 # How many inference samples
-    save_every_steps: 5000 # How often to save  the model's weights
-    store_images: false # Do you want to write infered images to disk
     offline_losses_steps: 50 # how often to log the losses with no comet logs
-    use_extragradient_optimizer: true # >>DEPRECATED: use optimizer instead<< use ExtragradientSGD or Adam(betas=(0.5, 0.999))
     optimizer: "extraadam" # one of [adam, extrasgd, extraadam]
-    init_chkpt_dir: null # can initialize from a checkpoint directory
-    init_chkpt_step: "latest" # can give path to saved checkpoint
+    save_every_steps: 5000 # How often to save  the model's weights
+    use_extragradient_optimizer: true # >>DEPRECATED: use optimizer instead<< use ExtragradientSGD or Adam(betas=(0.5, 0.999))
+# ------------------------
+# -----  Validation  -----
+# ------------------------
+val:
+    val_ids: [20160206043121, 20160218203424, 20160508113106, 20160529201452, 20161104134057]
+    val_epochs: 3
+    infer_every_steps: 1000 # How often to infer validation images
+    store_images: false # Do you want to write infered images to disk
 # ---------------------------
 # -----    Data Conf    -----
 # ---------------------------
 data:
     path: "/scratch/sankarak/data/clouds/" # Where's the data?
+    cloud_type: "global" # global = earth, local = low_clouds
     preprocessed_data_path: null # If you set this path to something != null, it will override the "data" path
     num_workers: 12 # How many workers for the dataloader
     with_stats: true # Normalize with stats? Computed before the training loop if no using preprocessed data
@@ -47,4 +54,3 @@ data:
     crop_to_inner_square: false # crop metos and imgs to the size of the real_img's inner square
     clip_reflectance: 0.9 # set to -1 not to use this transform
     noq: null # if it's not None quantize the data to no_of_quantiles
-

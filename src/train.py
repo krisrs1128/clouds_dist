@@ -16,17 +16,21 @@ from src.gan import GAN
 from src.optim import get_optimizers
 from src.stats import get_stats
 from src.utils import (
+    all_distances,
     cpu_images,
     check_data_dirs,
     get_opts,
     loss_hinge_dis,
+    optim_step,
     loss_hinge_gen,
-    to_0_1,
     record_images,
     weighted_mse_loss,
+    subset_keys,
+    write_hash,
 )
 
 torch.manual_seed(0)
+
 
 class gan_trainer:
     def __init__(self, opts, exp=None, output_dir=".", n_epochs=50, verbose=1):
@@ -57,7 +61,7 @@ class gan_trainer:
                     print("{:<30}: {:<30}".format(str(k), str(v)))
             print()
 
-    def resume(self, path=None, step_name="latest"):
+    def resume(self, path=None, step_name="latest", init_keys=["*"]):
         if path is None:
             file_path = self.ckptdir / f"state_{str(step_name)}.pt"
         else:
@@ -69,11 +73,15 @@ class gan_trainer:
             str(file_path), path, step_name
         )
 
-        state = torch.load(str(file_path))
-        self.gan.load_state_dict(state["state_dict"])
-        self.g_optimizer.load_state_dict(state["g_optimizer"])
-        self.d_optimizer.load_state_dict(state["d_optimizer"])
-        self.total_steps = state["step"]
+        chkpt = torch.load(str(file_path))
+        state = self.gan.state_dict()
+        partial_state = subset_keys(chkpt["state_dict"], init_keys)
+        state.update(partial_state)
+        self.gan.load_state_dict(state)
+
+        self.g_optimizer.load_state_dict(chkpt["g_optimizer"])
+        self.d_optimizer.load_state_dict(chkpt["d_optimizer"])
+        self.total_steps = chkpt["step"]
         self.resumed = True
         print("Loaded model from {}".format(str(file_path)))
 
@@ -102,10 +110,10 @@ class gan_trainer:
 
         self.transforms = get_transforms(self.opts)
         self.stats = get_stats(self.opts, self.transforms)
-        self.trainloader, transforms_string = get_loader(
+        self.train_loader, self.val_loader, transforms_string = get_loader(
             opts, self.transforms, self.stats
         )
-        self.trainset = self.trainloader.dataset
+        self.trainset = self.train_loader.dataset
 
         # calculate the bottleneck dimension
         if self.trainset.metos_shape[-1] % 2 ** self.opts.model.n_blocks != 0:
@@ -134,6 +142,8 @@ class gan_trainer:
                     "g_num_trainable_params": sum(
                         p.numel() for p in self.g.parameters() if p.requires_grad
                     ),
+                    "val_samples": len(self.val_loader.dataset),
+                    "train_samples": len(self.train_loader.dataset),
                 }
             )
 
@@ -141,7 +151,9 @@ class gan_trainer:
 
         if self.opts.train.init_chkpt_dir:
             chkpt_path = Path(self.opts.train.init_chkpt_dir)
-            self.resume(chkpt_path, self.opts.train.init_chkpt_step)
+            self.resume(
+                chkpt_path, self.opts.train.init_chkpt_step, self.opts.train.init_keys
+            )
 
         if self.exp:
             wandb.config.update(
@@ -176,16 +188,26 @@ class gan_trainer:
         self.debug[name].prev = self.debug[name].curr
         self.debug[name].curr = var
 
-    def infer_(self, batch):
+    def infer_(self, batch, nb_of_inferences):
         real_img = batch["real_imgs"].to(self.device)
-        input_tensor = self.get_noisy_input_tensor(batch)
-        generated_img = self.g(input_tensor)
+        generated_img = None
+        for i in range(nb_of_inferences):
+            input_tensor = self.get_noisy_input_tensor(batch)
+            gen = self.g(input_tensor)
+            if generated_img is None:
+                generated_img = gen
+            else:
+                generated_img = torch.cat([generated_img, gen], dim=-1)
+
         return input_tensor, real_img, generated_img
 
-    def infer(self, batch, store_images, imgdir, exp, step, infer_ix):
-        input_tensor, real_img, generated_img = self.infer_(batch)
+    def infer(
+        self, batch, store_images, imgdir, exp, step, nb_images, nb_of_inferences
+    ):
+        input_tensor, real_img, generated_img = self.infer_(batch, nb_of_inferences)
         imgs = cpu_images(input_tensor, real_img, generated_img)
-        record_images(imgs, store_images, exp, imgdir, step, infer_ix)
+        record_images(imgs, store_images, exp, imgdir, step, nb_images)
+        return generated_img
 
     def should_save(self, steps):
         return not self.opts.train.save_every_steps or (
@@ -193,8 +215,8 @@ class gan_trainer:
         )
 
     def should_infer(self, steps):
-        return not self.opts.train.infer_every_steps or (
-            steps and steps % self.opts.train.infer_every_steps == 0
+        return not self.opts.val.infer_every_steps or (
+            steps and steps % self.opts.val.infer_every_steps == 0
         )
 
     def plot_losses(self, losses):
@@ -214,8 +236,8 @@ class gan_trainer:
 
     def discriminator_step(self, batch, real_img, i):
         d_loss = 0
-        n_acc = self.opts.train.num_D_accumulations
-        for acc in range(n_acc):
+        self.d_optimizer.zero_grad()
+        for acc in range(num_D_accumulations):
             # ---------------------------------------------
             # ----- Accumulate Discriminator Gradient -----
             # ---------------------------------------------
@@ -228,80 +250,109 @@ class gan_trainer:
                 # ----------------------------------
                 # ----- Backprop Discriminator -----
                 # ----------------------------------
-                self.d_optimizer.zero_grad()
-                d_loss += loss_hinge_dis(fake_prob, real_prob) / float(n_acc)
+                d_loss += loss_hinge_dis(fake_prob, real_prob) / float(
+                    num_D_accumulations
+                )
             else:
                 d_loss += (
                     self.d.compute_loss(real_img, 1)
                     + self.d.compute_loss(generated_img.detach(), 0)
-                ) / float(n_acc)
+                ) / float(num_D_accumulations)
 
-        d_loss.backward()
-        if (
-                "extra" in self.opts.train.optimizer
-                or (self.total_steps) % 2 == 0
-                or i == 0
-        ):
-            self.d_optimizer.extrapolation()
-        else:
-            self.d_optimizer.step()
 
+            d_loss.backward()
+
+        self.d.optimizer = optim_step(
+            self.d.optimizer,
+            self.opts.train.optimizer,
+            self.total_steps,
+            i
+        )
         return generated_img, d_loss
 
     def generator_step(self, batch, real_img, generated_img, i, matching_loss):
         # ----------------------------
         # ----- Generator Update -----
         # ----------------------------
-        num_D_accumulations = self.opts.train.num_D_accumulations
-        lambda_gan = self.opts.train.lambda_gan
-        lambda_L = self.opts.train.lambda_L
-
         self.g_optimizer.zero_grad()
+        if generated_img is None:
+            self.input_tensor = self.get_noisy_input_tensor(batch)
+            generated_img = self.g(self.input_tensor)
         loss = matching_loss(real_img, generated_img)
+
         if num_D_accumulations > 0:
             if not self.opts.model.multi_disc:
                 fake_prob = self.d(generated_img)
                 gan_loss = loss_hinge_gen(fake_prob)
             else:
                 gan_loss = self.d.compute_loss(generated_img, 1)
+        else:
+            gan_loss = torch.Tensor([-1])
+            d_loss = torch.Tensor([-1])
 
         g_loss_total = lambda_gan * gan_loss + lambda_L * loss
         g_loss_total.backward()
-        if (
-                "extra" in self.opts.train.optimizer
-                or (self.total_steps) % 2 == 0
-                or i == 0
-        ):
-            self.g_optimizer.extrapolation()
-        else:
-            self.g_optimizer.step()
-
+        self.g.optimizer = optim_step(
+            self.g.optimizer,
+            self.opts.train.optimizer,
+            self.total_steps,
+            i
+        )
         return g_loss_total, gan_loss, loss
 
     def log_step(self, batch, i, epoch, stime, etime, d_loss, g_loss_total,
                  gan_loss, loss):
         if self.exp:
-            wandb.log(
-                {
-                    "g/loss/total": g_loss_total.item(),
-                    "g/loss/disc": gan_loss.item(),
-                    "g/loss/matching": loss.item(),
-                    "d/loss": d_loss.item(),
-                },
-                step=self.total_steps,
-            )
+            wandb.log({
+                "g/loss/total": g_loss_total.item(),
+                "g/loss/disc": gan_loss.item(),
+                "g/loss/matching": loss.item(),
+                "d/loss": d_loss.item(),
+            }, step=self.total_steps)
 
         if self.should_infer(self.total_steps):
             print("\nINFERRING\n")
-            for infer_ix in range(self.opts.train.n_infer):
-                self.infer(
-                    batch,
-                    self.opts.train.store_images,
-                    self.imgdir,
-                    self.exp,
-                    self.total_steps,
-                    infer_ix
-                )
+            self.g.eval()
+            nb_images = 0
+            self.val_distances = []
+            with torch.no_grad():
+                for i, batch in enumerate(self.val_loader):
+                    # batch x channels x height x (nb_of_inferences * width)
+                    generated_imgs = self.infer(
+                        batch,
+                        self.opts.val.store_images,
+                        self.imgdir,
+                        self.exp,
+                        self.total_steps,
+                        nb_images,
+                        self.opts.val.nb_of_inferences,
+                    )
+                    for gen_im in generated_imgs:
+                        self.val_distances += all_distances(
+                            torch.split(
+                                gen_im,
+                                gen_im.shape[-1]
+                                // self.opts.val.nb_of_inferences,
+                                -1,
+                            )
+                        )
+                self.val_distances = [d.item() for d in self.val_distances]
+                iqd = np.quantile(self.val_distances, (0.25, 0.75))
+                iqd = iqd[1] - iqd[0]
+                nb_images += len(batch)
+                mean = np.mean(self.val_distances)
+                std = np.std(self.val_distances)
+                if self.exp:
+                    wandb.log(
+                        {
+                            "val_sample_dist_iqd": iqd,
+                            "val_sample_dist_mean": mean,
+                            "val_sample_dist_std": std,
+                        },
+                        step=self.total_steps,
+                    )
+
+            self.g.train()
 
         if self.should_save(self.total_steps):
             print("\nSAVING\n")
@@ -312,7 +363,7 @@ class gan_trainer:
         self.times = self.times[-100:]
 
         if (
-            self.total_steps % self.opts.train.offline_losses_steps == 0
+            self.total_steps % opts.train.offline_losses_steps == 0
             and self.exp is None
         ):  # TODO create self.should_plot_losses()
             self.losses["gan_loss"].append(gan_loss.item())
@@ -330,9 +381,9 @@ class gan_trainer:
             print(
                 ep_str.format(
                     epoch + 1,
-                    self.opts.train.n_epochs,
+                    n_epochs,
                     i + 1,
-                    len(self.trainloader),
+                    len(self.train_loader),
                     self.total_steps,
                     d_loss.item(),
                     loss.item(),
@@ -340,9 +391,9 @@ class gan_trainer:
                     g_loss_total.item(),
                     np.mean(self.times),
                     t - etime,
-                    t - self.start_time,
+                    t - start_time,
                 ),
-                end="",
+                end="\r",
             )
 
     def train(
@@ -374,7 +425,7 @@ class gan_trainer:
             torch.cuda.empty_cache()
             self.gan.train()  # train mode
             etime = time.time()
-            for i, batch in enumerate(self.trainloader):
+            for i, batch in enumerate(self.train_loader):
                 # --------------------------------
                 # ----- Prepare Step Procedure -----
                 # --------------------------------
@@ -401,6 +452,7 @@ class gan_trainer:
                     i,
                     matching_loss
                 )
+
                 self.total_steps += 1
 
                 # -------------------
@@ -417,12 +469,6 @@ class gan_trainer:
                     gan_loss,
                     loss
                 )
-
-            print("\nEnd of Epoch\n")
-            # ------------------------
-            # ----- END OF EPOCH -----
-            # ------------------------
-
 
 if __name__ == "__main__":
     # -------------------------
@@ -469,7 +515,13 @@ if __name__ == "__main__":
         type=str,
         help="if resuming, the existing exp id to continue",
     )
-    parser.add_argument("-n", "--no_exp", default=False, action="store_true")
+    parser.add_argument(
+        "-n",
+        "--no_exp",
+        default=False,
+        action="store_true",
+        help="Don't start an experiment for this run",
+    )
     parsed_opts = parser.parse_args()
 
     # ---------------------------
@@ -480,6 +532,8 @@ if __name__ == "__main__":
 
     if not output_path.exists():
         output_path.mkdir()
+
+    write_hash(output_path)
 
     # --------------------
     # ----- Get Opts -----
