@@ -15,19 +15,7 @@ from src.data import get_loader, get_transforms
 from src.gan import GAN
 from src.optim import get_optimizers
 from src.stats import get_stats
-from src.utils import (
-    all_distances,
-    cpu_images,
-    check_data_dirs,
-    get_opts,
-    loss_hinge_dis,
-    optim_step,
-    loss_hinge_gen,
-    record_images,
-    weighted_mse_loss,
-    subset_keys,
-    write_hash,
-)
+import src.utils as utils
 
 torch.manual_seed(0)
 
@@ -75,7 +63,7 @@ class gan_trainer:
 
         chkpt = torch.load(str(file_path))
         state = self.gan.state_dict()
-        partial_state = subset_keys(chkpt["state_dict"], init_keys)
+        partial_state = utils.subset_keys(chkpt["state_dict"], init_keys)
         state.update(partial_state)
         self.gan.load_state_dict(state)
 
@@ -205,8 +193,8 @@ class gan_trainer:
         self, batch, store_images, imgdir, exp, step, nb_images, nb_of_inferences
     ):
         input_tensor, real_img, generated_img = self.infer_(batch, nb_of_inferences)
-        imgs = cpu_images(input_tensor, real_img, generated_img)
-        record_images(imgs, store_images, exp, imgdir, step, nb_images)
+        imgs = utils.cpu_images(input_tensor, real_img, generated_img)
+        utils.record_images(imgs, store_images, exp, imgdir, step, nb_images)
         return generated_img
 
     def should_save(self, steps):
@@ -237,7 +225,8 @@ class gan_trainer:
     def discriminator_step(self, batch, real_img, i):
         d_loss = 0
         self.d_optimizer.zero_grad()
-        for acc in range(num_D_accumulations):
+        nd_acc = self.opts.train.num_D_accumulations
+        for acc in range(nd_acc):
             # ---------------------------------------------
             # ----- Accumulate Discriminator Gradient -----
             # ---------------------------------------------
@@ -250,20 +239,17 @@ class gan_trainer:
                 # ----------------------------------
                 # ----- Backprop Discriminator -----
                 # ----------------------------------
-                d_loss += loss_hinge_dis(fake_prob, real_prob) / float(
-                    num_D_accumulations
-                )
+                d_loss += utils.loss_hinge_dis(fake_prob, real_prob) / float(nd_acc)
             else:
                 d_loss += (
                     self.d.compute_loss(real_img, 1)
                     + self.d.compute_loss(generated_img.detach(), 0)
-                ) / float(num_D_accumulations)
+                ) / float(nd_acc)
 
 
-            d_loss.backward()
-
-        self.d.optimizer = optim_step(
-            self.d.optimizer,
+        d_loss.backward()
+        self.d_optimizer = utils.optim_step(
+            self.d_optimizer,
             self.opts.train.optimizer,
             self.total_steps,
             i
@@ -282,14 +268,16 @@ class gan_trainer:
 
         if not self.opts.model.multi_disc:
             fake_prob = self.d(generated_img)
-            gan_loss = loss_hinge_gen(fake_prob)
+            gan_loss = utils.loss_hinge_gen(fake_prob)
         else:
             gan_loss = self.d.compute_loss(generated_img, 1)
 
-        g_loss_total = lambda_gan * gan_loss + lambda_L * loss
+        g_loss_total = self.opts.train.lambda_gan * gan_loss + \
+                       self.opts.train.lambda_L * loss
+
         g_loss_total.backward()
-        self.g.optimizer = optim_step(
-            self.g.optimizer,
+        self.g_optimizer = utils.optim_step(
+            self.g_optimizer,
             self.opts.train.optimizer,
             self.total_steps,
             i
@@ -324,7 +312,7 @@ class gan_trainer:
                         self.opts.val.nb_of_inferences,
                     )
                     for gen_im in generated_imgs:
-                        self.val_distances += all_distances(
+                        self.val_distances += utils.all_distances(
                             torch.split(
                                 gen_im,
                                 gen_im.shape[-1]
@@ -377,7 +365,7 @@ class gan_trainer:
             print(
                 ep_str.format(
                     epoch + 1,
-                    n_epochs,
+                    self.opts.train.n_epochs,
                     i + 1,
                     len(self.train_loader),
                     self.total_steps,
@@ -387,7 +375,7 @@ class gan_trainer:
                     g_loss_total.item(),
                     np.mean(self.times),
                     t - etime,
-                    t - start_time,
+                    t - stime,
                 ),
                 end="\r",
             )
@@ -402,7 +390,7 @@ class gan_trainer:
         matching_loss = (
             nn.L1Loss()
             if loss == "l1"
-            else weighted_mse_loss
+            else utils.weighted_mse_loss
             if loss == "weighted"
             else nn.MSELoss()
         )
@@ -529,19 +517,19 @@ if __name__ == "__main__":
     if not output_path.exists():
         output_path.mkdir()
 
-    write_hash(output_path)
+    utils.write_hash(output_path)
 
     # --------------------
     # ----- Get Opts -----
     # --------------------
 
-    opts = get_opts(parsed_opts.conf_name)
+    opts = utils.get_opts(parsed_opts.conf_name)
 
     # ----------------------------------
     # ----- Check Data Directories -----
     # ----------------------------------
 
-    opts = check_data_dirs(opts)
+    opts = utils.check_data_dirs(opts)
 
     # -----------------------------
     # -----  Configure wandb  -----
