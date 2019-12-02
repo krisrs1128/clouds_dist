@@ -223,7 +223,7 @@ class gan_trainer:
         return input_tensor.to(self.device)
 
     def discriminator_step(self, batch, i):
-        real_img = batch["real_imgs"].to(device)
+        real_img = batch["real_imgs"].to(self.device)
         d_loss = 0
         self.d_optimizer.zero_grad()
         nd_acc = self.opts.train.num_D_accumulations
@@ -271,7 +271,7 @@ class gan_trainer:
         else:
             gan_loss = self.d.compute_loss(generated_img, 1)
 
-        loss = matching_loss(batch["real_imgs"].to(device), generated_img)
+        loss = matching_loss(batch["real_imgs"].to(self.device), generated_img)
         g_loss_total = self.opts.train.lambda_gan * gan_loss + \
                        self.opts.train.lambda_L * loss
 
@@ -394,7 +394,6 @@ class gan_trainer:
             if loss == "weighted"
             else nn.MSELoss()
         )
-        device = self.device
         if self.verbose > 0:
             print("-----------------------------")
             print("----- Starting training -----")
