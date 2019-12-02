@@ -39,7 +39,9 @@ val:
     val_ids: [20160206043121, 20160218203424, 20160508113106, 20160529201452, 20161104134057]
     val_epochs: 3
     infer_every_steps: 1000 # How often to infer validation images
-    store_images: false # Do you want to write infered images to disk
+    store_images: false # Do you want to write inferred images to disk
+    nb_of_inferences: 3 # no of inferences (generated imgs) per validation sample (input + real_img)
+
 # ---------------------------
 # -----    Data Conf    -----
 # ---------------------------
