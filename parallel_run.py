@@ -5,6 +5,7 @@ import argparse
 import os
 import subprocess
 import yaml
+import re
 
 
 def get_template(param, conf_path, run_dir, name):
@@ -271,5 +272,9 @@ if __name__ == "__main__":
         with file.open("w") as f:
             f.write(template)
         if not opts.test_mode:
-            print(subprocess.check_output(f"sbatch {str(file)}", shell=True))
+            exec_result = str(subprocess.check_output(f"sbatch {str(file)}", shell=True))
+            print(exec_result)
+            job_id = re.search("\d+", exec_result).group() if re.match(".*Submitted batch job*", str(exec_result)) else ""
+            new_name = re.search(".*\.",str(file)).group()[:-1]+"-job_id-"+job_id+".sh"
+            os.rename(str(file), new_name)
         print("In", str(run_dir), "\n")
