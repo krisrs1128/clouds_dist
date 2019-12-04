@@ -4,7 +4,7 @@ import datetime
 import numpy as np
 import re
 import torch
-from torch.utils.data import Dataset, Sampler
+from torch.utils.data import Dataset
 from torchvision import transforms
 from src.preprocessing import (
     ClipReflectance,
@@ -231,7 +231,7 @@ def get_transforms(opts):
 def get_loader(opts, transfs=None, stats=None):
     if stats is not None:
 
-        # make sure not to quantize and standarize at the same time
+        # make sure not to quantize and standardize at the same time
         stand_or_quant = False
         for t in transfs:
             if "Standardize" in str(t.__class__) or "Quantize" in str(t.__class__):
