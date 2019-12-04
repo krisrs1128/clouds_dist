@@ -96,7 +96,8 @@ def get_template(param, conf_path, run_dir, name):
 
             echo "Starting job"
 
-            singularity exec --nv --bind {param["config"]["data"]["path"]},{str(run_dir)},{str(param["config"]["train"]["init_chkpt_dir"])}\\
+            singularity exec --nv --bind {param["config"]["data"]["path"]},{str(run_dir)}\\
+                    {","+str(param["config"]["train"]["init_chkpt_dir"]) if param["config"]["train"]["init_chkpt_dir"] else "" }\\
                     {","+param["config"]["data"]["preprocessed_data_path"] if param["config"]["data"]["preprocessed_data_path"] else "" }\\
                     {sbp["singularity_path"]}\\
                     python3 -m src.train \\
@@ -233,6 +234,10 @@ if __name__ == "__main__":
                     "train": {
                         **default_yaml["train"],
                         **(p["config"]["train"] if "train" in p["config"] else {}),
+                    },
+                    "val": {
+                        **default_yaml["val"],
+                        **(p["config"]["val"] if "val" in p["config"] else {}),
                     },
                     "data": {
                         **default_yaml["data"],

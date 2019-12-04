@@ -4,6 +4,7 @@ import datetime
 import numpy as np
 import re
 import torch
+from itertools import compress
 from torch.utils.data import Dataset
 from torchvision import transforms
 from src.preprocessing import (
@@ -149,16 +150,37 @@ class LowClouds(Dataset):
     """
 
     def __init__(
-        self, data_dir, load_limit=-1, preprocessed_data_path=None, transform=None
+            self,
+            data_dir,
+            preprocessed_data_path=None,
+            load_limit=-1,
+            val_ids=set([]),
+            is_val=False,
+            transform=None
     ):
+        super(LowClouds).__init__()
+
+        # validation logic
+        files = np.load(Path(data_dir, "files.npy"))
+        self.ids = [Path(str(f)).name for f in files]
+        self.ids = [re.search("([0-9]+.*)(?=_Block)", f).group() for f in self.ids]
+        self.val_ids = val_ids
+        self.is_val = is_val
+        val_ids = set(str(v) for v in val_ids)
+
+        if is_val:
+            subset_ix = [s in val_ids for s in self.ids]
+        else:
+            subset_ix = [s not in val_ids for s in self.ids]
+
+        # read data and subset
+        self.ids = list(compress(self.ids, subset_ix))
         self.data = {
-            "metos": np.load(Path(data_dir, "meto.npy")),
-            "real_imgs": np.load(Path(data_dir, "train.npy")),
+            "metos": np.load(Path(data_dir, "meto.npy")).transpose((1, 0))[subset_ix],
+            "real_imgs": np.load(Path(data_dir, "train.npy")).transpose((2, 0, 1))[subset_ix],
         }
 
         # some metadata
-        files = np.load(Path(data_dir, "files.npy"))
-        self.ids = [Path(str(f)).name for f in files]
         self.metadata = [{"id": s, "date": parse_dates(s)} for s in self.ids]
         self.transform = transform
 
@@ -172,8 +194,8 @@ class LowClouds(Dataset):
 
     def __getitem__(self, i):
         data = {
-            "metos": self.data["metos"][:, i],
-            "real_imgs": self.data["real_imgs"][:, :, i],
+            "metos": self.data["metos"][i],
+            "real_imgs": self.data["real_imgs"][i],
         }
 
         if self.transform:
