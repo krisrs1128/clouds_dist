@@ -5,7 +5,7 @@ model:
     n_blocks: 5 # Number of Unet Blocks (total nb of blocks is therefore 2 * n_blocks)
     filter_factors: null # list, scale factors ; default is 2 ** np.arange(n_blocks)
     kernel_size: 3 # For the UNet Module
-    dropout: 0.25 # Pbty of setting a weight to 0
+    dropout: 0.25 # Probability of setting a weight to 0
     Cin: 44 # Number of channels in the input matrix
     Cout: 3 # Number of channels in the output image
     Cnoise: 0 # Number of channels dedicated to the noise - total input to Generator is Cnoise + Cin
@@ -27,7 +27,7 @@ train:
     lr_g: 0.0001 # Generator's learning rate
     matching_loss: l1 # Which matching loss to use: l2 | l1 | weighted
     n_epochs: 1000 # How many training epochs
-    num_D_accumulations: 8 # How many gradients to accumulate in current batch (different geenrator predictions) before doing one discriminator optimization step
+    num_D_accumulations: 8 # How many gradients to accumulate in current batch (different generator predictions) before doing one discriminator optimization step
     offline_losses_steps: 50 # how often to log the losses with no comet logs
     optimizer: "extraadam" # one of [adam, extrasgd, extraadam]
     save_every_steps: 5000 # How often to save  the model's weights

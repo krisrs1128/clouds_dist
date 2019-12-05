@@ -2,7 +2,6 @@
 import argparse
 import os
 import time
-from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -460,7 +459,7 @@ if __name__ == "__main__":
         "--conf_name",
         type=str,
         default="defaults",
-        help="name of conf file in config/ | may ommit the .yaml extension",
+        help="name of conf file in config/ | may omit the .yaml extension",
     )
     parser.add_argument(
         "-o",
