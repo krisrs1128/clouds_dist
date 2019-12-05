@@ -249,10 +249,7 @@ class gan_trainer:
         # ----------------------------------
         d_loss.backward()
         self.d_optimizer = utils.optim_step(
-            self.d_optimizer,
-            self.opts.train.optimizer,
-            self.total_steps,
-            i
+            self.d_optimizer, self.opts.train.optimizer, self.total_steps, i
         )
         return generated_img, d_loss
 
@@ -272,31 +269,36 @@ class gan_trainer:
             gan_loss = self.d.compute_loss(generated_img, 1)
 
         loss = matching_loss(batch["real_imgs"].to(self.device), generated_img)
-        g_loss_total = self.opts.train.lambda_gan * gan_loss + \
-                       self.opts.train.lambda_L * loss
+        g_loss_total = (
+            self.opts.train.lambda_gan * gan_loss + self.opts.train.lambda_L * loss
+        )
 
         g_loss_total.backward()
         self.g_optimizer = utils.optim_step(
-            self.g_optimizer,
-            self.opts.train.optimizer,
-            self.total_steps,
-            i
+            self.g_optimizer, self.opts.train.optimizer, self.total_steps, i
         )
         return g_loss_total, gan_loss, loss
 
-    def log_step(self, batch, i, epoch, stime, etime, d_loss, g_loss_total,
-                 gan_loss, loss):
+    def log_step(
+        self, batch, i, epoch, stime, etime, d_loss, g_loss_total, gan_loss, loss
+    ):
         if self.exp:
-            wandb.log({
-                "g/loss/total": g_loss_total.item(),
-                "g/loss/disc": gan_loss.item(),
-                "g/loss/matching": loss.item(),
-                "d/loss": d_loss.item(),
-            }, step=self.total_steps)
+            wandb.log(
+                {
+                    "g/loss/total": g_loss_total.item(),
+                    "g/loss/disc": gan_loss.item(),
+                    "g/loss/matching": loss.item(),
+                    "d/loss": d_loss.item(),
+                },
+                step=self.total_steps,
+            )
 
         if self.should_infer(self.total_steps):
             print("\nINFERRING\n")
-            self.g.eval()
+            if self.opts.model.Cnoise != 0:
+                self.g.eval()
+            elif self.opts.model.dropout == 0:
+                print("Warning: no Cnoise, no dropout : deterministic inference")
             nb_images = 0
             self.val_distances = []
             with torch.no_grad():
@@ -315,8 +317,7 @@ class gan_trainer:
                         self.val_distances += utils.all_distances(
                             torch.split(
                                 gen_im,
-                                gen_im.shape[-1]
-                                // self.opts.val.nb_of_inferences,
+                                gen_im.shape[-1] // self.opts.val.nb_of_inferences,
                                 -1,
                             )
                         )
@@ -347,8 +348,7 @@ class gan_trainer:
         self.times = self.times[-100:]
 
         if (
-            self.total_steps % opts.train.offline_losses_steps == 0
-            and self.exp is None
+            self.total_steps % opts.train.offline_losses_steps == 0 and self.exp is None
         ):  # TODO create self.should_plot_losses()
             self.losses["gan_loss"].append(gan_loss.item())
             self.losses["matching_loss"].append(loss.item())
@@ -359,9 +359,7 @@ class gan_trainer:
         if self.total_steps % 10 == 0 and self.verbose > 0:
             ep_str = "epoch:{}/{} step {}/{} ({})"
             ep_str += " d_loss:{:0.4f} l:{:0.4f} gan_loss:{:0.4f} "
-            ep_str += (
-                "g_loss_total:{:0.4f} | t/step {:.1f} | t/ep {:.1f} | t {:.1f}"
-            )
+            ep_str += "g_loss_total:{:0.4f} | t/step {:.1f} | t/ep {:.1f} | t {:.1f}"
             print(
                 ep_str.format(
                     epoch + 1,
@@ -424,10 +422,7 @@ class gan_trainer:
                 # --------------------------------
                 generated_img, d_loss = self.discriminator_step(batch, i)
                 g_loss_total, gan_loss, loss = self.generator_step(
-                    batch,
-                    generated_img,
-                    i,
-                    matching_loss
+                    batch, generated_img, i, matching_loss
                 )
 
                 self.total_steps += 1
@@ -436,16 +431,9 @@ class gan_trainer:
                 # ----- Logging -----
                 # -------------------
                 self.log_step(
-                    batch,
-                    i,
-                    epoch,
-                    stime,
-                    etime,
-                    d_loss,
-                    g_loss_total,
-                    gan_loss,
-                    loss
+                    batch, i, epoch, stime, etime, d_loss, g_loss_total, gan_loss, loss
                 )
+
 
 if __name__ == "__main__":
     # -------------------------
