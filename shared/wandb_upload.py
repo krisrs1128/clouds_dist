@@ -23,7 +23,7 @@ parser.add_argument(
 )
 opts = parser.parse_args()
 p = pathlib.Path(opts.runs_dir) # make this an argument
-paths = list(p.rglob('*wandb*'))
+paths = list(p.rglob('wandb'))
 
 for p in paths:
     try:
