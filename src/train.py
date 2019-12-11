@@ -22,12 +22,6 @@ torch.manual_seed(0)
 class gan_trainer:
     def __init__(self, opts, exp=None, output_dir=".", n_epochs=50, verbose=1):
         self.opts = opts
-        self.losses = {
-            "gan_loss": [],
-            "matching_loss": [],
-            "g_loss_total": [],
-            "d_loss": [],
-        }
         self.n_epochs = n_epochs
         self.verbose = verbose
         self.resumed = False
@@ -206,16 +200,6 @@ class gan_trainer:
             steps and steps % self.opts.val.infer_every_steps == 0
         )
 
-    def plot_losses(self, losses):
-        # TODO move out to utils
-        plt.figure()
-        for loss in losses:
-            plt.plot(np.arange(len(losses[loss])), losses[loss], label=loss)
-            plt.legend()
-            plt.xlabel("steps")
-            plt.ylabel("losses")
-            plt.savefig(str(self.offline_output_dir / "losses.png"))
-
     def get_noisy_input_tensor(self, batch):
         input_tensor = self.get_noise_tensor(batch["metos"].shape)
         input_tensor[:, : self.opts.model.Cin, :, :] = batch["metos"]
@@ -345,15 +329,6 @@ class gan_trainer:
         t = time.time()
         self.times.append(t - stime)
         self.times = self.times[-100:]
-
-        if (
-            self.total_steps % opts.train.offline_losses_steps == 0 and self.exp is None
-        ):  # TODO create self.should_plot_losses()
-            self.losses["gan_loss"].append(gan_loss.item())
-            self.losses["matching_loss"].append(loss.item())
-            self.losses["g_loss_total"].append(g_loss_total.item())
-            self.losses["d_loss"].append(d_loss.item())
-            self.plot_losses(self.losses)
 
         if self.total_steps % 10 == 0 and self.verbose > 0:
             ep_str = "epoch:{}/{} step {}/{} ({})"
