@@ -197,7 +197,7 @@ class MultiDiscriminator(nn.Module):
             )
 
         self.downsample = nn.AvgPool2d(
-            in_channels, stride=2, padding=[1, 1], count_include_pad=False
+            kernel_size=3, stride=2, padding=[1, 1], count_include_pad=False
         )
         self.apply(weights_init_normal)
 
