@@ -12,22 +12,23 @@ model:
     bottleneck_dim: 44 # number of feature maps in the thinnest layer of the Unet
     multi_disc: false # use resnet  generator or MultiDisc from MUNIT
     use_leaky: true # use LeakyRelu(0.2) instead of Relu() in the UNetModules
+    conditional_disc: true
 # ------------------------------
 # -----    Train Params    -----
 # ------------------------------
 train:
-    batch_size: 8
+    batch_size: 6
     early_break_epoch: 0 # Break an epoch loop after early_break_epoch steps in this epoch
     init_chkpt_dir: null # can initialize from a checkpoint directory
     init_chkpt_step: "latest" # can give path to saved checkpoint
     init_keys: ["g.down*", "models.d*"]
     lambda_gan: 1 # Gan loss scaling constant
     lambda_L: 1 # Matching loss scaling constant
-    lr_d: 0.0001 # Discriminator's learning rate
-    lr_g: 0.0001 # Generator's learning rate
+    lr_d: 0.00001 # Discriminator's learning rate
+    lr_g: 0.00001 # Generator's learning rate
     matching_loss: l1 # Which matching loss to use: l2 | l1 | weighted
     n_epochs: 1000 # How many training epochs
-    num_D_accumulations: 8 # How many gradients to accumulate in current batch (different generator predictions) before doing one discriminator optimization step
+    num_D_accumulations: 1 # How many gradients to accumulate in current batch (different generator predictions) before doing one discriminator optimization step
     offline_losses_steps: 50 # how often to log the losses with no comet logs
     optimizer: "extraadam" # one of [adam, extrasgd, extraadam]
     save_every_steps: 5000 # How often to save  the model's weights
@@ -54,4 +55,4 @@ data:
     squash_channels: false # If set to True, don't forget to change model.Cin from 44 to 8
     crop_to_inner_square: false # crop metos and imgs to the size of the real_img's inner square
     clip_reflectance: 0.9 # set to -1 not to use this transform
-    noq: null # if it's not None quantize the data to no_of_quantiles
+    noq: null # if it's not null quantize the data to no_of_quantiles
