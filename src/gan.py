@@ -19,6 +19,7 @@ class GAN(nn.Module):
         device=None,
         multi_disc=False,
         use_leaky=False,
+        conditional_disc=False
     ):
         super(GAN, self).__init__()
         self.bottleneck_dim = bottleneck_dim
@@ -33,10 +34,11 @@ class GAN(nn.Module):
             device,
             use_leaky,
         )
+        Cin_disc = Cin + Cout if conditional_disc else Cout
         self.d = (
-            Discriminator(Cout, disc_size, device=device)
+            Discriminator(Cin_disc, disc_size, device=device)
             if not multi_disc
-            else MultiDiscriminator(Cout, device=device)
+            else MultiDiscriminator(Cin_disc, device=device)
         )
 
         self.g.apply(self.init_weights)
