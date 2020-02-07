@@ -131,7 +131,7 @@ for image in inferred_images:
 
     fft_d = np.linalg.norm(fft_f - fft_r)/fft_f.size
     print("distance between the two DFTs = ", fft_d)
-    plt.show()
+    plt.show(block=False)
 
 
 

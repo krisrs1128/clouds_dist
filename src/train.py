@@ -3,8 +3,7 @@ import argparse
 import os
 import time
 from pathlib import Path
-
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn as nn
@@ -205,8 +204,19 @@ class gan_trainer:
         input_tensor[:, : self.opts.model.Cin, :, :] = batch["metos"]
         return input_tensor.to(self.device)
 
+
+    def get_discriminator_input(self, batch, step="disc"):
+        input_real = torch.cat((batch["real_imgs"].to(self.device), batch["metos"].to(self.device)), dim=1) \
+            if self.opts.model.conditional_disc else batch["real_imgs"].to(self.device)
+        self.input_tensor = self.get_noisy_input_tensor(batch)
+        generated_img = self.g(self.input_tensor).detach() if step == "disc" else  self.g(self.input_tensor)
+        input_fake = torch.cat((generated_img, batch["metos"].to(self.device)), dim=1) \
+            if self.opts.model.conditional_disc else generated_img
+        return {"real": input_real, "fake": input_fake, "generated_img": generated_img}
+
+
+
     def discriminator_step(self, batch, i):
-        real_img = batch["real_imgs"].to(self.device)
         d_loss = 0
         self.d_optimizer.zero_grad()
         nd_acc = self.opts.train.num_D_accumulations
@@ -214,17 +224,16 @@ class gan_trainer:
             # ---------------------------------------------
             # ----- Accumulate Discriminator Gradient -----
             # ---------------------------------------------
-            self.input_tensor = self.get_noisy_input_tensor(batch)
-            generated_img = self.g(self.input_tensor)
+            disc_input = self.get_discriminator_input(batch, "disc")
             if not self.opts.model.multi_disc:
-                real_prob = self.d(real_img)
-                fake_prob = self.d(generated_img.detach())
+                real_prob = self.d(disc_input["real"])
+                fake_prob = self.d(disc_input["fake"])
 
                 d_loss += utils.loss_hinge_dis(fake_prob, real_prob) / float(nd_acc)
             else:
                 d_loss += (
-                    self.d.compute_loss(real_img, 1)
-                    + self.d.compute_loss(generated_img.detach(), 0)
+                    self.d.compute_loss(disc_input["real"], 1)
+                    + self.d.compute_loss(disc_input["fake"], 0)
                 ) / float(nd_acc)
 
         # ----------------------------------
@@ -234,22 +243,20 @@ class gan_trainer:
         self.d_optimizer = utils.optim_step(
             self.d_optimizer, self.opts.train.optimizer, self.total_steps, i
         )
-        return generated_img, d_loss
+        return disc_input["generated_img"], d_loss
 
     def generator_step(self, batch, generated_img, i, matching_loss):
         # ----------------------------
         # ----- Generator Update -----
         # ----------------------------
         self.g_optimizer.zero_grad()
-        if generated_img is None:
-            self.input_tensor = self.get_noisy_input_tensor(batch)
-            generated_img = self.g(self.input_tensor)
 
+        disc_input = self.get_discriminator_input(batch, "generator")
         if not self.opts.model.multi_disc:
-            fake_prob = self.d(generated_img)
+            fake_prob = self.d(disc_input['fake'])
             gan_loss = utils.loss_hinge_gen(fake_prob)
         else:
-            gan_loss = self.d.compute_loss(generated_img, 1)
+            gan_loss = self.d.compute_loss(disc_input['fake'], 1)
 
         loss = matching_loss(batch["real_imgs"].to(self.device), generated_img)
         g_loss_total = (
@@ -358,7 +365,6 @@ class gan_trainer:
         # -------------------------------
         # ----- Set Up Optimization -----
         # -------------------------------
-
         matching_loss = (
             nn.L1Loss()
             if loss == "l1"
@@ -394,6 +400,7 @@ class gan_trainer:
                 # --------------------------------
                 # ----- Take Gradient Steps -----
                 # --------------------------------
+
                 generated_img, d_loss = self.discriminator_step(batch, i)
                 g_loss_total, gan_loss, loss = self.generator_step(
                     batch, generated_img, i, matching_loss
