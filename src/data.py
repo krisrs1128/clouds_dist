@@ -250,7 +250,7 @@ def get_transforms(opts):
     elif opts.data.preprocessed_data_path is None and opts.data.with_stats:
         transfs += [Standardize()]
     nan_value = get_nan_value(transfs)
-    #transfs += [ReplaceNans(nan_value)]
+    transfs += [ReplaceNans(nan_value)]
 
     return transfs
 
