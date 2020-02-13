@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 from pathlib import Path
+import pdb
 import datetime
 import numpy as np
 import re
 import torch
+import pdb
 from itertools import compress
 from torch.utils.data import Dataset
 from torchvision import transforms
@@ -16,7 +18,6 @@ from src.preprocessing import (
     Resize,
     Quantize,
 )
-
 
 class EarthData(Dataset):
     """
@@ -189,14 +190,18 @@ class LowClouds(Dataset):
             self.data["metos"] = self.data["metos"][:load_limit]
             self.data["real_imgs"] = self.data["real_imgs"][:load_limit]
 
+        
+        self.metos_shape = tuple(self.data["metos"].shape)
+
     def __len__(self):
         return len(self.ids)
 
     def __getitem__(self, i):
         data = {
-            "metos": self.data["metos"][i],
-            "real_imgs": self.data["real_imgs"][i],
+            "metos": torch.tensor(self.data["metos"][i], dtype=torch.float).repeat(self.data["metos"][i].shape[0], 1).unsqueeze(0),
+            "real_imgs": torch.tensor(self.data["real_imgs"][i], dtype=torch.float).unsqueeze(0),
         }
+        #print(data["metos"].shape)
 
         if self.transform:
             data = self.transform(data)
@@ -245,7 +250,7 @@ def get_transforms(opts):
     elif opts.data.preprocessed_data_path is None and opts.data.with_stats:
         transfs += [Standardize()]
     nan_value = get_nan_value(transfs)
-    transfs += [ReplaceNans(nan_value)]
+    #transfs += [ReplaceNans(nan_value)]
 
     return transfs
 
@@ -300,6 +305,8 @@ def get_loader(opts, transfs=None, stats=None):
     transforms_string = ""
     if transfs:
         transforms_string += " -> ".join([t.__class__.__name__ for t in transfs])
+
+    print("data.py data loader : ", opts.train.batch_size)
 
     return (
         torch.utils.data.DataLoader(

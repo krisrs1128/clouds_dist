@@ -10,6 +10,7 @@ import torch.nn.functional as F
 import wandb
 import yaml
 import subprocess
+import pdb
 
 
 def load_conf(path):
@@ -135,12 +136,13 @@ def check_data_dirs(opts):
     assert Path(opts.data.path).exists(), "{} does not exist".format(
         str(Path(opts.data.path))
     )
-    assert (Path(opts.data.path) / "imgs").exists(), "{} does not exist".format(
-        str(Path(opts.data.path) / "imgs")
-    )
-    assert (Path(opts.data.path) / "metos").exists(), "{} does not exist".format(
-        str(Path(opts.data.path) / "metos")
-    )
+    if opts.data.cloud_type == "global": # the high clouds datasets is supposed to contain "imgs" and "metos" subdirectories. It is not the case for the low clouds one
+        assert (Path(opts.data.path) / "imgs").exists(), "{} does not exist".format(
+            str(Path(opts.data.path) / "imgs")
+        )
+        assert (Path(opts.data.path) / "metos").exists(), "{} does not exist".format(
+            str(Path(opts.data.path) / "metos")
+        )
     return opts
 
 
@@ -149,14 +151,7 @@ def cpu_images(input_tensor, real_img, generated_img):
     for i in range(input_tensor.shape[0]):
         # concatenate verticaly:
         # [3 metos, generated clouds, ground truth clouds]
-        img = torch.cat(
-            (
-                to_0_1(input_tensor[i, 22:25]),
-                to_0_1(generated_img[i]),
-                to_0_1(real_img[i]),
-            ),
-            -1,
-        )
+        img = torch.cat((to_0_1(input_tensor[i, 2:3]), to_0_1(generated_img[i]), to_0_1(real_img[i]),), -1,)
         img_cpu = img.permute((1, 2, 0)).cpu().clone().detach().numpy()
         imgs.append(img_cpu)
 

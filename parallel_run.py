@@ -91,7 +91,7 @@ def get_template(param, conf_path, run_dir, name):
             {zip_command}
             {cp_unzip_command}
 
-            module load singularity/3.4
+            module load singularity/3.5
             cd $HOME/clouds_dist/
 
             echo "Starting job"

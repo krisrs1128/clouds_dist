@@ -29,6 +29,7 @@ def get_stats(opts, trsfs, verbose=0):
         shuffle=False,
         num_workers=opts.data.num_workers,
     )
+    print("get stats : ", opts.train.batch_size)
 
     noq = opts.data.noq
 
