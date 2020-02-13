@@ -1,7 +1,7 @@
 import torch
 from torchvision import transforms
 import numpy as np
-from src.data import EarthData
+from src.data import EarthData, LowClouds
 
 
 def get_stats(opts, trsfs, verbose=0):
@@ -17,11 +17,19 @@ def get_stats(opts, trsfs, verbose=0):
     if not should_compute_stats:
         return None
 
-    dataset = EarthData(
-        data_dir=opts.data.path,
-        load_limit=opts.data.load_limit or -1,
-        transform=transforms.Compose(transforms_before_stats),
-    )
+    if opts.data.cloud_type == "global":
+        dataset = EarthData(
+            data_dir=opts.data.path,
+            load_limit=opts.data.load_limit or -1,
+            transform=transforms.Compose(transforms_before_stats),
+        )
+
+    else:
+        dataset = LowClouds(
+            data_dir=opts.data.path,
+            load_limit=opts.data.load_limit or -1,
+            transform=transforms.Compose(transforms_before_stats),
+        )
 
     data_loader = torch.utils.data.DataLoader(
         dataset,
@@ -29,6 +37,7 @@ def get_stats(opts, trsfs, verbose=0):
         shuffle=False,
         num_workers=opts.data.num_workers,
     )
+
     print("get stats : ", opts.train.batch_size)
 
     noq = opts.data.noq
