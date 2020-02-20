@@ -198,7 +198,8 @@ class LowClouds(Dataset):
 
     def __getitem__(self, i):
         data = {
-            "metos": torch.tensor(self.data["metos"][i], dtype=torch.float).repeat(self.data["metos"][i].shape[0], 1).unsqueeze(0),
+            #"metos": torch.tensor(self.data["metos"][i], dtype=torch.float).repeat(self.data["metos"][i].shape[0], 1).unsqueeze(0),
+            "metos": torch.tensor(self.data["metos"][i], dtype=torch.float).unsqueeze(-1), # we unsqueeze to have a dimension that will be projected to height x width (while conserving the number metos)
             "real_imgs": torch.tensor(self.data["real_imgs"][i], dtype=torch.float).unsqueeze(0),
         }
         #print(data["metos"].shape)
@@ -250,7 +251,7 @@ def get_transforms(opts):
     elif opts.data.preprocessed_data_path is None and opts.data.with_stats:
         transfs += [Standardize()]
     nan_value = get_nan_value(transfs)
-    transfs += [ReplaceNans(nan_value)]
+    #transfs += [ReplaceNans(nan_value)]
 
     return transfs
 

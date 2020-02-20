@@ -1,0 +1,33 @@
+experiment:
+  name: lambdas_search
+  exp_dir: /scratch/jassiene/clouds/experiments
+  repeat: 5
+runs:
+  - sbatch:
+      runtime: "24:00:00"
+      message: lambdas_search
+      conf_name: gan_weights
+      cpu: 8
+      gpu: "gpu:1"
+      no_comet: false
+      mem: "32GB"
+    config:
+      model:
+        disc_size: 64
+      data:
+        path: /scratch/sankarak/data/low_clouds/
+      train:
+        batch_size: 12
+        num_D_accumulations: 1
+        n_epochs: 5000
+        num_workers: 12
+        n_in_mem: 8
+        with_stats: true
+        save_every_steps: 5000
+        infer_every_steps: 5000
+        lambda_gan:
+          sample: list
+          from: [0.1, 1, 5, 10]
+        lambda_L:
+          sample: list
+          from: [0.1, 1, 5, 10]

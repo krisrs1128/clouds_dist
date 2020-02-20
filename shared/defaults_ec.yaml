@@ -2,22 +2,22 @@
 # -----    Model    -----
 # -----------------------
 model:
-    n_blocks: 2 # Number of Unet Blocks (total nb of blocks is therefore 2 * n_blocks)
+    n_blocks: 5 # Number of Unet Blocks (total nb of blocks is therefore 2 * n_blocks)
     filter_factors: null # list, scale factors ; default is 2 ** np.arange(n_blocks)
     kernel_size: 3 # For the UNet Module
     dropout: 0.25 # Probability of setting a weight to 0
-    Cin: 8 # Number of channels in the input matrix
-    Cout: 1 # Number of channels in the output image
+    Cin: 44 # Number of channels in the input matrix
+    Cout: 3 # Number of channels in the output image
     Cnoise: 0 # Number of channels dedicated to the noise - total input to Generator is Cnoise + Cin
-    bottleneck_dim: 8 # number of feature maps in the thinnest layer of the Unet
+    bottleneck_dim: 44 # number of feature maps in the thinnest layer of the Unet
     multi_disc: false # use resnet  generator or MultiDisc from MUNIT
     use_leaky: true # use LeakyRelu(0.2) instead of Relu() in the UNetModules
-    conditional_disc: false
+    conditional_disc: true
 # ------------------------------
 # -----    Train Params    -----
 # ------------------------------
 train:
-    batch_size: 16
+    batch_size: 6
     early_break_epoch: 0 # Break an epoch loop after early_break_epoch steps in this epoch
     init_chkpt_dir: null # can initialize from a checkpoint directory
     init_chkpt_step: "latest" # can give path to saved checkpoint
@@ -31,16 +31,14 @@ train:
     num_D_accumulations: 1 # How many gradients to accumulate in current batch (different generator predictions) before doing one discriminator optimization step
     offline_losses_steps: 50 # how often to log the losses with no comet logs
     optimizer: "extraadam" # one of [adam, extrasgd, extraadam]
-    save_every_steps: 1000 # How often to save  the model's weights
+    save_every_steps: 5000 # How often to save  the model's weights
     use_extragradient_optimizer: true # >>DEPRECATED: use optimizer instead<< use ExtragradientSGD or Adam(betas=(0.5, 0.999))
 # ------------------------
 # -----  Validation  -----
 # ------------------------
 val:
-    #val_ids: [2012089.1520_index_1344_index_0256, 2012269.2145_index_0320_index_0832, 2012360.1935_index_0384_index_0704]
-    val_ids: [2012181.1410_index_0832_index_0896, 2012164.1325_index_1344_index_0768, 2012347.1510_index_0384_index_0832] #cluster 1
-    #val_ids: [2012269.2145_index_0320_index_0832, 2012360.1935_index_0384_index_0704, 2012089.1520_index_1344_index_0256]
-    infer_every_steps: 5 # How often to infer validation images
+    val_ids: [20160206043121, 20160218203424, 20160508113106, 20160529201452, 20161104134057]
+    infer_every_steps: 2 # How often to infer validation images
     store_images: false # Do you want to write inferred images to disk
     nb_of_inferences: 3 # no of inferences (generated imgs) per validation sample (input + real_img)
 
@@ -48,13 +46,13 @@ val:
 # -----    Data Conf    -----
 # ---------------------------
 data:
-    path: "/scratch/sankarak/data/low_clouds/" # Where's the data?
-    cloud_type: "local" # global = earth, local = low_clouds
+    path: "/scratch/sankarak/data/clouds/" # Where's the data?
+    cloud_type: "global" # global = earth, local = low_clouds
     preprocessed_data_path: null # If you set this path to something != null, it will override the "data" path
     num_workers: 12 # How many workers for the dataloader
     with_stats: false # Normalize with stats? Computed before the training loop if no using preprocessed data
-    load_limit: 100 # Limit the number of samples per epoch | -1 to disable
+    load_limit: -1 # Limit the number of samples per epoch | -1 to disable
     squash_channels: false # If set to True, don't forget to change model.Cin from 44 to 8
     crop_to_inner_square: false # crop metos and imgs to the size of the real_img's inner square
     clip_reflectance: 0.9 # set to -1 not to use this transform
-    noq: false # if it's not null quantize the data to no_of_quantiles
+    noq: null # if it's not null quantize the data to no_of_quantiles

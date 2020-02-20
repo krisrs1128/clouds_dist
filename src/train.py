@@ -32,6 +32,7 @@ class gan_trainer:
         self.debug = Dict()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.stats = None
+        self.metos_to_img_projection = nn.Linear(in_features=256, out_features=256*256)
 
         if self.verbose > 0:
             print("-------------------------")
@@ -92,7 +93,7 @@ class gan_trainer:
 
         self.transforms = get_transforms(self.opts)
         self.stats = get_stats(self.opts, self.transforms)
-        self.train_loader, self.val_loader, transforms_string = get_loader(
+        self.   train_loader, self.val_loader, transforms_string = get_loader(
             opts, self.transforms, self.stats
         )
         self.trainset = self.train_loader.dataset
@@ -112,6 +113,7 @@ class gan_trainer:
         self.gan = GAN(**self.opts.model, device=self.device).to(self.device)
         self.g = self.gan.g
         self.d = self.gan.d
+        self.g.metos_to_img_projection = self.metos_to_img_projection
 
         if self.exp:
             wandb.watch((self.g, self.d))
@@ -202,8 +204,10 @@ class gan_trainer:
         )
 
     def get_noisy_input_tensor(self, batch):
-        input_tensor = self.get_noise_tensor(batch["metos"].shape)
-        input_tensor[:, : self.opts.model.Cin, :, :] = batch["metos"]
+        batch_metos = self.metos_to_img_projection(batch["metos"]) # batch x Cin x 256 ** 2
+        batch_metos = batch_metos.reshape(batch_metos.shape[0], batch_metos.shape[1], 256, 256)
+        input_tensor = self.get_noise_tensor(batch_metos.shape)
+        input_tensor[:, : self.opts.model.Cin, :, :] = batch_metos
         return input_tensor.to(self.device)
 
 
@@ -367,6 +371,8 @@ class gan_trainer:
         # -------------------------------
         # ----- Set Up Optimization -----
         # -------------------------------
+        prev = 0
+        current = 0
         matching_loss = (
             nn.L1Loss()
             if loss == "l1"
@@ -388,6 +394,7 @@ class gan_trainer:
             torch.cuda.empty_cache()
             self.gan.train()  # train mode
             etime = time.time()
+            #print(self.metos_to_img_projection.weight.data)
             for i, batch in enumerate(self.train_loader):
                 # --------------------------------
                 # ----- Prepare Step Procedure -----
