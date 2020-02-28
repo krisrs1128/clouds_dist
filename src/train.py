@@ -32,7 +32,8 @@ class gan_trainer:
         self.debug = Dict()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.stats = None
-        self.metos_to_img_projection = nn.Linear(in_features=256, out_features=256*256)
+        self.img_height = 128
+        self.metos_to_img_projection = nn.Linear(in_features=1, out_features=self.img_height*self.img_height)
 
         if self.verbose > 0:
             print("-------------------------")
@@ -77,6 +78,7 @@ class gan_trainer:
         }
         torch.save(state, str(self.ckptdir / f"state_{step}.pt"))
         torch.save(state, str(self.ckptdir / f"state_latest.pt"))
+        torch.save(self.supervised_model.state_dict(), str(self.ckptdir / f"model_latest.pt"))
 
     def make_directories(self):
         self.ckptdir = self.output_dir / "checkpoints"
@@ -153,7 +155,7 @@ class gan_trainer:
             )
 
     def run_trial(self):
-        self.train(
+        self.train_supervised(
             self.opts.train.n_epochs,
             self.opts.train.lambda_gan,
             self.opts.train.lambda_L,
@@ -179,9 +181,10 @@ class gan_trainer:
             input_tensor = self.get_noisy_input_tensor(batch)
             gen = self.g(input_tensor)
             if generated_img is None:
-                generated_img = gen
+                generated_img = gen 
             else:
-                generated_img = torch.cat([generated_img, gen], dim=-1)
+                generated_img = torch.cat([generated_img, gen], dim=-1) # For now (low_clouds), input is batch x channel x height x width. We should concatenate on the first channel
+                #generated_img = torch.cat([generated_img, gen], dim=0)
 
         return input_tensor, real_img, generated_img
 
@@ -190,6 +193,7 @@ class gan_trainer:
     ):
         input_tensor, real_img, generated_img = self.infer_(batch, nb_of_inferences)
         imgs = utils.cpu_images(input_tensor, real_img, generated_img)
+        torch.save({"input_tensor": input_tensor, "generated_img": generated_img, "cpu_imgs" : imgs, "real_img" : real_img}, f"/home/jassiene/james_log/generated_img_{step}.dump")
         utils.record_images(imgs, store_images, exp, imgdir, step, nb_images)
         return generated_img
 
@@ -205,7 +209,7 @@ class gan_trainer:
 
     def get_noisy_input_tensor(self, batch):
         batch_metos = self.metos_to_img_projection(batch["metos"]) # batch x Cin x 256 ** 2
-        batch_metos = batch_metos.reshape(batch_metos.shape[0], batch_metos.shape[1], 256, 256)
+        batch_metos = batch_metos.reshape(batch_metos.shape[0], batch_metos.shape[1], self.img_height, self.img_height)
         input_tensor = self.get_noise_tensor(batch_metos.shape)
         input_tensor[:, : self.opts.model.Cin, :, :] = batch_metos
         return input_tensor.to(self.device)
@@ -264,6 +268,7 @@ class gan_trainer:
         else:
             gan_loss = self.d.compute_loss(disc_input['fake'], 1)
 
+        pdb.set_trace()
         loss = matching_loss(batch["real_imgs"].to(self.device), generated_img)
         g_loss_total = (
             self.opts.train.lambda_gan * gan_loss + self.opts.train.lambda_L * loss
@@ -371,8 +376,6 @@ class gan_trainer:
         # -------------------------------
         # ----- Set Up Optimization -----
         # -------------------------------
-        prev = 0
-        current = 0
         matching_loss = (
             nn.L1Loss()
             if loss == "l1"
@@ -410,6 +413,8 @@ class gan_trainer:
                 # ----- Take Gradient Steps -----
                 # --------------------------------
 
+                pdb.set_trace()
+
                 generated_img, d_loss = self.discriminator_step(batch, i)
                 g_loss_total, gan_loss, loss = self.generator_step(
                     batch, generated_img, i, matching_loss
@@ -423,6 +428,80 @@ class gan_trainer:
                 self.log_step(
                     batch, i, epoch, stime, etime, d_loss, g_loss_total, gan_loss, loss
                 )
+
+    def train_supervised(self, n_epochs, lambda_gan=0.01, lambda_L=1, num_D_accumulations=1, loss="l1"):
+        # -------------------------------
+        # ----- Set Up Optimization -----
+        # -------------------------------
+        matching_loss = (
+            nn.L1Loss()
+            if loss == "l1"
+            else utils.weighted_mse_loss
+            if loss == "weighted"
+            else nn.MSELoss()
+        )
+        if self.verbose > 0:
+            print("-----------------------------")
+            print("----- Starting training -----")
+            print("-----------------------------")
+        self.times = []
+        self.start_time = time.time()
+        self.total_steps = 0
+        from src.supervised_model import SupervisedModel
+        #self.supervised_model = SupervisedModel().to(self.device)
+        self.supervised_model = self.gan.g
+        self.supervised_model_optimizer, self.d_optimizer = get_optimizers(self.supervised_model, self.d, self.opts)
+        for epoch in range(n_epochs):
+            # -------------------------
+            # ----- Prepare Epoch -----
+            # -------------------------
+            torch.cuda.empty_cache()
+            etime = time.time()
+            #print(self.metos_to_img_projection.weight.data)
+            for i, batch in enumerate(self.train_loader):
+                # --------------------------------
+                # ----- Prepare Step Procedure -----
+                # --------------------------------
+                if i > (self.opts.train.early_break_epoch or 1e9):
+                    break
+                stime = time.time()
+
+                if i == 0 and self.verbose > -1:
+                    print("\n\nLoading time: {:.3f}".format(stime - etime))
+
+                # --------------------------------
+                # ----- Take Gradient Steps -----
+                # --------------------------------
+
+
+                self.supervised_model_optimizer.zero_grad()
+                input_real = torch.cat((batch["real_imgs"].to(self.device), batch["metos"].to(self.device)), dim=1) \
+                    if self.opts.model.conditional_disc else batch["real_imgs"].to(self.device)
+                self.input_tensor = self.get_noisy_input_tensor(batch)
+                #pdb.set_trace()
+                generated_img = self.supervised_model(self.input_tensor)
+
+                if self.should_infer(self.total_steps):
+                    print("... SAVING TRAINING BATCH ...")
+                    torch.save({"input_tensor": self.input_tensor, "generated_img": generated_img, "real_img" : batch["real_imgs"]}, f"/home/jassiene/james_log/training_generated_img_{self.total_steps}.dump")
+
+                loss = matching_loss(batch["real_imgs"].to(self.device), generated_img)
+                loss.backward()
+                self.supervised_model_optimizer = utils.optim_step(
+                    self.supervised_model_optimizer, self.opts.train.optimizer, self.total_steps, i
+                )
+
+
+                self.total_steps += 1
+
+                # -------------------
+                # ----- Logging -----
+                # -------------------
+                self.g = self.supervised_model
+                self.log_step(
+                    batch, i, epoch, stime, etime, loss, loss, loss, loss
+                )
+        print("Last loss : ", loss.item)
 
 
 if __name__ == "__main__":

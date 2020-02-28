@@ -237,7 +237,7 @@ def get_transforms(opts):
     transfs = []
     if opts.data.crop_to_inner_square:
         transfs += [CropInnerSquare()]
-    transfs += [Resize(256)]
+    #transfs += [Resize(256)]
     if opts.data.squash_channels:
         transfs += [SquashChannels()]
         assert (

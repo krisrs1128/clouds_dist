@@ -2,7 +2,7 @@ import torch
 from torchvision import transforms
 import numpy as np
 from src.data import EarthData, LowClouds
-
+import pdb
 
 def get_stats(opts, trsfs, verbose=0):
 
@@ -132,7 +132,7 @@ def get_stats(opts, trsfs, verbose=0):
         if noq:
             bins = np.arange(0, 1, 1 / noq)
         for c in range(subsamples[k].shape[1]):
-            subsample_channel = subsamples[k][:, c, :, :].flatten()
+            subsample_channel = subsamples[k][:, c, :].flatten()
             subsample_channel = subsample_channel[~torch.isnan(subsample_channel)]
             subsample_channel = subsample_channel[~torch.isinf(subsample_channel)]
             stds[k] += [subsample_channel.std()]
